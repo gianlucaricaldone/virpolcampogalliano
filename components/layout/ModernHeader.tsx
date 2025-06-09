@@ -21,7 +21,17 @@ const navigation = [
     ]
   },
   { name: 'News', href: '/news' },
-  { name: 'Tornei', href: '/tornei' },
+  { 
+    name: 'Tornei', 
+    href: '/tornei',
+    submenu: [
+      { name: 'Tutti i Tornei', href: '/tornei' },
+      { name: 'Tornei Estivi', href: '/tornei/estivi' },
+      { name: 'Tornei Invernali', href: '/tornei/invernali' },
+      { name: 'Memorial', href: '/tornei/memorial' },
+      { name: 'Iscrizioni', href: '/tornei/iscrizioni' },
+    ]
+  },
   { name: 'Strutture', href: '/strutture' },
   { name: 'Contatti', href: '/contatti' },
 ]
@@ -31,6 +41,7 @@ export default function ModernHeader() {
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState<string | null>(null)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -85,7 +96,7 @@ export default function ModernHeader() {
                 <div key={item.name} className="relative">
                   {item.submenu ? (
                     <div
-                      className="relative"
+                      className="relative group"
                       onMouseEnter={() => setDropdownOpen(item.name)}
                       onMouseLeave={() => setDropdownOpen(null)}
                     >
@@ -95,8 +106,10 @@ export default function ModernHeader() {
                         {item.name}
                         <ChevronDown className="ml-1 h-4 w-4" />
                       </button>
-                      {dropdownOpen === item.name && (
-                        <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black ring-opacity-5 opacity-0 animate-in fade-in duration-200">
+                      <div className={`absolute top-full left-0 w-56 pt-2 ${
+                        dropdownOpen === item.name ? 'opacity-100 visible' : 'opacity-0 invisible'
+                      } transition-all duration-200`}>
+                        <div className="bg-white rounded-xl shadow-xl ring-1 ring-black ring-opacity-5">
                           <div className="py-2">
                             {item.submenu.map((subItem) => (
                               <Link
@@ -109,7 +122,7 @@ export default function ModernHeader() {
                             ))}
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   ) : (
                     <Link
@@ -169,26 +182,40 @@ export default function ModernHeader() {
               <div className="space-y-1 bg-white/95 backdrop-blur-md rounded-xl mt-2 p-4 shadow-xl">
                 {navigation.map((item) => (
                   <div key={item.name}>
-                    <Link
-                      href={item.href}
-                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                    {item.submenu && (
-                      <div className="pl-6 space-y-1">
-                        {item.submenu.map((subItem) => (
-                          <Link
-                            key={subItem.name}
-                            href={subItem.href}
-                            className="block px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            {subItem.name}
-                          </Link>
-                        ))}
-                      </div>
+                    {item.submenu ? (
+                      <>
+                        <button
+                          className="w-full flex items-center justify-between px-3 py-2 text-base font-medium text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
+                          onClick={() => setMobileDropdownOpen(mobileDropdownOpen === item.name ? null : item.name)}
+                        >
+                          {item.name}
+                          <ChevronDown className={`h-4 w-4 transition-transform ${
+                            mobileDropdownOpen === item.name ? 'rotate-180' : ''
+                          }`} />
+                        </button>
+                        {mobileDropdownOpen === item.name && (
+                          <div className="pl-6 space-y-1 mt-1">
+                            {item.submenu.map((subItem) => (
+                              <Link
+                                key={subItem.name}
+                                href={subItem.href}
+                                className="block px-3 py-2 text-sm text-gray-600 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                {subItem.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
                     )}
                   </div>
                 ))}

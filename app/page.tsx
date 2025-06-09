@@ -10,6 +10,9 @@ import ModernFooter from '@/components/layout/ModernFooter'
 import AnimatedSection from '@/components/ui/AnimatedSection'
 import AnimatedCounter from '@/components/ui/AnimatedCounter'
 import ParallaxSection from '@/components/ui/ParallaxSection'
+import { useSquadre } from '@/hooks/useSquadre'
+import { useTornei, useNews } from '@/hooks/useTornei'
+import { useStats } from '@/hooks/useStats'
 import { 
   Trophy, 
   Users, 
@@ -28,92 +31,42 @@ import {
   Sparkles,
   Medal,
   Timer,
-  Globe
+  Globe,
+  Loader2
 } from 'lucide-react'
 
-const squadreData = [
-  {
-    id: 'prima-squadra',
-    nome: 'Prima Squadra',
-    categoria: 'Senior',
-    descrizione: 'L\'élite del calcio locale che rappresenta i valori della società',
-    immagine: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    colore: 'from-red-500 to-red-700'
-  },
-  {
-    id: 'juniores',
-    nome: 'Juniores',
-    categoria: 'Under 19',
-    descrizione: 'Il trampolino verso il calcio professionistico',
-    immagine: 'https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    colore: 'from-blue-500 to-blue-700'
-  },
-  {
-    id: 'allievi',
-    nome: 'Allievi',
-    categoria: 'Under 17',
-    descrizione: 'Formazione tecnica e tattica avanzata',
-    immagine: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    colore: 'from-green-500 to-green-700'
-  },
-  {
-    id: 'giovanissimi',
-    nome: 'Giovanissimi',
-    categoria: 'Under 15',
-    descrizione: 'Sviluppo delle competenze e spirito di squadra',
-    immagine: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    colore: 'from-purple-500 to-purple-700'
-  },
-  {
-    id: 'esordienti',
-    nome: 'Esordienti',
-    categoria: 'Under 13',
-    descrizione: 'Le basi tecniche con divertimento e passione',
-    immagine: 'https://images.unsplash.com/photo-1556817411-31ae72fa3ea0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    colore: 'from-yellow-500 to-orange-600'
-  },
-  {
-    id: 'scuola-calcio',
-    nome: 'Scuola Calcio',
-    categoria: 'Piccoli Amici',
-    descrizione: 'I primi passi nel mondo del calcio',
-    immagine: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    colore: 'from-pink-500 to-pink-700'
-  }
+// Colori per le squadre basati sull'indice
+const coloriSquadre = [
+  'from-red-500 to-red-700',
+  'from-blue-500 to-blue-700',
+  'from-green-500 to-green-700',
+  'from-purple-500 to-purple-700',
+  'from-yellow-500 to-orange-600',
+  'from-pink-500 to-pink-700',
+  'from-indigo-500 to-indigo-700',
+  'from-teal-500 to-teal-700'
 ]
 
-const newsData = [
-  {
-    id: 1,
-    titolo: 'Vittoria Storica della Prima Squadra',
-    data: '15 Marzo 2024',
-    categoria: 'Prima Squadra',
-    immagine: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    excerpt: 'Grande prestazione contro la capolista, vittoria 3-1 che ci avvicina ai playoff.',
-    featured: true
-  },
-  {
-    id: 2,
-    titolo: 'Torneo Primavera: Iscrizioni Aperte',
-    data: '12 Marzo 2024',
-    categoria: 'Tornei',
-    immagine: 'https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    excerpt: 'Al via le iscrizioni per il torneo giovanile più atteso dell\'anno.',
-    featured: false
-  },
-  {
-    id: 3,
-    titolo: 'Nuove Attrezzature per la Scuola Calcio',
-    data: '10 Marzo 2024',
-    categoria: 'Scuola Calcio',
-    immagine: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    excerpt: 'Investimento in nuovi materiali didattici per i nostri piccoli campioni.',
-    featured: false
-  }
-]
+// Descrizioni per le squadre
+const descrizioniSquadre: { [key: string]: string } = {
+  'Prima Squadra': 'L\'elite del calcio locale che rappresenta i valori della società',
+  'Juniores': 'Il trampolino verso il calcio professionistico',
+  'Allievi': 'Formazione tecnica e tattica avanzata',
+  'Giovanissimi': 'Sviluppo delle competenze e spirito di squadra',
+  'Esordienti': 'Le basi tecniche con divertimento e passione',
+  'Scuola Calcio': 'I primi passi nel mondo del calcio',
+  'Under 19': 'Il trampolino verso il calcio professionistico',
+  'Under 17': 'Formazione tecnica e tattica avanzata',
+  'Under 15': 'Sviluppo delle competenze e spirito di squadra',
+  'Under 13': 'Le basi tecniche con divertimento e passione',
+  'Piccoli Amici': 'I primi passi nel mondo del calcio'
+}
 
 export default function ModernHomePage() {
   const [isLoaded, setIsLoaded] = useState(false)
+  const { squadre, loading: squadreLoading } = useSquadre()
+  const { news, loading: newsLoading } = useNews()
+  const { stats, loading: statsLoading } = useStats()
 
   useEffect(() => {
     setIsLoaded(true)
@@ -218,7 +171,11 @@ export default function ModernHomePage() {
                 <div className="p-6 rounded-2xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                   <Trophy className="h-12 w-12 mx-auto mb-4 text-yellow-300" />
                   <div className="text-4xl font-bold mb-2">
-                    <AnimatedCounter end={15} suffix="+" />
+                    {statsLoading ? (
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                    ) : (
+                      <AnimatedCounter end={stats.anni_storia} suffix="+" />
+                    )}
                   </div>
                   <div className="text-green-100">Anni di Storia</div>
                 </div>
@@ -228,7 +185,11 @@ export default function ModernHomePage() {
                 <div className="p-6 rounded-2xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                   <Users className="h-12 w-12 mx-auto mb-4 text-blue-300" />
                   <div className="text-4xl font-bold mb-2">
-                    <AnimatedCounter end={8} />
+                    {statsLoading ? (
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                    ) : (
+                      <AnimatedCounter end={stats.squadre_attive} />
+                    )}
                   </div>
                   <div className="text-blue-100">Squadre Attive</div>
                 </div>
@@ -238,7 +199,11 @@ export default function ModernHomePage() {
                 <div className="p-6 rounded-2xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                   <Star className="h-12 w-12 mx-auto mb-4 text-purple-300" />
                   <div className="text-4xl font-bold mb-2">
-                    <AnimatedCounter end={180} suffix="+" />
+                    {statsLoading ? (
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                    ) : (
+                      <AnimatedCounter end={stats.atleti_tesserati} suffix="+" />
+                    )}
                   </div>
                   <div className="text-purple-100">Atleti Tesserati</div>
                 </div>
@@ -248,7 +213,11 @@ export default function ModernHomePage() {
                 <div className="p-6 rounded-2xl bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-all duration-300 transform hover:scale-105">
                   <Medal className="h-12 w-12 mx-auto mb-4 text-yellow-300" />
                   <div className="text-4xl font-bold mb-2">
-                    <AnimatedCounter end={42} suffix="+" />
+                    {statsLoading ? (
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                    ) : (
+                      <AnimatedCounter end={stats.trofei_vinti} suffix="+" />
+                    )}
                   </div>
                   <div className="text-yellow-100">Trofei Vinti</div>
                 </div>
@@ -373,55 +342,62 @@ export default function ModernHomePage() {
             </AnimatedSection>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {squadreData.map((squadra, index) => (
-                <AnimatedSection
-                  key={squadra.id}
-                  animation="slide-in-up"
-                  delay={index * 150}
-                >
-                  <Card className="group overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:rotate-1 border-0">
-                    <div className="relative h-64 overflow-hidden">
-                      <Image
-                        src={squadra.immagine}
-                        alt={squadra.nome}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-700"
-                      />
-                      <div className={`absolute inset-0 bg-gradient-to-t ${squadra.colore} opacity-80`}></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                      
-                      {/* Badge categoria */}
-                      <div className="absolute top-4 right-4">
-                        <span className="bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-1 rounded-full text-sm font-semibold">
-                          {squadra.categoria}
-                        </span>
-                      </div>
-                      
-                      {/* Titolo */}
-                      <div className="absolute bottom-4 left-4 text-white">
-                        <h3 className="text-2xl font-bold mb-1">{squadra.nome}</h3>
-                        <div className="flex items-center space-x-2">
-                          <Shield className="h-4 w-4" />
-                          <span className="text-sm opacity-90">{squadra.categoria}</span>
+              {squadreLoading ? (
+                <div className="col-span-full flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-600">Caricamento squadre...</span>
+                </div>
+              ) : (
+                squadre.slice(0, 6).map((squadra, index) => (
+                  <AnimatedSection
+                    key={squadra.id}
+                    animation="slide-in-up"
+                    delay={index * 150}
+                  >
+                    <Card className="group overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:rotate-1 border-0">
+                      <div className="relative h-64 overflow-hidden">
+                        <Image
+                          src={squadra.foto_squadra || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+                          alt={squadra.nome}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className={`absolute inset-0 bg-gradient-to-t ${coloriSquadre[index % coloriSquadre.length]} opacity-80`}></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        
+                        {/* Badge categoria */}
+                        <div className="absolute top-4 right-4">
+                          <span className="bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-1 rounded-full text-sm font-semibold">
+                            {squadra.categoria}
+                          </span>
+                        </div>
+                        
+                        {/* Titolo */}
+                        <div className="absolute bottom-4 left-4 text-white">
+                          <h3 className="text-2xl font-bold mb-1">{squadra.nome}</h3>
+                          <div className="flex items-center space-x-2">
+                            <Shield className="h-4 w-4" />
+                            <span className="text-sm opacity-90">{squadra.categoria}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <CardContent className="p-6">
-                      <p className="text-gray-600 mb-6 leading-relaxed">
-                        {squadra.descrizione}
-                      </p>
                       
-                      <Link href={`/squadre/${squadra.id}`}>
-                        <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-xl group-hover:shadow-lg transition-all">
-                          Scopri di più
-                          <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                </AnimatedSection>
-              ))}
+                      <CardContent className="p-6">
+                        <p className="text-gray-600 mb-6 leading-relaxed">
+                          {descrizioniSquadre[squadra.nome] || 'Una squadra dedicata alla formazione e alla crescita dei nostri atleti.'}
+                        </p>
+                        
+                        <Link href={`/squadre/${squadra.id}`}>
+                          <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-xl group-hover:shadow-lg transition-all">
+                            Scopri di più
+                            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  </AnimatedSection>
+                ))
+              )}
             </div>
 
             <AnimatedSection animation="fade-in" delay={800} className="text-center mt-12">
@@ -447,76 +423,87 @@ export default function ModernHomePage() {
               </p>
             </AnimatedSection>
 
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Featured News */}
-              <AnimatedSection animation="slide-in-left" className="lg:col-span-2">
-                <Card className="group overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0 h-full">
-                  <div className="relative h-64 lg:h-80 overflow-hidden">
-                    <Image
-                      src={newsData[0].immagine}
-                      alt={newsData[0].titolo}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    
-                    <div className="absolute top-4 left-4">
-                      <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
-                        In Evidenza
-                      </span>
-                    </div>
-                    
-                    <div className="absolute bottom-6 left-6 right-6 text-white">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <Calendar className="h-4 w-4" />
-                        <span className="text-sm opacity-90">{newsData[0].data}</span>
-                        <span className="text-sm opacity-70">•</span>
-                        <span className="text-sm opacity-90">{newsData[0].categoria}</span>
-                      </div>
-                      <h3 className="text-2xl font-bold mb-2">{newsData[0].titolo}</h3>
-                      <p className="text-gray-200 leading-relaxed">{newsData[0].excerpt}</p>
-                    </div>
-                  </div>
-                </Card>
-              </AnimatedSection>
-
-              {/* Side News */}
-              <div className="space-y-6">
-                {newsData.slice(1).map((news, index) => (
-                  <AnimatedSection
-                    key={news.id}
-                    animation="slide-in-right"
-                    delay={index * 200}
-                  >
-                    <Card className="group overflow-hidden bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-0">
-                      <div className="flex">
-                        <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden">
-                          <Image
-                            src={news.immagine}
-                            alt={news.titolo}
-                            fill
-                            className="object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        </div>
-                        <div className="p-4 flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-xs text-gray-500">{news.data}</span>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-blue-600 font-medium">{news.categoria}</span>
-                          </div>
-                          <h4 className="font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                            {news.titolo}
-                          </h4>
-                          <p className="text-sm text-gray-600 line-clamp-2 mt-1">
-                            {news.excerpt}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  </AnimatedSection>
-                ))}
+            {newsLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Caricamento news...</span>
               </div>
-            </div>
+            ) : news.length > 0 ? (
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* Featured News */}
+                <AnimatedSection animation="slide-in-left" className="lg:col-span-2">
+                  <Card className="group overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 border-0 h-full">
+                    <div className="relative h-64 lg:h-80 overflow-hidden">
+                      <Image
+                        src={news[0].immagine}
+                        alt={news[0].titolo}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                      
+                      <div className="absolute top-4 left-4">
+                        <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                          In Evidenza
+                        </span>
+                      </div>
+                      
+                      <div className="absolute bottom-6 left-6 right-6 text-white">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Calendar className="h-4 w-4" />
+                          <span className="text-sm opacity-90">{news[0].data}</span>
+                          <span className="text-sm opacity-70">•</span>
+                          <span className="text-sm opacity-90">{news[0].categoria}</span>
+                        </div>
+                        <h3 className="text-2xl font-bold mb-2">{news[0].titolo}</h3>
+                        <p className="text-gray-200 leading-relaxed">{news[0].excerpt}</p>
+                      </div>
+                    </div>
+                  </Card>
+                </AnimatedSection>
+
+                {/* Side News */}
+                <div className="space-y-6">
+                  {news.slice(1).map((newsItem, index) => (
+                    <AnimatedSection
+                      key={newsItem.id}
+                      animation="slide-in-right"
+                      delay={index * 200}
+                    >
+                      <Card className="group overflow-hidden bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border-0">
+                        <div className="flex">
+                          <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden">
+                            <Image
+                              src={newsItem.immagine}
+                              alt={newsItem.titolo}
+                              fill
+                              className="object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          </div>
+                          <div className="p-4 flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="text-xs text-gray-500">{newsItem.data}</span>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-blue-600 font-medium">{newsItem.categoria}</span>
+                            </div>
+                            <h4 className="font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                              {newsItem.titolo}
+                            </h4>
+                            <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                              {newsItem.excerpt}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    </AnimatedSection>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Nessuna news disponibile al momento.</p>
+              </div>
+            )}
 
             <AnimatedSection animation="fade-in" delay={600} className="text-center mt-12">
               <Link href="/news">

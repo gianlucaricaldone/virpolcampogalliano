@@ -5,7 +5,12 @@
       "Bash(npm install:*)",
       "Bash(mkdir:*)",
       "Bash(npm run dev:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(node:*)",
+      "Bash(mv:*)",
+      "Bash(pkill:*)",
+      "Bash(ls:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

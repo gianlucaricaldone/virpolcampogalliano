@@ -1,14 +1,7 @@
 -- RLS Policies for users table
-create policy "Users can view their own profile" on public.users
-  for select using (auth.uid() = id);
-
-create policy "Admins can view all users" on public.users
-  for select using (
-    exists (
-      select 1 from public.users
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+-- Everyone can view all users (simplified approach to avoid recursion)
+create policy "Everyone can view users" on public.users
+  for select using (true);
 
 create policy "Users can update their own profile" on public.users
   for update using (auth.uid() = id);
