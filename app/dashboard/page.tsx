@@ -1,7 +1,10 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useTestRole } from '@/contexts/TestRoleContext'
 import { 
   Users, 
   Calendar, 
@@ -12,15 +15,84 @@ import {
 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { profile } = useAuth()
+  const { profile, loading } = useAuth()
+  const { testRole, isInTestMode } = useTestRole()
+  const [stats, setStats] = useState({
+    squadre: 0,
+    tesserati: 0,
+    partite: 0,
+    presenze: 0
+  })
+  const [loadingStats, setLoadingStats] = useState(true)
+  const supabase = createClient()
 
-  if (!profile) return null
+  useEffect(() => {
+    if (profile) {
+      loadStats()
+    }
+  }, [profile])
+
+  const loadStats = async () => {
+    try {
+      // Load squadre count
+      const { count: squadreCount } = await supabase
+        .from('squadre')
+        .select('*', { count: 'exact', head: true })
+
+      // Load tesserati count
+      const { count: tesseratiCount } = await supabase
+        .from('tesserati')
+        .select('*', { count: 'exact', head: true })
+
+      // Load partite this week
+      const weekStart = new Date()
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+
+      const { count: partiteCount } = await supabase
+        .from('partite')
+        .select('*', { count: 'exact', head: true })
+        .gte('data', weekStart.toISOString().split('T')[0])
+        .lte('data', weekEnd.toISOString().split('T')[0])
+
+      // Load today's presences
+      const today = new Date().toISOString().split('T')[0]
+      const { count: presenzeCount } = await supabase
+        .from('presenze')
+        .select('*', { count: 'exact', head: true })
+        .eq('data', today)
+        .eq('presente', true)
+
+      setStats({
+        squadre: squadreCount || 0,
+        tesserati: tesseratiCount || 0,
+        partite: partiteCount || 0,
+        presenze: presenzeCount || 0
+      })
+    } catch (error) {
+      console.error('Error loading stats:', error)
+    } finally {
+      setLoadingStats(false)
+    }
+  }
+
+  if (loading || !profile) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Caricamento dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   const dashboardCards = [
     {
       title: 'Squadre Attive',
       description: 'Numero squadre registrate',
-      value: '8',
+      value: loadingStats ? '...' : stats.squadre.toString(),
       icon: Users,
       color: 'text-blue-600',
       roles: ['admin', 'dirigente']
@@ -28,7 +100,7 @@ export default function DashboardPage() {
     {
       title: 'Tesserati',
       description: 'Totale atleti iscritti',
-      value: '156',
+      value: loadingStats ? '...' : stats.tesserati.toString(),
       icon: Users,
       color: 'text-green-600',
       roles: ['admin', 'dirigente']
@@ -36,15 +108,15 @@ export default function DashboardPage() {
     {
       title: 'Partite Settimana',
       description: 'Prossimi match',
-      value: '12',
+      value: loadingStats ? '...' : stats.partite.toString(),
       icon: Trophy,
       color: 'text-purple-600',
       roles: ['admin', 'dirigente', 'allenatore']
     },
     {
       title: 'Presenze Oggi',
-      description: 'Allenamenti in corso',
-      value: '89%',
+      description: 'Atleti presenti oggi',
+      value: loadingStats ? '...' : stats.presenze.toString(),
       icon: TrendingUp,
       color: 'text-orange-600',
       roles: ['admin', 'dirigente', 'allenatore']
@@ -133,6 +205,27 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Test Mode Banner */}
+      {isInTestMode && (
+        <div className="bg-orange-100 border border-orange-400 text-orange-700 px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">
+                🧪 Modalità Test Attiva: Visualizzando come <span className="font-bold capitalize">{testRole}</span>
+              </p>
+              <p className="text-xs mt-1">
+                Questa è solo una simulazione per l'admin. I dati e i permessi mostrati sono quelli del ruolo {testRole}.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">

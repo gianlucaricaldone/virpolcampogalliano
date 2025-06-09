@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { TestRoleProvider, useTestRole } from '@/contexts/TestRoleContext'
 import { 
   Users, 
   Calendar, 
@@ -13,14 +14,16 @@ import {
   Settings, 
   LogOut,
   Home,
-  ClipboardList
+  ClipboardList,
+  UserCog
 } from 'lucide-react'
 
-export default function DashboardLayout({
+function DashboardContent({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { testRole, setTestRole } = useTestRole()
   const { user, profile, loading, signOut } = useAuth()
   const router = useRouter()
 
@@ -30,7 +33,8 @@ export default function DashboardLayout({
     }
   }, [user, loading, router])
 
-  if (loading) {
+  // Always render the loading state on initial mount to prevent hydration errors
+  if (loading || !user || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -39,10 +43,6 @@ export default function DashboardLayout({
         </div>
       </div>
     )
-  }
-
-  if (!user || !profile) {
-    return null
   }
 
   const navigation = [
@@ -57,8 +57,11 @@ export default function DashboardLayout({
     { name: 'Gestione Utenti', href: '/admin/utenti', icon: Settings, roles: ['admin'] },
   ]
 
+  // Use test role if admin is testing, otherwise use actual role
+  const currentRole = profile?.role === 'admin' && testRole ? testRole : profile?.role
+
   const filteredNavigation = navigation.filter(item => 
-    item.roles.includes(profile.role)
+    item.roles.includes(currentRole)
   )
 
   return (
@@ -77,8 +80,28 @@ export default function DashboardLayout({
               {profile.nome || 'Utente'} {profile.cognome || ''}
             </div>
             <div className="text-xs text-gray-500 capitalize">
-              {profile.role}
+              {currentRole} {testRole && profile.role === 'admin' && '(Test Mode)'}
             </div>
+            
+            {/* Role Switcher (only for admin) */}
+            {profile.role === 'admin' && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Test View As:
+                </label>
+                <select
+                  value={testRole || profile.role}
+                  onChange={(e) => setTestRole(e.target.value === profile.role ? null : e.target.value)}
+                  className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="admin">Admin (Normal)</option>
+                  <option value="dirigente">Dirigente</option>
+                  <option value="allenatore">Allenatore</option>
+                  <option value="tesserato">Tesserato</option>
+                  <option value="genitore">Genitore</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
@@ -119,5 +142,17 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+  )
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <TestRoleProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </TestRoleProvider>
   )
 }

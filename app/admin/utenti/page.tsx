@@ -1,0 +1,271 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Plus, Users, Search, Edit, Trash2, Shield, UserPlus } from 'lucide-react'
+import { Database } from '@/types/database'
+import AllenatoreForm from '@/components/forms/AllenatoreForm'
+
+type User = Database['public']['Tables']['users']['Row']
+
+export default function UtentiPage() {
+  const { profile } = useAuth()
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showAllenatoreForm, setShowAllenatoreForm] = useState(false)
+  const [activeTab, setActiveTab] = useState<'all' | 'allenatori'>('all')
+  const supabase = createClient()
+
+  // Redirect non-admin users
+  if (profile?.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="text-center py-12">
+          <CardContent>
+            <p className="text-red-500 mb-4">Accesso negato</p>
+            <p className="text-gray-500">
+              Solo gli amministratori possono accedere a questa sezione
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setUsers(data || [])
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.cognome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesTab = activeTab === 'all' || 
+      (activeTab === 'allenatori' && user.role === 'allenatore')
+    
+    return matchesSearch && matchesTab
+  })
+
+  const allenatori = users.filter(u => u.role === 'allenatore')
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-red-100 text-red-800'
+      case 'dirigente':
+        return 'bg-purple-100 text-purple-800'
+      case 'allenatore':
+        return 'bg-blue-100 text-blue-800'
+      case 'tesserato':
+        return 'bg-green-100 text-green-800'
+      case 'genitore':
+        return 'bg-yellow-100 text-yellow-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Caricamento utenti...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Gestione Utenti</h1>
+          <p className="mt-2 text-gray-600">
+            Gestisci gli utenti del sistema e i loro permessi
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Nuovo Utente
+          </Button>
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => setShowAllenatoreForm(true)}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Nuovo Allenatore
+          </Button>
+        </div>
+      </div>
+
+      {/* Search and Tabs */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Cerca per nome, cognome o email..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex space-x-4 border-b">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'all'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Tutti gli Utenti ({users.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('allenatori')}
+                className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'allenatori'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Allenatori ({allenatori.length})
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'].map(role => (
+          <Card key={role}>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold">
+                  {users.filter(u => u.role === role).length}
+                </div>
+                <div className={`text-xs px-2 py-1 rounded-full capitalize mt-2 ${getRoleColor(role)}`}>
+                  {role}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Users List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredUsers.map((user) => (
+          <Card key={user.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">
+                    {user.nome || 'Nome'} {user.cognome || 'Cognome'}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {user.email}
+                  </CardDescription>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full capitalize ${getRoleColor(user.role)}`}>
+                  {user.role}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">Creato:</span>
+                  <span className="ml-2 text-gray-600">
+                    {new Date(user.created_at).toLocaleDateString('it-IT')}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium">Ultimo aggiornamento:</span>
+                  <span className="ml-2 text-gray-600">
+                    {new Date(user.updated_at).toLocaleDateString('it-IT')}
+                  </span>
+                </div>
+                
+                {user.role === 'allenatore' && user.squadra_id && (
+                  <div>
+                    <span className="font-medium">Squadre:</span>
+                    <span className="ml-2 text-gray-600">
+                      {Array.isArray(user.squadra_id) ? user.squadra_id.length : 1} squadra/e
+                    </span>
+                  </div>
+                )}
+                
+                {user.telefono && (
+                  <div>
+                    <span className="font-medium">Telefono:</span>
+                    <span className="ml-2 text-gray-600">{user.telefono}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" size="sm" className="flex-1">
+                  <Edit className="h-4 w-4 mr-1" />
+                  Modifica
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Shield className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredUsers.length === 0 && searchTerm && (
+        <Card className="text-center py-12">
+          <CardContent>
+            <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Nessun utente trovato per "{searchTerm}"</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {showAllenatoreForm && (
+        <AllenatoreForm
+          onClose={() => setShowAllenatoreForm(false)}
+          onSuccess={() => {
+            fetchUsers()
+            setShowAllenatoreForm(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
