@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,13 +26,7 @@ export default function DashboardPage() {
   const [loadingStats, setLoadingStats] = useState(true)
   const supabase = createClient()
 
-  useEffect(() => {
-    if (profile) {
-      loadStats()
-    }
-  }, [profile])
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       // Load squadre count
       const { count: squadreCount } = await supabase
@@ -75,7 +69,13 @@ export default function DashboardPage() {
     } finally {
       setLoadingStats(false)
     }
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    if (profile?.id) {
+      loadStats()
+    }
+  }, [profile?.id, loadStats]) // Dipendi solo dall'ID invece dell'intero oggetto profile
 
   if (loading || !profile) {
     return (
@@ -156,9 +156,9 @@ export default function DashboardPage() {
           title: 'Pannello Amministratore',
           description: 'Gestisci tutte le funzionalità della società sportiva',
           quickActions: [
-            { name: 'Gestisci Utenti', href: '/admin/utenti' },
-            { name: 'Visualizza Economia', href: '/admin/economia' },
-            { name: 'Report Completi', href: '/admin/report' }
+            { name: 'Gestisci Utenti', href: '/dashboard/admin/utenti' },
+            { name: 'Visualizza Economia', href: '/dashboard/admin/economia' },
+            { name: 'Report Completi', href: '/dashboard/admin/report' }
           ]
         }
       case 'dirigente':

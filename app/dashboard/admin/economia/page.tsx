@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Plus, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
 
 export default function EconomiaPage() {
-  const { profile } = useAuth()
+  const { profile, hasRole } = useAuth()
   const [loading, setLoading] = useState(false)
 
   // Check authorization after all hooks
-  if (profile?.role !== 'admin') {
+  if (!hasRole('admin')) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="text-center py-12">

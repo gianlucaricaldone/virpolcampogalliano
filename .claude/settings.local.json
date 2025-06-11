@@ -18,7 +18,9 @@
       "Bash(npm run lint:*)",
       "Bash(npx supabase db:*)",
       "Bash(npx supabase link:*)",
-      "Bash(npx supabase login)"
+      "Bash(npx supabase login)",
+      "Bash(rm:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

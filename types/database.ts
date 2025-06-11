@@ -6,6 +6,7 @@ export type Database = {
           id: string
           email: string
           role: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
+          roles: ('admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore')[] | null
           squadra_id: string[] | null
           nome: string | null
           cognome: string | null
@@ -17,6 +18,7 @@ export type Database = {
           id: string
           email: string
           role?: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
+          roles?: ('admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore')[] | null
           squadra_id?: string[] | null
           nome?: string | null
           cognome?: string | null
@@ -28,6 +30,7 @@ export type Database = {
           id?: string
           email?: string
           role?: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
+          roles?: ('admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore')[] | null
           squadra_id?: string[] | null
           nome?: string | null
           cognome?: string | null

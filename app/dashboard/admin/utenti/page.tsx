@@ -8,16 +8,18 @@ import { Button } from '@/components/ui/button'
 import { Plus, Users, Search, Edit, Trash2, Shield, UserPlus } from 'lucide-react'
 import { Database } from '@/types/database'
 import AllenatoreForm from '@/components/forms/AllenatoreForm'
+import UserEditForm from '@/components/forms/UserEditForm'
 
 type User = Database['public']['Tables']['users']['Row']
 
 export default function UtentiPage() {
-  const { profile } = useAuth()
+  const { profile, hasRole } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAllenatoreForm, setShowAllenatoreForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'allenatori'>('all')
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -46,12 +48,12 @@ export default function UtentiPage() {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesTab = activeTab === 'all' || 
-      (activeTab === 'allenatori' && user.role === 'allenatore')
+      (activeTab === 'allenatori' && (user.roles?.includes('allenatore') || user.role === 'allenatore'))
     
     return matchesSearch && matchesTab
   })
 
-  const allenatori = users.filter(u => u.role === 'allenatore')
+  const allenatori = users.filter(u => u.roles?.includes('allenatore') || u.role === 'allenatore')
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -71,7 +73,7 @@ export default function UtentiPage() {
   }
 
   // Check authorization after all hooks
-  if (profile?.role !== 'admin') {
+  if (!hasRole('admin')) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="text-center py-12">
@@ -169,7 +171,7 @@ export default function UtentiPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-2xl font-bold">
-                  {users.filter(u => u.role === role).length}
+                  {users.filter(u => u.roles?.includes(role as any) || u.role === role).length}
                 </div>
                 <div className={`text-xs px-2 py-1 rounded-full capitalize mt-2 ${getRoleColor(role)}`}>
                   {role}
@@ -194,9 +196,13 @@ export default function UtentiPage() {
                     {user.email}
                   </CardDescription>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full capitalize ${getRoleColor(user.role)}`}>
-                  {user.role}
-                </span>
+                <div className="flex flex-wrap gap-1">
+                  {(user.roles || [user.role]).filter(Boolean).map((role, index) => (
+                    <span key={index} className={`text-xs px-2 py-1 rounded-full capitalize ${getRoleColor(role)}`}>
+                      {role}
+                    </span>
+                  ))}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -232,11 +238,20 @@ export default function UtentiPage() {
               </div>
               
               <div className="flex gap-2 mt-4">
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => setEditingUser(user)}
+                >
                   <Edit className="h-4 w-4 mr-1" />
                   Modifica
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setEditingUser(user)}
+                >
                   <Shield className="h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
@@ -263,6 +278,17 @@ export default function UtentiPage() {
           onSuccess={() => {
             fetchUsers()
             setShowAllenatoreForm(false)
+          }}
+        />
+      )}
+
+      {editingUser && (
+        <UserEditForm
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSuccess={() => {
+            fetchUsers()
+            setEditingUser(null)
           }}
         />
       )}

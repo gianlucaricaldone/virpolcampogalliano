@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
@@ -104,24 +104,58 @@ export function useAuth() {
     // return () => subscription.unsubscribe()
   }, [sessionChecked])
 
-  const signOut = async () => {
-    await supabase.auth.signOut()
-  }
 
-  console.log('useAuth return values:', { user, profile, loading })
+  // console.log('useAuth return values:', { user, profile, loading })
   
-  // Use test role if admin is testing, otherwise use actual role
-  const currentRole = profile?.role === 'admin' && testRole ? testRole : profile?.role
+  // Helper functions for role checking with fallback
+  const hasRole = useCallback((role: string): boolean => {
+    // Se esiste il campo roles (dopo migrazione), usalo
+    if (profile?.roles && profile.roles.length > 0) {
+      return profile.roles.includes(role as any)
+    }
+    // Altrimenti fallback al campo role singolo
+    return profile?.role === role
+  }, [profile?.roles, profile?.role])
+  
+  const hasAnyRole = useCallback((roles: string[]): boolean => {
+    // Se esiste il campo roles (dopo migrazione), usalo
+    if (profile?.roles && profile.roles.length > 0) {
+      return roles.some(role => profile.roles.includes(role as any))
+    }
+    // Altrimenti fallback al campo role singolo
+    return roles.includes(profile?.role as any)
+  }, [profile?.roles, profile?.role])
+  
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+  }, [supabase.auth])
+  
+  // Use test role if admin is testing, otherwise use actual roles
+  const currentRole = profile?.roles?.[0] === 'admin' && testRole ? testRole : profile?.role
+  const currentRoles = profile?.roles || []
+  
+  // Memoize the profile object to prevent unnecessary re-renders
+  const memoizedProfile = useMemo(() => {
+    return profile ? { ...profile, role: currentRole } : null
+  }, [profile, currentRole])
+  
+  // Memoize role checking functions to prevent re-creation
+  const roleChecks = useMemo(() => ({
+    isAdmin: hasRole('admin'),
+    isDirigente: hasRole('dirigente'),
+    isAllenatore: hasRole('allenatore'),
+    isTesserato: hasRole('tesserato'),
+    isGenitore: hasRole('genitore'),
+  }), [hasRole])
   
   return {
     user,
-    profile: profile ? { ...profile, role: currentRole } : null,
+    profile: memoizedProfile,
     loading,
     signOut,
-    isAdmin: currentRole === 'admin',
-    isDirigente: currentRole === 'dirigente',
-    isAllenatore: currentRole === 'allenatore',
-    isTesserato: currentRole === 'tesserato',
-    isGenitore: currentRole === 'genitore',
+    hasRole,
+    hasAnyRole,
+    roles: currentRoles,
+    ...roleChecks,
   }
 }

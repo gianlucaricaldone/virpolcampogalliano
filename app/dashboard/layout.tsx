@@ -53,15 +53,17 @@ function DashboardContent({
     { name: 'Partite', href: '/dashboard/partite', icon: Trophy, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
     { name: 'Calendario Campi', href: '/dashboard/campi', icon: Calendar, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Magazzino', href: '/dashboard/magazzino', icon: Package, roles: ['admin', 'dirigente', 'allenatore'] },
-    { name: 'Economia', href: '/admin/economia', icon: DollarSign, roles: ['admin'] },
-    { name: 'Gestione Utenti', href: '/admin/utenti', icon: Settings, roles: ['admin'] },
+    { name: 'Economia', href: '/dashboard/admin/economia', icon: DollarSign, roles: ['admin'] },
+    { name: 'Gestione Utenti', href: '/dashboard/admin/utenti', icon: Settings, roles: ['admin'] },
   ]
 
-  // Use test role if admin is testing, otherwise use actual role
-  const currentRole = profile?.role === 'admin' && testRole ? testRole : profile?.role
+  // Use test role if admin is testing, otherwise use actual roles
+  const currentRoles = profile?.roles && profile.roles.length > 0 ? profile.roles : [profile?.role].filter(Boolean)
+  const currentRole = profile?.role // Mantieni per compatibilità UI
+  const effectiveRoles = profile?.role === 'admin' && testRole ? [testRole] : currentRoles
 
   const filteredNavigation = navigation.filter(item => 
-    item.roles.includes(currentRole)
+    effectiveRoles.some(role => item.roles.includes(role))
   )
 
   return (
@@ -79,8 +81,20 @@ function DashboardContent({
             <div className="text-sm font-medium text-gray-900">
               {profile.nome || 'Utente'} {profile.cognome || ''}
             </div>
-            <div className="text-xs text-gray-500 capitalize">
-              {currentRole} {testRole && profile.role === 'admin' && '(Test Mode)'}
+            <div className="text-xs space-y-1">
+              {testRole && profile.role === 'admin' ? (
+                <span className="text-orange-600 capitalize">
+                  {testRole} (Test Mode)
+                </span>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {currentRoles.map((role, index) => (
+                    <span key={index} className="text-gray-500 capitalize">
+                      {role}{index < currentRoles.length - 1 ? ',' : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             
             {/* Role Switcher (only for admin) */}

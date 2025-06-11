@@ -17,7 +17,7 @@ type TipoAttivita = 'allenamento' | 'partita' | 'torneo' | 'evento'
 type StatistichePeriodo = 'settimanale' | 'mensile'
 
 export default function PresenzePage() {
-  const { profile } = useAuth()
+  const { profile, hasAnyRole } = useAuth()
   const [presenze, setPresenze] = useState<Presenza[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -279,7 +279,7 @@ export default function PresenzePage() {
             <BarChart3 className="inline-block mr-2 h-4 w-4" />
             Statistiche
           </button>
-          {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
+          {hasAnyRole(['admin', 'dirigente', 'allenatore']) && (
             <button
               onClick={() => setActiveTab('report')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -518,7 +518,7 @@ export default function PresenzePage() {
                         </div>
                       </div>
                       
-                      {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
+                      {hasAnyRole(['admin', 'dirigente', 'allenatore']) && (
                         <div className="flex space-x-2">
                           <Button
                             size="sm"
@@ -557,7 +557,7 @@ export default function PresenzePage() {
       )}
 
       {/* Report Tab */}
-      {activeTab === 'report' && (profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
+      {activeTab === 'report' && hasAnyRole(['admin', 'dirigente', 'allenatore']) && (
         <Card>
           <CardHeader>
             <CardTitle>Report Allenamento</CardTitle>
