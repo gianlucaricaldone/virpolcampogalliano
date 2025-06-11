@@ -16,6 +16,7 @@ export default function SquadrePage() {
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingSquadra, setEditingSquadra] = useState<Squadra | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -35,6 +36,27 @@ export default function SquadrePage() {
       console.error('Error fetching squadre:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteSquadra = async (squadraId: string, squadraNome: string) => {
+    if (!confirm(`Sei sicuro di voler eliminare la squadra "${squadraNome}"?`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('squadre')
+        .delete()
+        .eq('id', squadraId)
+
+      if (error) throw error
+
+      alert('Squadra eliminata con successo')
+      fetchSquadre()
+    } catch (error) {
+      console.error('Error deleting squadra:', error)
+      alert('Errore durante l\'eliminazione della squadra')
     }
   }
 
@@ -77,7 +99,7 @@ export default function SquadrePage() {
                 <div>
                   <CardTitle className="text-xl">{squadra.nome}</CardTitle>
                   <CardDescription className="mt-1">
-                    {squadra.categoria} - Stagione {squadra.stagione}
+                    {squadra.categoria} - Stagione {squadra.annata}
                   </CardDescription>
                 </div>
                 <div className="flex items-center text-sm text-gray-500">
@@ -93,8 +115,13 @@ export default function SquadrePage() {
                   <span className="ml-2 text-gray-600">{squadra.allenatore || 'Non assegnato'}</span>
                 </div>
                 <div>
-                  <span className="font-medium">Vice Allenatore:</span>
-                  <span className="ml-2 text-gray-600">{squadra.vice_allenatore || 'Non assegnato'}</span>
+                  <span className="font-medium">Vice Allenatori:</span>
+                  <span className="ml-2 text-gray-600">
+                    {squadra.vice_allenatore_1 || squadra.vice_allenatore_2 
+                      ? [squadra.vice_allenatore_1, squadra.vice_allenatore_2].filter(Boolean).join(', ')
+                      : 'Non assegnati'
+                    }
+                  </span>
                 </div>
                 <div>
                   <span className="font-medium">Dirigente:</span>
@@ -104,11 +131,21 @@ export default function SquadrePage() {
               
               {hasAnyRole(['admin', 'dirigente']) && (
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setEditingSquadra(squadra)}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Modifica
                   </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDeleteSquadra(squadra.id, squadra.nome)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -142,6 +179,17 @@ export default function SquadrePage() {
           onSuccess={() => {
             fetchSquadre()
             setShowForm(false)
+          }}
+        />
+      )}
+
+      {editingSquadra && (
+        <SquadraForm
+          squadra={editingSquadra}
+          onClose={() => setEditingSquadra(null)}
+          onSuccess={() => {
+            fetchSquadre()
+            setEditingSquadra(null)
           }}
         />
       )}

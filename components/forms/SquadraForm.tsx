@@ -9,24 +9,33 @@ import { Database } from '@/types/database'
 
 type User = Database['public']['Tables']['users']['Row']
 
+type Squadra = Database['public']['Tables']['squadre']['Row']
+
 interface SquadraFormProps {
+  squadra?: Squadra | null
   onClose: () => void
   onSuccess: () => void
 }
 
-export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
+export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraFormProps) {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [formData, setFormData] = useState({
-    nome: '',
-    categoria: '',
-    stagione: new Date().getFullYear().toString(),
-    allenatore: '',
-    vice_allenatore_1: '',
-    vice_allenatore_2: '',
-    dirigente: '',
+    nome: squadra?.nome || '',
+    categoria: squadra?.categoria || '',
+    stagione: squadra?.annata?.toString() || new Date().getFullYear().toString(),
+    allenatore: squadra?.allenatore || '',
+    allenatore_id: squadra?.allenatore_id || '',
+    vice_allenatore_1: squadra?.vice_allenatore_1 || '',
+    vice_allenatore_1_id: squadra?.vice_allenatore_1_id || '',
+    vice_allenatore_2: squadra?.vice_allenatore_2 || '',
+    vice_allenatore_2_id: squadra?.vice_allenatore_2_id || '',
+    dirigente: squadra?.dirigente || '',
+    dirigente_id: squadra?.dirigente_id || '',
     descrizione: ''
   })
+
+  const isEditing = !!squadra
 
   const supabase = createClient()
 
@@ -54,35 +63,90 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
     setLoading(true)
 
     try {
-      const { error } = await supabase
-        .from('squadre')
-        .insert({
-          nome: formData.nome,
-          categoria: formData.categoria,
-          annata: parseInt(formData.stagione),
-          allenatore: formData.allenatore || null,
-          vice_allenatore_1: formData.vice_allenatore_1 || null,
-          vice_allenatore_2: formData.vice_allenatore_2 || null,
-          dirigente: formData.dirigente || null
-        })
+      const squadraData = {
+        nome: formData.nome,
+        categoria: formData.categoria,
+        annata: parseInt(formData.stagione),
+        allenatore: formData.allenatore || null,
+        allenatore_id: formData.allenatore_id || null,
+        vice_allenatore_1: formData.vice_allenatore_1 || null,
+        vice_allenatore_1_id: formData.vice_allenatore_1_id || null,
+        vice_allenatore_2: formData.vice_allenatore_2 || null,
+        vice_allenatore_2_id: formData.vice_allenatore_2_id || null,
+        dirigente: formData.dirigente || null,
+        dirigente_id: formData.dirigente_id || null
+      }
 
-      if (error) throw error
+      if (isEditing) {
+        const { error } = await supabase
+          .from('squadre')
+          .update(squadraData)
+          .eq('id', squadra.id)
+
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('squadre')
+          .insert(squadraData)
+
+        if (error) throw error
+      }
 
       onSuccess()
       onClose()
     } catch (error) {
-      console.error('Error creating squadra:', error)
-      alert('Errore durante la creazione della squadra')
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} squadra:`, error)
+      alert(`Errore durante ${isEditing ? 'l\'aggiornamento' : 'la creazione'} della squadra`)
     } finally {
       setLoading(false)
     }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }))
+    const { name, value } = e.target
+    
+    // Per le select di utenti, salva sia nome che ID
+    if (name === 'allenatore' && value) {
+      const selectedUser = allenatori.find(u => `${u.nome} ${u.cognome}` === value)
+      setFormData(prev => ({
+        ...prev,
+        allenatore: value,
+        allenatore_id: selectedUser?.id || ''
+      }))
+    } else if (name === 'vice_allenatore_1' && value) {
+      const selectedUser = viceAllenatori.find(u => `${u.nome} ${u.cognome}` === value)
+      setFormData(prev => ({
+        ...prev,
+        vice_allenatore_1: value,
+        vice_allenatore_1_id: selectedUser?.id || ''
+      }))
+    } else if (name === 'vice_allenatore_2' && value) {
+      const selectedUser = viceAllenatori.find(u => `${u.nome} ${u.cognome}` === value)
+      setFormData(prev => ({
+        ...prev,
+        vice_allenatore_2: value,
+        vice_allenatore_2_id: selectedUser?.id || ''
+      }))
+    } else if (name === 'dirigente' && value) {
+      const selectedUser = dirigenti.find(u => `${u.nome} ${u.cognome}` === value)
+      setFormData(prev => ({
+        ...prev,
+        dirigente: value,
+        dirigente_id: selectedUser?.id || ''
+      }))
+    } else {
+      // Per campi vuoti, resetta anche l'ID
+      const updates: any = { [name]: value }
+      if (name === 'allenatore' && !value) updates.allenatore_id = ''
+      if (name === 'vice_allenatore_1' && !value) updates.vice_allenatore_1_id = ''
+      if (name === 'vice_allenatore_2' && !value) updates.vice_allenatore_2_id = ''
+      if (name === 'dirigente' && !value) updates.dirigente_id = ''
+      
+      setFormData(prev => ({
+        ...prev,
+        ...updates
+      }))
+    }
   }
 
   // Funzione helper per controllare se un utente ha un determinato ruolo
@@ -102,7 +166,7 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Nuova Squadra</CardTitle>
+          <CardTitle>{isEditing ? 'Modifica Squadra' : 'Nuova Squadra'}</CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -272,7 +336,7 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Salvando...' : 'Salva Squadra'}
+                {loading ? 'Salvando...' : (isEditing ? 'Aggiorna Squadra' : 'Salva Squadra')}
               </Button>
               <Button type="button" variant="outline" onClick={onClose}>
                 Annulla

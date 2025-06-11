@@ -3,11 +3,15 @@
 -- Aggiungi il nuovo ruolo all'enum
 ALTER TYPE user_role ADD VALUE 'vice_allenatore';
 
--- Modifica la tabella squadre per supportare vice allenatori
+-- Modifica la tabella squadre per supportare allenatori, vice allenatori e dirigenti
+ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS allenatore text;
+ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS allenatore_id uuid;
 ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS vice_allenatore_1 text;
 ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS vice_allenatore_2 text;
 ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS vice_allenatore_1_id uuid;
 ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS vice_allenatore_2_id uuid;
+ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS dirigente text;
+ALTER TABLE public.squadre ADD COLUMN IF NOT EXISTS dirigente_id uuid;
 
 -- Aggiorna la vista delle statistiche presenze se necessario
 -- (la vista dovrebbe già funzionare con i nuovi ruoli)

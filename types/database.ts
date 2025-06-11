@@ -49,10 +49,14 @@ export type Database = {
           categoria: string
           annata: number
           foto_squadra: string | null
+          allenatore: string | null
+          allenatore_id: string | null
           vice_allenatore_1: string | null
           vice_allenatore_2: string | null
           vice_allenatore_1_id: string | null
           vice_allenatore_2_id: string | null
+          dirigente: string | null
+          dirigente_id: string | null
           created_at: string
           updated_at: string
         }
@@ -62,10 +66,14 @@ export type Database = {
           categoria: string
           annata: number
           foto_squadra?: string | null
+          allenatore?: string | null
+          allenatore_id?: string | null
           vice_allenatore_1?: string | null
           vice_allenatore_2?: string | null
           vice_allenatore_1_id?: string | null
           vice_allenatore_2_id?: string | null
+          dirigente?: string | null
+          dirigente_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -75,10 +83,14 @@ export type Database = {
           categoria?: string
           annata?: number
           foto_squadra?: string | null
+          allenatore?: string | null
+          allenatore_id?: string | null
           vice_allenatore_1?: string | null
           vice_allenatore_2?: string | null
           vice_allenatore_1_id?: string | null
           vice_allenatore_2_id?: string | null
+          dirigente?: string | null
+          dirigente_id?: string | null
           created_at?: string
           updated_at?: string
         }
