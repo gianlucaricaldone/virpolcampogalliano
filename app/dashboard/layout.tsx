@@ -15,7 +15,8 @@ import {
   LogOut,
   Home,
   ClipboardList,
-  UserCog
+  UserCog,
+  FileText
 } from 'lucide-react'
 
 function DashboardContent({
@@ -51,6 +52,7 @@ function DashboardContent({
     { name: 'Tesserati', href: '/dashboard/tesserati', icon: Users, roles: ['admin', 'dirigente'] },
     { name: 'Presenze', href: '/dashboard/presenze', icon: ClipboardList, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
     { name: 'Partite', href: '/dashboard/partite', icon: Trophy, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
+    { name: 'Report Mensili', href: '/dashboard/report', icon: FileText, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Calendario Campi', href: '/dashboard/campi', icon: Calendar, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Magazzino', href: '/dashboard/magazzino', icon: Package, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Economia', href: '/dashboard/admin/economia', icon: DollarSign, roles: ['admin'] },

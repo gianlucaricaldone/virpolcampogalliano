@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Users, Search, Edit, Trash2, Shield, UserPlus } from 'lucide-react'
+import { Plus, Users, Search, Edit, Trash2, Shield, UserPlus, Mail, AlertCircle } from 'lucide-react'
 import { Database } from '@/types/database'
 import AllenatoreForm from '@/components/forms/AllenatoreForm'
 import UserEditForm from '@/components/forms/UserEditForm'
@@ -20,6 +20,7 @@ export default function UtentiPage() {
   const [showAllenatoreForm, setShowAllenatoreForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'allenatori'>('all')
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [showNewUserForm, setShowNewUserForm] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -42,18 +43,54 @@ export default function UtentiPage() {
     }
   }
 
+  const sendInviteEmail = async (user: User) => {
+    if (!user.email) {
+      alert('Questo utente non ha un indirizzo email configurato. Modificalo prima di inviare l\'invito.')
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: user.email,
+        options: {
+          shouldCreateUser: true,
+          data: {
+            nome: user.nome,
+            cognome: user.cognome,
+            role: user.role,
+            // Passiamo l'ID del profilo esistente per collegarlo successivamente
+            profile_link_id: user.id
+          }
+        }
+      })
+
+      if (error) throw error
+
+      alert(`Email di invito inviata con successo a ${user.email}`)
+    } catch (error) {
+      console.error('Error sending invite:', error)
+      alert('Errore nell\'invio dell\'email di invito')
+    }
+  }
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.cognome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesTab = activeTab === 'all' || 
-      (activeTab === 'allenatori' && (user.roles?.includes('allenatore') || user.role === 'allenatore'))
+      (activeTab === 'allenatori' && (
+        user.roles?.includes('allenatore') || user.role === 'allenatore' ||
+        user.roles?.includes('vice_allenatore') || user.role === 'vice_allenatore'
+      ))
     
     return matchesSearch && matchesTab
   })
 
-  const allenatori = users.filter(u => u.roles?.includes('allenatore') || u.role === 'allenatore')
+  const allenatori = users.filter(u => 
+    u.roles?.includes('allenatore') || u.role === 'allenatore' ||
+    u.roles?.includes('vice_allenatore') || u.role === 'vice_allenatore'
+  )
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -63,6 +100,8 @@ export default function UtentiPage() {
         return 'bg-purple-100 text-purple-800'
       case 'allenatore':
         return 'bg-blue-100 text-blue-800'
+      case 'vice_allenatore':
+        return 'bg-cyan-100 text-cyan-800'
       case 'tesserato':
         return 'bg-green-100 text-green-800'
       case 'genitore':
@@ -109,7 +148,10 @@ export default function UtentiPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => setShowNewUserForm(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Nuovo Utente
           </Button>
@@ -157,7 +199,7 @@ export default function UtentiPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Allenatori ({allenatori.length})
+                Allenatori e Vice ({allenatori.length})
               </button>
             </div>
           </div>
@@ -165,8 +207,8 @@ export default function UtentiPage() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'].map(role => (
+      <div className="grid grid-cols-1 md:grid-cols-8 gap-4">
+        {['admin', 'dirigente', 'allenatore', 'vice_allenatore', 'tesserato', 'genitore'].map(role => (
           <Card key={role}>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -180,6 +222,33 @@ export default function UtentiPage() {
             </CardContent>
           </Card>
         ))}
+        
+        {/* Email Stats */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {users.filter(u => u.email).length}
+              </div>
+              <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 mt-2">
+                Con Email
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {users.filter(u => !u.email).length}
+              </div>
+              <div className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 mt-2">
+                Senza Email
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Users List */}
@@ -237,26 +306,48 @@ export default function UtentiPage() {
                 )}
               </div>
               
-              <div className="flex gap-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => setEditingUser(user)}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Modifica
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setEditingUser(user)}
-                >
-                  <Shield className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              {/* Status Email */}
+              <div className="mb-3">
+                {!user.email ? (
+                  <div className="flex items-center text-yellow-600 text-xs">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    Nessuna email configurata
+                  </div>
+                ) : (
+                  <div className="flex items-center text-green-600 text-xs">
+                    <Mail className="h-3 w-3 mr-1" />
+                    Email configurata
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setEditingUser(user)}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Modifica
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {user.email && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-blue-600 hover:text-blue-700 border-blue-200"
+                    onClick={() => sendInviteEmail(user)}
+                  >
+                    <Mail className="h-4 w-4 mr-1" />
+                    Invia Email di Accesso
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -278,6 +369,17 @@ export default function UtentiPage() {
           onSuccess={() => {
             fetchUsers()
             setShowAllenatoreForm(false)
+          }}
+        />
+      )}
+
+      {showNewUserForm && (
+        <UserEditForm
+          user={null}
+          onClose={() => setShowNewUserForm(false)}
+          onSuccess={() => {
+            fetchUsers()
+            setShowNewUserForm(false)
           }}
         />
       )}

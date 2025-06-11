@@ -20,7 +20,9 @@
       "Bash(npx supabase link:*)",
       "Bash(npx supabase login)",
       "Bash(rm:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(supabase db:*)"
     ],
     "deny": []
   }

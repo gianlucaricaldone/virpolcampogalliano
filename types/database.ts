@@ -4,37 +4,40 @@ export type Database = {
       users: {
         Row: {
           id: string
-          email: string
-          role: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
-          roles: ('admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore')[] | null
+          email: string | null
+          role: 'admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore'
+          roles: ('admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore')[] | null
           squadra_id: string[] | null
           nome: string | null
           cognome: string | null
           telefono: string | null
+          has_logged_in: boolean | null
           created_at: string
           updated_at: string
         }
         Insert: {
-          id: string
-          email: string
-          role?: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
-          roles?: ('admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore')[] | null
+          id?: string | null
+          email?: string | null
+          role?: 'admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore'
+          roles?: ('admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore')[] | null
           squadra_id?: string[] | null
           nome?: string | null
           cognome?: string | null
           telefono?: string | null
+          has_logged_in?: boolean | null
           created_at?: string
           updated_at?: string
         }
         Update: {
-          id?: string
-          email?: string
-          role?: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
-          roles?: ('admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore')[] | null
+          id?: string | null
+          email?: string | null
+          role?: 'admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore'
+          roles?: ('admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore')[] | null
           squadra_id?: string[] | null
           nome?: string | null
           cognome?: string | null
           telefono?: string | null
+          has_logged_in?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -46,6 +49,10 @@ export type Database = {
           categoria: string
           annata: number
           foto_squadra: string | null
+          vice_allenatore_1: string | null
+          vice_allenatore_2: string | null
+          vice_allenatore_1_id: string | null
+          vice_allenatore_2_id: string | null
           created_at: string
           updated_at: string
         }
@@ -55,6 +62,10 @@ export type Database = {
           categoria: string
           annata: number
           foto_squadra?: string | null
+          vice_allenatore_1?: string | null
+          vice_allenatore_2?: string | null
+          vice_allenatore_1_id?: string | null
+          vice_allenatore_2_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -64,6 +75,10 @@ export type Database = {
           categoria?: string
           annata?: number
           foto_squadra?: string | null
+          vice_allenatore_1?: string | null
+          vice_allenatore_2?: string | null
+          vice_allenatore_1_id?: string | null
+          vice_allenatore_2_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -260,7 +275,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      user_role: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
+      user_role: 'admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore'
       stato_pagamento: 'pagato' | 'non_pagato' | 'parziale'
       tipo_presenza: 'allenamento' | 'partita' | 'torneo' | 'evento'
     }

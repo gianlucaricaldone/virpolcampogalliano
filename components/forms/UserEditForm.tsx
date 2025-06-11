@@ -8,26 +8,29 @@ import { X, Save, User } from 'lucide-react'
 import { Database } from '@/types/database'
 
 type User = Database['public']['Tables']['users']['Row']
-type UserRole = 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
+type UserRole = 'admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore'
 
 interface UserEditFormProps {
-  user: User
+  user: User | null // null per creare nuovo utente
   onClose: () => void
   onSuccess: () => void
 }
 
 export default function UserEditForm({ user, onClose, onSuccess }: UserEditFormProps) {
-  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(user.roles || [user.role].filter(Boolean) as UserRole[])
-  const [nome, setNome] = useState(user.nome || '')
-  const [cognome, setCognome] = useState(user.cognome || '')
-  const [telefono, setTelefono] = useState(user.telefono || '')
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(user?.roles || (user?.role ? [user.role] as UserRole[] : ['tesserato']))
+  const [nome, setNome] = useState(user?.nome || '')
+  const [cognome, setCognome] = useState(user?.cognome || '')
+  const [telefono, setTelefono] = useState(user?.telefono || '')
+  const [email, setEmail] = useState(user?.email || '')
   const [loading, setLoading] = useState(false)
+  const isCreating = !user
   const supabase = createClient()
 
   const allRoles: { value: UserRole; label: string; description: string }[] = [
     { value: 'admin', label: 'Amministratore', description: 'Accesso completo a tutte le funzionalità' },
     { value: 'dirigente', label: 'Dirigente', description: 'Gestione squadre, tesserati e organizzazione' },
     { value: 'allenatore', label: 'Allenatore', description: 'Gestione presenze, partite e report' },
+    { value: 'vice_allenatore', label: 'Vice Allenatore', description: 'Assistenza allenatore, gestione presenze' },
     { value: 'tesserato', label: 'Tesserato', description: 'Accesso base alle proprie informazioni' },
     { value: 'genitore', label: 'Genitore', description: 'Visualizzazione informazioni figli tesserati' }
   ]
@@ -60,26 +63,50 @@ export default function UserEditForm({ user, onClose, onSuccess }: UserEditFormP
       return
     }
 
+    // Email non più obbligatoria durante la creazione
+
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ 
-          roles: selectedRoles,
-          // Mantieni il campo role per compatibilità (primo ruolo)
-          role: selectedRoles[0],
-          nome: nome.trim(),
-          cognome: cognome.trim(),
-          telefono: telefono.trim() || null
-        })
-        .eq('id', user.id)
+      if (isCreating) {
+        // Crea solo il profilo utente - il magic link verrà inviato successivamente se necessario
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert({
+            email: email.trim() || null,
+            roles: selectedRoles,
+            role: selectedRoles[0],
+            nome: nome.trim(),
+            cognome: cognome.trim(),
+            telefono: telefono.trim() || null,
+            has_logged_in: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
 
-      if (error) throw error
+        if (profileError) throw profileError
+
+        alert('Utente creato con successo!')
+      } else {
+        // Aggiorna utente esistente (inclusa email se modificata)
+        const { error } = await supabase
+          .from('users')
+          .update({ 
+            roles: selectedRoles,
+            role: selectedRoles[0],
+            nome: nome.trim(),
+            cognome: cognome.trim(),
+            telefono: telefono.trim() || null,
+            email: email.trim() || null
+          })
+          .eq('id', user.id)
+
+        if (error) throw error
+      }
 
       onSuccess()
     } catch (error) {
-      console.error('Error updating user:', error)
-      alert('Errore nel salvataggio delle informazioni utente')
+      console.error('Error saving user:', error)
+      alert(`Errore nel ${isCreating ? 'creare' : 'aggiornare'} l'utente`)
     } finally {
       setLoading(false)
     }
@@ -93,6 +120,8 @@ export default function UserEditForm({ user, onClose, onSuccess }: UserEditFormP
         return 'bg-purple-100 text-purple-800 border-purple-200'
       case 'allenatore':
         return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'vice_allenatore':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200'
       case 'tesserato':
         return 'bg-green-100 text-green-800 border-green-200'
       case 'genitore':
@@ -110,10 +139,10 @@ export default function UserEditForm({ user, onClose, onSuccess }: UserEditFormP
             <div>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Modifica Utente
+                {isCreating ? 'Nuovo Utente' : 'Modifica Utente'}
               </CardTitle>
               <CardDescription className="mt-2">
-                {user.email}
+                {isCreating ? 'Crea un nuovo utente del sistema' : user.email}
               </CardDescription>
             </div>
             <Button
@@ -131,6 +160,24 @@ export default function UserEditForm({ user, onClose, onSuccess }: UserEditFormP
           <div>
             <h3 className="font-medium mb-4">Informazioni Personali</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="inserisci@email.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {isCreating 
+                    ? 'Opzionale - può essere aggiunta successivamente per inviare l\'invito di accesso'
+                    : 'Modifica l\'email per inviare un nuovo invito di accesso'
+                  }
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nome *
@@ -234,7 +281,7 @@ export default function UserEditForm({ user, onClose, onSuccess }: UserEditFormP
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Save className="mr-2 h-4 w-4" />
-              {loading ? 'Salvataggio...' : 'Salva Modifiche'}
+              {loading ? (isCreating ? 'Creando...' : 'Salvando...') : (isCreating ? 'Crea Utente' : 'Salva Modifiche')}
             </Button>
           </div>
         </CardContent>

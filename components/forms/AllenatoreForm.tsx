@@ -19,7 +19,6 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
     nome: '',
     cognome: '',
     telefono: '',
@@ -53,38 +52,23 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
     setLoading(true)
 
     try {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            nome: formData.nome,
-            cognome: formData.cognome,
-            role: 'allenatore'
-          }
-        }
-      })
-
-      if (authError) throw authError
-
-      if (authData.user) {
-        // 2. Create/update user profile in public.users
-        const { error: profileError } = await supabase
-          .from('users')
-          .upsert({
-            id: authData.user.id,
-            email: formData.email,
-            nome: formData.nome,
-            cognome: formData.cognome,
-            telefono: formData.telefono || null,
-            data_nascita: formData.data_nascita || null,
-            squadra_id: formData.squadra_id.length > 0 ? formData.squadra_id : null,
-            note: formData.note || null,
-            role: 'allenatore',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+      // Crea solo il profilo utente - l'email di invito verrà inviata successivamente se necessario
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          email: formData.email || null,
+          nome: formData.nome,
+          cognome: formData.cognome,
+          telefono: formData.telefono || null,
+          data_nascita: formData.data_nascita || null,
+          squadra_id: formData.squadra_id.length > 0 ? formData.squadra_id : null,
+          note: formData.note || null,
+          role: 'allenatore',
+          roles: ['allenatore'],
+          has_logged_in: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
 
         if (profileError) throw profileError
 
@@ -105,10 +89,13 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
           }
         }
 
-        alert('Allenatore creato con successo! Verrà inviata una email di conferma.')
-        onSuccess()
-        onClose()
+      if (formData.email) {
+        alert('Allenatore creato con successo! Usa il tasto "Invia Email" nella lista utenti per inviare l\'invito di accesso.')
+      } else {
+        alert('Allenatore creato con successo! Aggiungi un\'email per inviare l\'invito di accesso.')
       }
+      onSuccess()
+      onClose()
     } catch (error: any) {
       console.error('Error creating allenatore:', error)
       alert(`Errore durante la creazione dell'allenatore: ${error.message}`)
@@ -154,7 +141,7 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email * <span className="text-xs text-gray-500">(per login)</span>
                 </label>
@@ -166,22 +153,9 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password Temporanea *
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  minLength={6}
-                  placeholder="Minimo 6 caratteri"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Riceverà un'email con un link per accedere senza password
+                </p>
               </div>
 
               <div>
@@ -278,8 +252,8 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
             <div className="bg-yellow-50 p-4 rounded-lg">
               <h4 className="font-medium text-yellow-800 mb-1">Importante:</h4>
               <ul className="text-sm text-yellow-700 space-y-1">
-                <li>• L'allenatore riceverà una email di conferma per attivare l'account</li>
-                <li>• Potrà cambiare la password al primo accesso</li>
+                <li>• L'allenatore riceverà una email con un link di accesso diretto</li>
+                <li>• Non serve password: ogni volta potrà richiedere un nuovo link di accesso</li>
                 <li>• Avrà accesso alla dashboard con permessi di allenatore</li>
                 <li>• Potrà gestire presenze e partite delle squadre assegnate</li>
               </ul>

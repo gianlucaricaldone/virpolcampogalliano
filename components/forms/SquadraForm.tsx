@@ -22,7 +22,8 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
     categoria: '',
     stagione: new Date().getFullYear().toString(),
     allenatore: '',
-    vice_allenatore: '',
+    vice_allenatore_1: '',
+    vice_allenatore_2: '',
     dirigente: '',
     descrizione: ''
   })
@@ -38,7 +39,7 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .in('role', ['allenatore', 'dirigente'])
+        .or('role.in.(allenatore,vice_allenatore,dirigente),roles.cs.{allenatore},roles.cs.{vice_allenatore},roles.cs.{dirigente}')
         .order('cognome', { ascending: true })
 
       if (error) throw error
@@ -56,9 +57,12 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
       const { error } = await supabase
         .from('squadre')
         .insert({
-          ...formData,
+          nome: formData.nome,
+          categoria: formData.categoria,
+          annata: parseInt(formData.stagione),
           allenatore: formData.allenatore || null,
-          vice_allenatore: formData.vice_allenatore || null,
+          vice_allenatore_1: formData.vice_allenatore_1 || null,
+          vice_allenatore_2: formData.vice_allenatore_2 || null,
           dirigente: formData.dirigente || null
         })
 
@@ -81,8 +85,18 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
     }))
   }
 
-  const allenatori = users.filter(u => u.role === 'allenatore')
-  const dirigenti = users.filter(u => u.role === 'dirigente')
+  // Funzione helper per controllare se un utente ha un determinato ruolo
+  const hasRole = (user: User, role: string): boolean => {
+    // Controlla sia il campo roles (array) che il campo role (singolo) per compatibilità
+    if (user.roles && user.roles.length > 0) {
+      return user.roles.includes(role as any)
+    }
+    return user.role === role
+  }
+
+  const allenatori = users.filter(u => hasRole(u, 'allenatore'))
+  const viceAllenatori = users.filter(u => hasRole(u, 'allenatore') || hasRole(u, 'vice_allenatore'))
+  const dirigenti = users.filter(u => hasRole(u, 'dirigente'))
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -173,20 +187,53 @@ export default function SquadraForm({ onClose, onSuccess }: SquadraFormProps) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vice Allenatore
+                Vice Allenatore 1
               </label>
               <select
-                name="vice_allenatore"
-                value={formData.vice_allenatore}
+                name="vice_allenatore_1"
+                value={formData.vice_allenatore_1}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Seleziona vice allenatore...</option>
-                {allenatori.map(user => (
+                <option value="">Seleziona primo vice allenatore...</option>
+                {viceAllenatori.map(user => (
                   <option key={user.id} value={`${user.nome} ${user.cognome}`}>
                     {user.nome} {user.cognome}
+                    {hasRole(user, 'allenatore') && hasRole(user, 'vice_allenatore') 
+                      ? ' (Allenatore/Vice)' 
+                      : hasRole(user, 'allenatore') 
+                        ? ' (Allenatore)' 
+                        : ' (Vice Allenatore)'
+                    }
                   </option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Vice Allenatore 2
+              </label>
+              <select
+                name="vice_allenatore_2"
+                value={formData.vice_allenatore_2}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleziona secondo vice allenatore...</option>
+                {viceAllenatori
+                  .filter(user => `${user.nome} ${user.cognome}` !== formData.vice_allenatore_1)
+                  .map(user => (
+                    <option key={user.id} value={`${user.nome} ${user.cognome}`}>
+                      {user.nome} {user.cognome}
+                      {hasRole(user, 'allenatore') && hasRole(user, 'vice_allenatore') 
+                        ? ' (Allenatore/Vice)' 
+                        : hasRole(user, 'allenatore') 
+                          ? ' (Allenatore)' 
+                          : ' (Vice Allenatore)'
+                      }
+                    </option>
+                  ))}
               </select>
             </div>
 

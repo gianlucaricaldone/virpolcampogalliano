@@ -12,7 +12,7 @@ import SquadraForm from '@/components/forms/SquadraForm'
 type Squadra = Database['public']['Tables']['squadre']['Row']
 
 export default function SquadrePage() {
-  const { profile } = useAuth()
+  const { profile, hasAnyRole } = useAuth()
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -58,7 +58,7 @@ export default function SquadrePage() {
             Visualizza e gestisci tutte le squadre della società
           </p>
         </div>
-        {(profile?.role === 'admin' || profile?.role === 'dirigente') && (
+        {hasAnyRole(['admin', 'dirigente']) && (
           <Button 
             className="bg-blue-600 hover:bg-blue-700"
             onClick={() => setShowForm(true)}
@@ -102,7 +102,7 @@ export default function SquadrePage() {
                 </div>
               </div>
               
-              {(profile?.role === 'admin' || profile?.role === 'dirigente') && (
+              {hasAnyRole(['admin', 'dirigente']) && (
                 <div className="flex gap-2 mt-4">
                   <Button variant="outline" size="sm" className="flex-1">
                     <Edit className="h-4 w-4 mr-1" />
@@ -123,7 +123,7 @@ export default function SquadrePage() {
           <CardContent>
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Nessuna squadra registrata</p>
-            {(profile?.role === 'admin' || profile?.role === 'dirigente') && (
+            {hasAnyRole(['admin', 'dirigente']) && (
               <Button 
                 className="mt-4"
                 onClick={() => setShowForm(true)}

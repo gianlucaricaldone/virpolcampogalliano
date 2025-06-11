@@ -5,64 +5,125 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTestRole } from '@/contexts/TestRoleContext'
+import { useRouter } from 'next/navigation'
 import { 
   Users, 
   Calendar, 
   Trophy, 
   Package, 
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Check,
+  X,
+  UserPlus,
+  FileText,
+  Clock
 } from 'lucide-react'
 
+interface RecentActivity {
+  type: 'presenza' | 'tesserato' | 'partita' | 'report'
+  title: string
+  description: string
+  timestamp: string
+  icon: string
+  color: string
+  href?: string
+}
+
 export default function DashboardPage() {
-  const { profile, loading } = useAuth()
+  const { profile, loading, hasAnyRole } = useAuth()
   const { testRole, isInTestMode } = useTestRole()
+  const router = useRouter()
   const [stats, setStats] = useState({
     squadre: 0,
     tesserati: 0,
     partite: 0,
-    presenze: 0
+    presenze: 0,
+    magazzino: 0,
+    scadenze: 0
   })
   const [loadingStats, setLoadingStats] = useState(true)
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
+  const [loadingActivities, setLoadingActivities] = useState(true)
   const supabase = createClient()
 
   const loadStats = useCallback(async () => {
     try {
-      // Load squadre count
-      const { count: squadreCount } = await supabase
-        .from('squadre')
-        .select('*', { count: 'exact', head: true })
+      // Esegui tutte le query in parallelo per migliori performance
+      const [
+        squadreResult,
+        tesseratiResult,
+        partiteResult,
+        presenzeResult,
+        magazzinoResult,
+        scadenzeResult
+      ] = await Promise.all([
+        // Conta squadre attive
+        supabase
+          .from('squadre')
+          .select('*', { count: 'exact', head: true }),
 
-      // Load tesserati count
-      const { count: tesseratiCount } = await supabase
-        .from('tesserati')
-        .select('*', { count: 'exact', head: true })
+        // Conta tesserati attivi
+        supabase
+          .from('tesserati')
+          .select('*', { count: 'exact', head: true }),
 
-      // Load partite this week
-      const weekStart = new Date()
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekEnd.getDate() + 6)
+        // Conta partite della settimana corrente
+        (() => {
+          const today = new Date()
+          const weekStart = new Date(today)
+          weekStart.setDate(today.getDate() - today.getDay()) // Domenica
+          const weekEnd = new Date(weekStart)
+          weekEnd.setDate(weekStart.getDate() + 6) // Sabato
+          
+          return supabase
+            .from('partite')
+            .select('*', { count: 'exact', head: true })
+            .gte('data', weekStart.toISOString().split('T')[0])
+            .lte('data', weekEnd.toISOString().split('T')[0])
+        })(),
 
-      const { count: partiteCount } = await supabase
-        .from('partite')
-        .select('*', { count: 'exact', head: true })
-        .gte('data', weekStart.toISOString().split('T')[0])
-        .lte('data', weekEnd.toISOString().split('T')[0])
+        // Conta presenze di oggi
+        (() => {
+          const today = new Date().toISOString().split('T')[0]
+          return supabase
+            .from('presenze')
+            .select('*', { count: 'exact', head: true })
+            .eq('data', today)
+            .eq('presente', true)
+        })(),
 
-      // Load today's presences
-      const today = new Date().toISOString().split('T')[0]
-      const { count: presenzeCount } = await supabase
-        .from('presenze')
-        .select('*', { count: 'exact', head: true })
-        .eq('data', today)
-        .eq('presente', true)
+        // Conta articoli in magazzino
+        supabase
+          .from('magazzino')
+          .select('quantita'),
+
+        // Conta certificati in scadenza (prossimi 30 giorni)
+        (() => {
+          const today = new Date()
+          const in30Days = new Date(today)
+          in30Days.setDate(today.getDate() + 30)
+          
+          return supabase
+            .from('tesserati')
+            .select('scadenza_certificato', { count: 'exact', head: true })
+            .not('scadenza_certificato', 'is', null)
+            .gte('scadenza_certificato', today.toISOString().split('T')[0])
+            .lte('scadenza_certificato', in30Days.toISOString().split('T')[0])
+        })()
+      ])
+
+      // Calcola totale articoli magazzino
+      const magazzinoTotal = magazzinoResult.data?.reduce((sum, item) => sum + (item.quantita || 0), 0) || 0
 
       setStats({
-        squadre: squadreCount || 0,
-        tesserati: tesseratiCount || 0,
-        partite: partiteCount || 0,
-        presenze: presenzeCount || 0
+        squadre: squadreResult.count || 0,
+        tesserati: tesseratiResult.count || 0,
+        partite: partiteResult.count || 0,
+        presenze: presenzeResult.count || 0,
+        magazzino: magazzinoTotal,
+        scadenze: scadenzeResult.count || 0
       })
     } catch (error) {
       console.error('Error loading stats:', error)
@@ -71,11 +132,113 @@ export default function DashboardPage() {
     }
   }, [supabase])
 
+  const loadRecentActivities = useCallback(async () => {
+    try {
+      const activities: RecentActivity[] = []
+
+      // Ultime 5 presenze registrate
+      const { data: presenze } = await supabase
+        .from('presenze')
+        .select(`
+          *,
+          tesserati:tesserato_id (nome, cognome)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      presenze?.forEach(presenza => {
+        activities.push({
+          type: 'presenza',
+          title: `Presenza registrata`,
+          description: `${presenza.tesserati?.nome} ${presenza.tesserati?.cognome} - ${presenza.tipo}`,
+          timestamp: presenza.created_at,
+          icon: presenza.presente ? 'check' : 'x',
+          color: presenza.presente ? 'text-green-600' : 'text-red-600',
+          href: '/dashboard/presenze'
+        })
+      })
+
+      // Ultimi 3 tesserati registrati
+      const { data: tesserati } = await supabase
+        .from('tesserati')
+        .select('*')
+        .eq('stato', true) // Solo tesserati attivi
+        .order('created_at', { ascending: false })
+        .limit(2)
+
+      tesserati?.forEach(tesserato => {
+        activities.push({
+          type: 'tesserato',
+          title: 'Nuovo tesserato',
+          description: `${tesserato.nome} ${tesserato.cognome} registrato`,
+          timestamp: tesserato.created_at,
+          icon: 'user-plus',
+          color: 'text-blue-600',
+          href: '/dashboard/tesserati'
+        })
+      })
+
+      // Ultime 3 partite programmate
+      const { data: partite } = await supabase
+        .from('partite')
+        .select(`
+          *,
+          squadre:squadra_id (nome)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(2)
+
+      partite?.forEach(partita => {
+        activities.push({
+          type: 'partita',
+          title: 'Partita programmata',
+          description: `${partita.squadre?.nome} vs ${partita.avversario}`,
+          timestamp: partita.created_at,
+          icon: 'trophy',
+          color: 'text-purple-600',
+          href: '/dashboard/partite'
+        })
+      })
+
+      // Ultimi report allenatori (se esistono)
+      const { data: reports } = await supabase
+        .from('report_allenatori')
+        .select(`
+          *,
+          users:allenatore_id (nome, cognome)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(2)
+
+      reports?.forEach(report => {
+        activities.push({
+          type: 'report',
+          title: 'Nuovo report',
+          description: `Report di ${report.users?.nome} ${report.users?.cognome}`,
+          timestamp: report.created_at,
+          icon: 'file-text',
+          color: 'text-orange-600',
+          href: '/dashboard/presenze'
+        })
+      })
+
+      // Ordina tutte le attività per timestamp
+      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+      setRecentActivities(activities.slice(0, 10)) // Prendi le prime 10
+    } catch (error) {
+      console.error('Error loading recent activities:', error)
+    } finally {
+      setLoadingActivities(false)
+    }
+  }, [supabase])
+
   useEffect(() => {
     if (profile?.id) {
       loadStats()
+      loadRecentActivities()
     }
-  }, [profile?.id, loadStats]) // Dipendi solo dall'ID invece dell'intero oggetto profile
+  }, [profile?.id, loadStats, loadRecentActivities]) // Dipendi solo dall'ID invece dell'intero oggetto profile
 
   if (loading || !profile) {
     return (
@@ -95,7 +258,8 @@ export default function DashboardPage() {
       value: loadingStats ? '...' : stats.squadre.toString(),
       icon: Users,
       color: 'text-blue-600',
-      roles: ['admin', 'dirigente']
+      roles: ['admin', 'dirigente'],
+      href: '/dashboard/squadre'
     },
     {
       title: 'Tesserati',
@@ -103,15 +267,17 @@ export default function DashboardPage() {
       value: loadingStats ? '...' : stats.tesserati.toString(),
       icon: Users,
       color: 'text-green-600',
-      roles: ['admin', 'dirigente']
+      roles: ['admin', 'dirigente'],
+      href: '/dashboard/tesserati'
     },
     {
       title: 'Partite Settimana',
-      description: 'Prossimi match',
+      description: 'Match di questa settimana',
       value: loadingStats ? '...' : stats.partite.toString(),
       icon: Trophy,
       color: 'text-purple-600',
-      roles: ['admin', 'dirigente', 'allenatore']
+      roles: ['admin', 'dirigente', 'allenatore'],
+      href: '/dashboard/partite'
     },
     {
       title: 'Presenze Oggi',
@@ -119,29 +285,70 @@ export default function DashboardPage() {
       value: loadingStats ? '...' : stats.presenze.toString(),
       icon: TrendingUp,
       color: 'text-orange-600',
-      roles: ['admin', 'dirigente', 'allenatore']
+      roles: ['admin', 'dirigente', 'allenatore'],
+      href: '/dashboard/presenze'
     },
     {
       title: 'Materiale',
       description: 'Articoli in magazzino',
-      value: '245',
+      value: loadingStats ? '...' : stats.magazzino.toString(),
       icon: Package,
       color: 'text-indigo-600',
-      roles: ['admin', 'dirigente']
+      roles: ['admin', 'dirigente'],
+      href: '/dashboard/magazzino'
     },
     {
       title: 'Scadenze',
-      description: 'Certificati in scadenza',
-      value: '3',
+      description: 'Certificati in scadenza (30gg)',
+      value: loadingStats ? '...' : stats.scadenze.toString(),
       icon: AlertCircle,
       color: 'text-red-600',
-      roles: ['admin', 'dirigente']
+      roles: ['admin', 'dirigente'],
+      href: '/dashboard/tesserati' // Vai ai tesserati per gestire le scadenze
     }
   ]
 
   const filteredCards = dashboardCards.filter(card => 
-    card.roles.includes(profile.role)
+    hasAnyRole(card.roles)
   )
+
+  // Helper function per le icone delle attività
+  const getActivityIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'check':
+        return Check
+      case 'x':
+        return X
+      case 'user-plus':
+        return UserPlus
+      case 'trophy':
+        return Trophy
+      case 'file-text':
+        return FileText
+      default:
+        return Clock
+    }
+  }
+
+  // Helper function per formattare il tempo relativo
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const past = new Date(timestamp)
+    const diffInMs = now.getTime() - past.getTime()
+    const diffInMins = Math.floor(diffInMs / (1000 * 60))
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+
+    if (diffInMins < 1) {
+      return 'Adesso'
+    } else if (diffInMins < 60) {
+      return `${diffInMins} minuti fa`
+    } else if (diffInHours < 24) {
+      return `${diffInHours} ore fa`
+    } else {
+      return `${diffInDays} giorni fa`
+    }
+  }
 
   const getWelcomeMessage = () => {
     const hour = new Date().getHours()
@@ -227,13 +434,28 @@ export default function DashboardPage() {
       )}
 
       {/* Welcome Section */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          {getWelcomeMessage()}
-        </h1>
-        <p className="mt-2 text-gray-600">
-          {roleContent.description}
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {getWelcomeMessage()}
+          </h1>
+          <p className="mt-2 text-gray-600">
+            {roleContent.description}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setLoadingStats(true)
+            setLoadingActivities(true)
+            loadStats()
+            loadRecentActivities()
+          }}
+          disabled={loadingStats || loadingActivities}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${(loadingStats || loadingActivities) ? 'animate-spin' : ''}`} />
+          Aggiorna
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -241,7 +463,11 @@ export default function DashboardPage() {
         {filteredCards.map((card) => {
           const Icon = card.icon
           return (
-            <Card key={card.title} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={card.title} 
+              className="hover:shadow-md transition-shadow cursor-pointer hover:scale-105 duration-200"
+              onClick={() => router.push(card.href)}
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {card.title}
@@ -293,29 +519,48 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Presenze registrate per allenamento U15</p>
-                <p className="text-xs text-gray-500">2 minuti fa</p>
-              </div>
+          {loadingActivities ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center space-x-4 animate-pulse">
+                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Nuova partita programmata vs Real Campogalliano</p>
-                <p className="text-xs text-gray-500">15 minuti fa</p>
-              </div>
+          ) : recentActivities.length > 0 ? (
+            <div className="space-y-4">
+              {recentActivities.map((activity, index) => {
+                const IconComponent = getActivityIcon(activity.icon)
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-center space-x-4 p-2 rounded-lg transition-colors ${
+                      activity.href ? 'hover:bg-gray-50 cursor-pointer' : ''
+                    }`}
+                    onClick={() => activity.href && router.push(activity.href)}
+                  >
+                    <div className={`p-1 rounded-full ${activity.color.replace('text-', 'bg-').replace('-600', '-100')}`}>
+                      <IconComponent className={`h-3 w-3 ${activity.color}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activity.title}</p>
+                      <p className="text-xs text-gray-600">{activity.description}</p>
+                      <p className="text-xs text-gray-400">{formatTimeAgo(activity.timestamp)}</p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Campo 1 prenotato per domani ore 16:00</p>
-                <p className="text-xs text-gray-500">1 ora fa</p>
-              </div>
+          ) : (
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Nessuna attività recente</p>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
