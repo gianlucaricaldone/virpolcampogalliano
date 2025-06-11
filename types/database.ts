@@ -135,27 +135,31 @@ export type Database = {
           id: string
           tesserato_id: string
           data: string
-          tipo: 'allenamento' | 'partita'
+          tipo: 'allenamento' | 'partita' | 'torneo' | 'evento'
           presente: boolean
           note: string | null
+          squadra_id: string | null
           created_at: string
         }
         Insert: {
           id?: string
           tesserato_id: string
           data: string
-          tipo: 'allenamento' | 'partita'
+          tipo: 'allenamento' | 'partita' | 'torneo' | 'evento'
           presente?: boolean
           note?: string | null
+          squadra_id?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           tesserato_id?: string
           data?: string
-          tipo?: 'allenamento' | 'partita'
+          tipo?: 'allenamento' | 'partita' | 'torneo' | 'evento'
           presente?: boolean
           note?: string | null
+          squadra_id?: string | null
+          squadra_id?: string | null
           created_at?: string
         }
       }
@@ -200,9 +204,54 @@ export type Database = {
           updated_at?: string
         }
       }
+      report_allenatori: {
+        Row: {
+          id: string
+          allenatore_id: string
+          squadra_id: string | null
+          data: string
+          tipo_attivita: 'allenamento' | 'partita' | 'torneo' | 'evento'
+          report: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          allenatore_id: string
+          squadra_id?: string | null
+          data?: string
+          tipo_attivita: 'allenamento' | 'partita' | 'torneo' | 'evento'
+          report: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          allenatore_id?: string
+          squadra_id?: string | null
+          data?: string
+          tipo_attivita?: 'allenamento' | 'partita' | 'torneo' | 'evento'
+          report?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
-      [_ in never]: never
+      statistiche_presenze: {
+        Row: {
+          squadra_id: string | null
+          squadra_nome: string | null
+          tesserato_id: string
+          tesserato_nome: string
+          settimana: string
+          mese: string
+          tipo: 'allenamento' | 'partita' | 'torneo' | 'evento'
+          presenze: number
+          totale: number
+          percentuale: number
+        }
+      }
     }
     Functions: {
       [_ in never]: never
@@ -210,7 +259,7 @@ export type Database = {
     Enums: {
       user_role: 'admin' | 'dirigente' | 'allenatore' | 'tesserato' | 'genitore'
       stato_pagamento: 'pagato' | 'non_pagato' | 'parziale'
-      tipo_presenza: 'allenamento' | 'partita'
+      tipo_presenza: 'allenamento' | 'partita' | 'torneo' | 'evento'
     }
   }
 }

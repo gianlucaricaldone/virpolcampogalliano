@@ -20,22 +20,6 @@ export default function UtentiPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'allenatori'>('all')
   const supabase = createClient()
 
-  // Redirect non-admin users
-  if (profile?.role !== 'admin') {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="text-center py-12">
-          <CardContent>
-            <p className="text-red-500 mb-4">Accesso negato</p>
-            <p className="text-gray-500">
-              Solo gli amministratori possono accedere a questa sezione
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   useEffect(() => {
     fetchUsers()
   }, [])
@@ -84,6 +68,22 @@ export default function UtentiPage() {
       default:
         return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  // Check authorization after all hooks
+  if (profile?.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="text-center py-12">
+          <CardContent>
+            <p className="text-red-500 mb-4">Accesso negato</p>
+            <p className="text-gray-500">
+              Solo gli amministratori possono accedere a questa sezione
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   if (loading) {

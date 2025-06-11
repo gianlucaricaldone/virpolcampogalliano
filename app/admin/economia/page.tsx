@@ -10,7 +10,7 @@ export default function EconomiaPage() {
   const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
 
-  // Redirect non-admin users
+  // Check authorization after all hooks
   if (profile?.role !== 'admin') {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
