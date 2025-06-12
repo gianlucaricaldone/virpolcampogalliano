@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
+import { getSupabaseClient, getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
 import { Database } from '@/types/database'
 import { useTestRole } from '@/contexts/TestRoleContext'
 
@@ -14,7 +14,7 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [sessionChecked, setSessionChecked] = useState(false)
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   // Try to get test role context, but don't fail if not available
   let testRole: string | null = null
@@ -50,22 +50,37 @@ export function useAuth() {
         
         if (session?.user) {
           console.log('[useAuth] User found, ID:', session.user.id)
-          console.log('[useAuth] Fetching profile...')
           
-          // Get user profile
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
+          // Try to get cached profile first
+          const cacheKey = `profile_${session.user.id}`
+          const cachedProfile = getCachedQuery<UserProfile>(cacheKey)
           
-          console.log('[useAuth] Profile result:', { data: profile, error: profileError })
-          
-          if (profileError) {
-            console.error('[useAuth] Profile error:', profileError)
+          if (cachedProfile) {
+            console.log('[useAuth] Using cached profile')
+            setProfile(cachedProfile)
+          } else {
+            console.log('[useAuth] Fetching profile from DB...')
+            
+            // Get user profile from database
+            const { data: profile, error: profileError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+            
+            console.log('[useAuth] Profile result:', { data: profile, error: profileError })
+            
+            if (profileError) {
+              console.error('[useAuth] Profile error:', profileError)
+            }
+            
+            if (profile) {
+              // Cache the profile for 10 minutes
+              setCachedQuery(cacheKey, profile, 10 * 60 * 1000)
+            }
+            
+            setProfile(profile)
           }
-          
-          setProfile(profile)
         } else {
           console.log('[useAuth] No user in session')
         }
@@ -127,8 +142,13 @@ export function useAuth() {
   }, [profile?.roles, profile?.role])
   
   const signOut = useCallback(async () => {
+    // Clear cached profile on sign out
+    if (user?.id) {
+      const cacheKey = `profile_${user.id}`
+      setCachedQuery(cacheKey, null, 0) // Expire immediately
+    }
     await supabase.auth.signOut()
-  }, [supabase.auth])
+  }, [supabase.auth, user?.id])
   
   // Use test role if admin is testing, otherwise use actual roles
   const currentRole = profile?.roles?.[0] === 'admin' && testRole ? testRole : profile?.role
