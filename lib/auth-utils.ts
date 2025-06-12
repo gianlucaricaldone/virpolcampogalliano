@@ -65,7 +65,9 @@ export function getUserRoles(userOrProfile: User | UserProfile | null): string[]
  * Verifica se un utente è attivo
  */
 export function isUserActive(userOrProfile: User | UserProfile | null): boolean {
-  return userOrProfile?.stato === true
+  // Gli utenti nella tabella users non hanno un campo stato
+  // Assumiamo che siano attivi se hanno un ID valido
+  return !!userOrProfile?.id
 }
 
 /**

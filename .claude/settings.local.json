@@ -22,7 +22,8 @@
       "Bash(rm:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(supabase db:*)"
+      "Bash(supabase db:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

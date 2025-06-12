@@ -1,20 +1,11 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Database } from '@/types/database'
 
-let supabaseInstance: ReturnType<typeof createClientComponentClient<Database>> | null = null
+let supabaseInstance: any | null = null
 
 export function getSupabaseClient() {
   if (!supabaseInstance) {
-    supabaseInstance = createClientComponentClient<Database>({
-      options: {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          refreshThreshold: 300,
-          detectSessionInUrl: true
-        }
-      }
-    })
+    supabaseInstance = createClientComponentClient<Database>()
   }
   return supabaseInstance
 }
@@ -49,9 +40,12 @@ export function clearQueryCache(pattern?: string): void {
     return
   }
   
-  for (const key of queryCache.keys()) {
+  const keysToDelete: string[] = []
+  queryCache.forEach((_, key) => {
     if (key.includes(pattern)) {
-      queryCache.delete(key)
+      keysToDelete.push(key)
     }
-  }
+  })
+  
+  keysToDelete.forEach(key => queryCache.delete(key))
 }

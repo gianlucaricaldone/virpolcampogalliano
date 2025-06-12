@@ -186,8 +186,8 @@ export default function PartitaForm({ onClose, onSuccess, partita, isEditMode = 
   }
 
   const filteredAvversari = categorieAvversari.filter(cat =>
-    cat.avversari?.nome_societa.toLowerCase().includes(searchAvversario.toLowerCase()) ||
-    cat.nome_categoria.toLowerCase().includes(searchAvversario.toLowerCase())
+    cat.avversari?.nome_societa?.toLowerCase().includes(searchAvversario.toLowerCase()) ||
+    cat.nome_categoria?.toLowerCase().includes(searchAvversario.toLowerCase())
   )
 
   return (

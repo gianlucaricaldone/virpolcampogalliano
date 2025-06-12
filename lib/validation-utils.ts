@@ -76,14 +76,14 @@ export function isValidCAP(cap: string): boolean {
  * Valida che una stringa non sia vuota o solo spazi
  */
 export function isNotEmpty(value: string): boolean {
-  return value && value.trim().length > 0
+  return !!(value && value.trim().length > 0)
 }
 
 /**
  * Valida che una stringa abbia una lunghezza minima
  */
 export function hasMinLength(value: string, minLength: number): boolean {
-  return value && value.trim().length >= minLength
+  return !!(value && value.trim().length >= minLength)
 }
 
 /**

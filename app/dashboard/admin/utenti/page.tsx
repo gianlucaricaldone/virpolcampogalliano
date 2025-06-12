@@ -35,7 +35,7 @@ export default function UtentiPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setUsers(data || [])
+      setUsers((data as any) || [])
     } catch (error) {
       console.error('Error fetching users:', error)
     } finally {

@@ -135,7 +135,7 @@ export function useAuth() {
   const hasAnyRole = useCallback((roles: string[]): boolean => {
     // Se esiste il campo roles (dopo migrazione), usalo
     if (profile?.roles && profile.roles.length > 0) {
-      return roles.some(role => profile.roles.includes(role as any))
+      return roles.some(role => profile.roles!.includes(role as any))
     }
     // Altrimenti fallback al campo role singolo
     return roles.includes(profile?.role as any)

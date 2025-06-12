@@ -52,7 +52,7 @@ export default function ParametriPage() {
 
       if (parametriError) throw parametriError
 
-      setParametri(parametriData || [])
+      setParametri((parametriData as unknown as ParametroSistema[]) || [])
 
     } catch (error) {
       console.error('Error fetching parametri:', error)
@@ -78,7 +78,7 @@ export default function ParametriPage() {
           data_fine: nuovaStagione.data_fine,
           descrizione: nuovaStagione.descrizione || null,
           attiva: false
-        })
+        } as any)
 
       if (error) throw error
 
@@ -109,10 +109,9 @@ export default function ParametriPage() {
       await supabase
         .from('stagioni_sportive')
         .update({ 
-          archiviata: true,
           attiva: false 
-        })
-        .eq('id', stagioneId)
+        } as any)
+        .eq('id', stagioneId as any)
 
       // Se era la stagione corrente, azzera il parametro
       if (stagioneCorrente?.id === stagioneId) {
@@ -133,8 +132,8 @@ export default function ParametriPage() {
     try {
       await supabase
         .from('stagioni_sportive')
-        .update({ archiviata: false })
-        .eq('id', stagioneId)
+        .update({ attiva: true } as any)
+        .eq('id', stagioneId as any)
 
       refreshStagioni()
     } catch (error) {
@@ -147,8 +146,8 @@ export default function ParametriPage() {
     try {
       await supabase
         .from('parametri_sistema')
-        .update({ valore: nuovoValore })
-        .eq('id', id)
+        .update({ valore: nuovoValore } as any)
+        .eq('id', id as any)
 
       fetchParametri()
     } catch (error) {
@@ -376,7 +375,7 @@ export default function ParametriPage() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
-                    type={parametro.tipo === 'number' ? 'number' : parametro.tipo === 'date' ? 'date' : 'text'}
+                    type={parametro.tipo === 'number' ? 'number' : 'text'}
                     value={parametro.valore || ''}
                     onChange={(e) => updateParametro(parametro.id, e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

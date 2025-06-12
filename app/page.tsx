@@ -20,6 +20,7 @@ import {
   Star, 
   MapPin, 
   Phone,
+  Mail,
   ArrowRight,
   PlayCircle,
   Award,

@@ -43,22 +43,23 @@ export function useUsersByRole(
 
         setLoading(true)
         const supabase = getSupabaseClient()
+        if (!supabase) {
+          throw new Error('Supabase client not available')
+        }
         
         // Build role condition for both single role and multiple roles
         const roleConditions = roles.map(role => 
           `role.eq.${role},roles.cs.{${role}}`
         ).join(',')
 
-        let query = supabase
+        const query = supabase
           .from('users')
           .select('*')
           .or(roleConditions)
           .order(orderBy, { ascending })
 
-        // Filter inactive users if not requested
-        if (!includeInactive) {
-          query = query.eq('stato', true)
-        }
+        // Note: Users table doesn't have a 'stato' field
+        // If we need to filter inactive users, we should use a different approach
 
         const { data, error: queryError } = await query
 

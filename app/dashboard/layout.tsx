@@ -85,7 +85,7 @@ function DashboardContent({
   const effectiveRoles = profile?.role === 'admin' && testRole ? [testRole] : currentRoles
 
   const filteredNavigation = navigation.filter(item => 
-    effectiveRoles.some(role => item.roles.includes(role))
+    effectiveRoles.some(role => item.roles.includes(role || ''))
   )
 
   return (
