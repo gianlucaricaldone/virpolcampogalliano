@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { X } from 'lucide-react'
 import { Database } from '@/types/database'
-
-type Squadra = Database['public']['Tables']['squadre']['Row']
 
 interface TesseratoFormProps {
   onClose: () => void
@@ -18,46 +16,22 @@ interface TesseratoFormProps {
 
 export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMode = false }: TesseratoFormProps) {
   const [loading, setLoading] = useState(false)
-  const [squadre, setSquadre] = useState<Squadra[]>([])
   const [formData, setFormData] = useState({
     nome: tesserato?.nome || '',
     cognome: tesserato?.cognome || '',
     data_nascita: tesserato?.data_nascita || '',
     codice_fiscale: tesserato?.codice_fiscale || '',
-    squadra_id: tesserato?.squadra_id || '',
     codice_cartellino: tesserato?.codice_cartellino || '',
     email: tesserato?.email || '',
     telefono: tesserato?.telefono || '',
     indirizzo: tesserato?.indirizzo || '',
     citta: tesserato?.citta || '',
     cap: tesserato?.cap || '',
-    documento_identita: tesserato?.documento_identita || '',
-    certificato_medico: tesserato?.certificato_medico || '',
-    scadenza_certificato: tesserato?.scadenza_certificato || '',
-    stato_pagamento: tesserato?.stato_pagamento || 'non_pagato',
-    visita_sportiva: tesserato?.visita_sportiva || false,
-    note_pagamento: tesserato?.note_pagamento || ''
+    documento_identita: tesserato?.documento_identita || ''
   })
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchSquadre()
-  }, [])
-
-  const fetchSquadre = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('squadre')
-        .select('*')
-        .order('nome', { ascending: true })
-
-      if (error) throw error
-      setSquadre(data || [])
-    } catch (error) {
-      console.error('Error fetching squadre:', error)
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,12 +39,17 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
 
     try {
       const dataToSubmit = {
-        ...formData,
-        squadra_id: formData.squadra_id || null,
+        nome: formData.nome,
+        cognome: formData.cognome,
         data_nascita: formData.data_nascita || null,
-        scadenza_certificato: formData.scadenza_certificato || null,
+        codice_fiscale: formData.codice_fiscale || null,
         codice_cartellino: formData.codice_cartellino || null,
-        visita_sportiva: formData.visita_sportiva
+        email: formData.email || null,
+        telefono: formData.telefono || null,
+        indirizzo: formData.indirizzo || null,
+        citta: formData.citta || null,
+        cap: formData.cap || null,
+        documento_identita: formData.documento_identita || null
       }
 
       if (isEditMode && tesserato) {
@@ -110,12 +89,22 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{isEditMode ? 'Modifica Tesserato' : 'Nuovo Tesserato'}</CardTitle>
+          <CardTitle>{isEditMode ? 'Modifica Anagrafica Tesserato' : 'Nuovo Tesserato'}</CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
         <CardContent>
+          {isEditMode && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-center text-blue-800 text-sm">
+                <span className="font-medium">ℹ️ Nota:</span>
+                <span className="ml-2">
+                  Questo form gestisce solo i dati anagrafici. Per modificare squadra, pagamenti e certificati medici, utilizza il pulsante "Assegna a Squadra" nella lista tesserati.
+                </span>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -173,24 +162,6 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Squadra
-                </label>
-                <select
-                  name="squadra_id"
-                  value={formData.squadra_id}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Seleziona squadra...</option>
-                  {squadre.map(squadra => (
-                    <option key={squadra.id} value={squadra.id}>
-                      {squadra.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -285,80 +256,8 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Certificato Medico
-                </label>
-                <input
-                  type="text"
-                  name="certificato_medico"
-                  value={formData.certificato_medico}
-                  onChange={handleChange}
-                  placeholder="Numero o riferimento certificato"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Scadenza Certificato
-                </label>
-                <input
-                  type="date"
-                  name="scadenza_certificato"
-                  value={formData.scadenza_certificato}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stato Pagamento
-                </label>
-                <select
-                  name="stato_pagamento"
-                  value={formData.stato_pagamento}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="non_pagato">Non Pagato</option>
-                  <option value="pagato">Pagato</option>
-                  <option value="parziale">Parziale</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Visita Sportiva
-                </label>
-                <div className="flex items-center h-[42px]">
-                  <input
-                    type="checkbox"
-                    name="visita_sportiva"
-                    checked={formData.visita_sportiva}
-                    onChange={handleChange}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">
-                    {formData.visita_sportiva ? 'Visita effettuata' : 'Visita non effettuata'}
-                  </label>
-                </div>
-              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Note Pagamento
-              </label>
-              <textarea
-                name="note_pagamento"
-                value={formData.note_pagamento}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" disabled={loading} className="flex-1">

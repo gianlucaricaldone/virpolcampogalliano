@@ -19,13 +19,13 @@ interface SquadraFormProps {
 }
 
 export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraFormProps) {
-  const { stagioneCorrente } = useSeason()
+  const { stagioneCorrente, stagioni } = useSeason()
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [formData, setFormData] = useState({
     nome: squadra?.nome || '',
     categoria: squadra?.categoria || '',
-    stagione: squadra?.annata?.toString() || new Date().getFullYear().toString(),
+    stagione_id: squadra?.stagione_id || stagioneCorrente?.id || '',
     allenatore: squadra?.allenatore || '',
     allenatore_id: squadra?.allenatore_id || '',
     vice_allenatore_1: squadra?.vice_allenatore_1 || '',
@@ -62,14 +62,22 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!formData.stagione_id) {
+      alert('Seleziona una stagione sportiva per la squadra')
+      return
+    }
+    
     setLoading(true)
 
     try {
+      const selectedStagione = stagioni.find(s => s.id === formData.stagione_id)
+      
       const squadraData = {
         nome: formData.nome,
         categoria: formData.categoria,
-        annata: parseInt(formData.stagione),
-        stagione_id: stagioneCorrente?.id || null,
+        annata: selectedStagione ? new Date(selectedStagione.data_inizio).getFullYear() : new Date().getFullYear(),
+        stagione_id: formData.stagione_id || null,
         allenatore: formData.allenatore || null,
         allenatore_id: formData.allenatore_id || null,
         vice_allenatore_1: formData.vice_allenatore_1 || null,
@@ -180,7 +188,7 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
               <div className="flex items-center text-yellow-800 text-sm">
                 <span className="font-medium">⚠️ Attenzione:</span>
                 <span className="ml-2">
-                  Nessuna stagione corrente impostata. La squadra verrà creata senza associazione a una stagione.
+                  Nessuna stagione corrente impostata. Seleziona manualmente la stagione per questa squadra.
                 </span>
               </div>
             </div>
@@ -231,17 +239,30 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stagione *
+                Stagione Sportiva *
               </label>
-              <input
-                type="text"
-                name="stagione"
-                value={formData.stagione}
+              <select
+                name="stagione_id"
+                value={formData.stagione_id}
                 onChange={handleChange}
                 required
-                placeholder="2024"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option value="">Seleziona stagione...</option>
+                {stagioni
+                  .filter(stagione => !stagione.archiviata) // Solo stagioni non archiviate
+                  .map(stagione => (
+                  <option key={stagione.id} value={stagione.id}>
+                    {stagione.nome}
+                    {stagione.id === stagioneCorrente?.id && ' (Corrente)'}
+                  </option>
+                ))}
+              </select>
+              {!stagioneCorrente && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  ⚠️ Nessuna stagione corrente impostata
+                </p>
+              )}
             </div>
 
             <div>

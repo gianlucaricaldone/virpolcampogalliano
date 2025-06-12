@@ -136,22 +136,22 @@ function DashboardContent({
           </div>
 
           {/* Current Season Display */}
-          <div className="px-4 py-3 border-b bg-gray-50">
-            <div className="text-xs font-medium text-gray-600 mb-1">Stagione Corrente</div>
+          <div className={`px-4 py-3 border-b ${stagioneCorrente ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+            <div className="text-xs font-semibold text-gray-700 mb-1">Stagione Corrente</div>
             {seasonLoading ? (
               <div className="text-xs text-gray-500">Caricamento...</div>
             ) : stagioneCorrente ? (
               <div className="flex items-center">
-                <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
-                <span className="text-xs font-medium text-green-700">
+                <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                <span className="text-sm font-bold text-green-800">
                   {stagioneCorrente.nome}
                 </span>
               </div>
             ) : (
               <div className="flex items-center">
-                <AlertTriangle className="h-3 w-3 text-orange-500 mr-1" />
-                <span className="text-xs text-orange-700">
-                  Nessuna stagione impostata
+                <AlertTriangle className="h-4 w-4 text-orange-600 mr-2" />
+                <span className="text-xs font-semibold text-orange-800">
+                  Non impostata
                 </span>
               </div>
             )}

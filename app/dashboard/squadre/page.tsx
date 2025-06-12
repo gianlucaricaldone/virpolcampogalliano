@@ -163,7 +163,8 @@ export default function SquadrePage() {
                 <div>
                   <CardTitle className="text-xl">{squadra.nome}</CardTitle>
                   <CardDescription className="mt-1">
-                    {squadra.categoria} - Stagione {squadra.annata}
+                    {squadra.categoria}
+                    {stagioneCorrente && ` - ${stagioneCorrente.nome}`}
                   </CardDescription>
                 </div>
                 <div className="flex items-center text-sm text-gray-500">

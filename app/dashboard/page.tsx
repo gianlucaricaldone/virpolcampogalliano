@@ -270,7 +270,7 @@ export default function DashboardPage() {
   const dashboardCards = [
     {
       title: 'Squadre Attive',
-      description: 'Numero squadre registrate',
+      description: 'Squadre della stagione corrente',
       value: loadingStats ? '...' : stats.squadre.toString(),
       icon: Users,
       color: 'text-blue-600',
@@ -449,20 +449,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Season Info */}
-      {stagioneCorrente ? (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-          <div className="flex items-center">
-            <Calendar className="h-5 w-5 text-green-600 mr-2" />
-            <p className="text-sm font-medium">
-              Visualizzando dati per: <span className="font-bold">{stagioneCorrente.nome}</span>
-              <span className="text-green-600 ml-2">
-                ({new Date(stagioneCorrente.data_inizio).toLocaleDateString('it-IT')} - {new Date(stagioneCorrente.data_fine).toLocaleDateString('it-IT')})
-              </span>
-            </p>
-          </div>
-        </div>
-      ) : (
+      {/* Season Info - Solo se non c'è stagione corrente */}
+      {!stagioneCorrente && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
           <div className="flex items-center">
             <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />

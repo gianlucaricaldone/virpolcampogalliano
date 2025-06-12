@@ -2,22 +2,36 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useSeason } from '@/contexts/SeasonContext'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Users, Search, Filter, Edit, Trash2, FileText, AlertCircle } from 'lucide-react'
+import { Plus, Users, Search, Filter, Edit, Trash2, FileText, AlertCircle, UserPlus } from 'lucide-react'
 import { Database } from '@/types/database'
 import TesseratoForm from '@/components/forms/TesseratoForm'
+import AssegnaSquadraForm from '@/components/forms/AssegnaSquadraForm'
 
-type Tesserato = Database['public']['Tables']['tesserati']['Row'] & {
-  squadre?: { nome: string }
+type TesseratoConSquadra = Database['public']['Tables']['tesserati']['Row'] & {
+  squadra_stagione?: {
+    squadra: { nome: string; id: string }
+    ruolo_squadra?: string
+    numero_maglia?: number
+  } | null
+  dati_stagionali?: {
+    stato_pagamento: string
+    note_pagamento?: string | null
+    visita_sportiva: boolean
+    scadenza_certificato?: string | null
+    certificato_medico?: string | null
+  } | null
 }
 
 type Squadra = Database['public']['Tables']['squadre']['Row']
 
 export default function TesseratiPage() {
   const { profile } = useAuth()
-  const [tesserati, setTesserati] = useState<Tesserato[]>([])
+  const { stagioneCorrente } = useSeason()
+  const [tesserati, setTesserati] = useState<TesseratoConSquadra[]>([])
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -25,27 +39,86 @@ export default function TesseratiPage() {
   const [selectedStatoPagamento, setSelectedStatoPagamento] = useState<string>('')
   const [filterVisitaSportiva, setFilterVisitaSportiva] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
-  const [selectedTesserato, setSelectedTesserato] = useState<Tesserato | null>(null)
+  const [selectedTesserato, setSelectedTesserato] = useState<TesseratoConSquadra | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [showAssignForm, setShowAssignForm] = useState(false)
+  const [tesseratoToAssign, setTesseratoToAssign] = useState<TesseratoConSquadra | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
     fetchTesserati()
     fetchSquadre()
-  }, [])
+  }, [stagioneCorrente?.id])
 
   const fetchTesserati = async () => {
     try {
-      const { data, error } = await supabase
+      // Prima otteniamo tutti i tesserati
+      const { data: tesseratiData, error: tesseratiError } = await supabase
         .from('tesserati')
-        .select(`
-          *,
-          squadre:squadra_id (nome)
-        `)
+        .select('*')
         .order('cognome', { ascending: true })
 
-      if (error) throw error
-      setTesserati(data || [])
+      if (tesseratiError) throw tesseratiError
+
+      // Poi otteniamo le associazioni squadra-stagione e i dati stagionali per la stagione corrente
+      let tesseratiConSquadra: TesseratoConSquadra[] = []
+      
+      if (stagioneCorrente?.id && tesseratiData) {
+        // Otteniamo associazioni squadra-stagione
+        const { data: associazioni, error: associazioniError } = await supabase
+          .from('tesserati_squadre_stagioni')
+          .select(`
+            tesserato_id,
+            ruolo_squadra,
+            numero_maglia,
+            squadre:squadra_id (
+              id,
+              nome
+            )
+          `)
+          .eq('stagione_id', stagioneCorrente.id)
+
+        if (associazioniError) throw associazioniError
+
+        // Otteniamo dati stagionali (pagamenti, visite mediche, ecc.)
+        const { data: datiStagionali, error: datiStagionaliError } = await supabase
+          .from('tesserati_dati_stagionali')
+          .select('*')
+          .eq('stagione_id', stagioneCorrente.id)
+
+        if (datiStagionaliError) throw datiStagionaliError
+
+        // Combiniamo i dati
+        tesseratiConSquadra = tesseratiData.map(tesserato => {
+          const associazione = associazioni?.find(ass => ass.tesserato_id === tesserato.id)
+          const datiStagione = datiStagionali?.find(ds => ds.tesserato_id === tesserato.id)
+          
+          return {
+            ...tesserato,
+            squadra_stagione: associazione ? {
+              squadra: associazione.squadre!,
+              ruolo_squadra: associazione.ruolo_squadra,
+              numero_maglia: associazione.numero_maglia
+            } : null,
+            dati_stagionali: datiStagione ? {
+              stato_pagamento: datiStagione.stato_pagamento,
+              note_pagamento: datiStagione.note_pagamento,
+              visita_sportiva: datiStagione.visita_sportiva,
+              scadenza_certificato: datiStagione.scadenza_certificato,
+              certificato_medico: datiStagione.certificato_medico
+            } : null
+          }
+        })
+      } else {
+        // Se non c'è stagione corrente, tutti i tesserati sono senza squadra e senza dati stagionali
+        tesseratiConSquadra = tesseratiData?.map(tesserato => ({
+          ...tesserato,
+          squadra_stagione: null,
+          dati_stagionali: null
+        })) || []
+      }
+
+      setTesserati(tesseratiConSquadra)
     } catch (error) {
       console.error('Error fetching tesserati:', error)
     } finally {
@@ -55,11 +128,17 @@ export default function TesseratiPage() {
 
   const fetchSquadre = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('squadre')
         .select('*')
         .order('nome', { ascending: true })
 
+      // Filtra per stagione corrente se disponibile
+      if (stagioneCorrente?.id) {
+        query = query.eq('stagione_id', stagioneCorrente.id)
+      }
+
+      const { data, error } = await query
       if (error) throw error
       setSquadre(data || [])
     } catch (error) {
@@ -85,10 +164,15 @@ export default function TesseratiPage() {
     }
   }
 
-  const handleEdit = (tesserato: Tesserato) => {
+  const handleEdit = (tesserato: TesseratoConSquadra) => {
     setSelectedTesserato(tesserato)
     setIsEditMode(true)
     setShowForm(true)
+  }
+
+  const handleAssignToSquadra = (tesserato: TesseratoConSquadra) => {
+    setTesseratoToAssign(tesserato)
+    setShowAssignForm(true)
   }
 
   const filteredTesserati = tesserati.filter(tesserato => {
@@ -97,13 +181,16 @@ export default function TesseratiPage() {
       tesserato.codice_fiscale?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tesserato.codice_cartellino?.toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchesSquadra = selectedSquadra === '' || tesserato.squadra_id === selectedSquadra
+    const matchesSquadra = selectedSquadra === '' || 
+      (selectedSquadra === 'senza_squadra' && !tesserato.squadra_stagione) ||
+      tesserato.squadra_stagione?.squadra.id === selectedSquadra
     
-    const matchesStatoPagamento = selectedStatoPagamento === '' || tesserato.stato_pagamento === selectedStatoPagamento
+    const matchesStatoPagamento = selectedStatoPagamento === '' || 
+      tesserato.dati_stagionali?.stato_pagamento === selectedStatoPagamento
     
     const matchesVisitaSportiva = filterVisitaSportiva === '' || 
-      (filterVisitaSportiva === 'si' && tesserato.visita_sportiva === true) ||
-      (filterVisitaSportiva === 'no' && (tesserato.visita_sportiva === false || tesserato.visita_sportiva === null))
+      (filterVisitaSportiva === 'si' && tesserato.dati_stagionali?.visita_sportiva === true) ||
+      (filterVisitaSportiva === 'no' && (tesserato.dati_stagionali?.visita_sportiva === false || tesserato.dati_stagionali?.visita_sportiva == null))
     
     return matchesSearch && matchesSquadra && matchesStatoPagamento && matchesVisitaSportiva
   })
@@ -167,6 +254,20 @@ export default function TesseratiPage() {
         )}
       </div>
 
+      {/* Season Info - Solo se non c'è stagione corrente */}
+      {!stagioneCorrente && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center text-yellow-800">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <span className="font-medium">
+                Nessuna stagione corrente impostata. I tesserati vengono mostrati senza associazione a squadre.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
@@ -190,6 +291,7 @@ export default function TesseratiPage() {
                 onChange={(e) => setSelectedSquadra(e.target.value)}
               >
                 <option value="">Tutte le squadre</option>
+                <option value="senza_squadra">Senza squadra</option>
                 {squadre.map(squadra => (
                   <option key={squadra.id} value={squadra.id}>
                     {squadra.nome}
@@ -230,13 +332,23 @@ export default function TesseratiPage() {
                     {tesserato.nome} {tesserato.cognome}
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    {tesserato.squadre?.nome || 'Squadra non assegnata'}
+                    {tesserato.squadra_stagione ? (
+                      <span>
+                        {tesserato.squadra_stagione.squadra.nome}
+                        {tesserato.squadra_stagione.numero_maglia && 
+                          ` - N°${tesserato.squadra_stagione.numero_maglia}`}
+                        {tesserato.squadra_stagione.ruolo_squadra && 
+                          ` (${tesserato.squadra_stagione.ruolo_squadra})`}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">Senza squadra per questa stagione</span>
+                    )}
                   </CardDescription>
                 </div>
-                {(isCertificateExpiring(tesserato.scadenza_certificato) || 
-                  isCertificateExpired(tesserato.scadenza_certificato)) && (
+                {(isCertificateExpiring(tesserato.dati_stagionali?.scadenza_certificato) || 
+                  isCertificateExpired(tesserato.dati_stagionali?.scadenza_certificato)) && (
                   <AlertCircle className={`h-5 w-5 ${
-                    isCertificateExpired(tesserato.scadenza_certificato) 
+                    isCertificateExpired(tesserato.dati_stagionali?.scadenza_certificato) 
                       ? 'text-red-500' 
                       : 'text-yellow-500'
                   }`} />
@@ -261,40 +373,50 @@ export default function TesseratiPage() {
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Pagamento:</span>
-                  <span className={`text-xs px-2 py-1 rounded-full capitalize ${getStatusColor(tesserato.stato_pagamento)}`}>
-                    {tesserato.stato_pagamento.replace('_', ' ')}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Visita sportiva:</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    tesserato.visita_sportiva 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {tesserato.visita_sportiva ? 'Effettuata' : 'Non effettuata'}
-                  </span>
-                </div>
-                
-                {tesserato.scadenza_certificato && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Certificato:</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      isCertificateExpired(tesserato.scadenza_certificato)
-                        ? 'bg-red-100 text-red-800'
-                        : isCertificateExpiring(tesserato.scadenza_certificato)
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {isCertificateExpired(tesserato.scadenza_certificato)
-                        ? 'Scaduto'
-                        : isCertificateExpiring(tesserato.scadenza_certificato)
-                        ? 'In scadenza'
-                        : 'Valido'
-                      }
+                {tesserato.dati_stagionali ? (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Pagamento:</span>
+                      <span className={`text-xs px-2 py-1 rounded-full capitalize ${getStatusColor(tesserato.dati_stagionali.stato_pagamento)}`}>
+                        {tesserato.dati_stagionali.stato_pagamento.replace('_', ' ')}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Visita sportiva:</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        tesserato.dati_stagionali.visita_sportiva 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {tesserato.dati_stagionali.visita_sportiva ? 'Effettuata' : 'Non effettuata'}
+                      </span>
+                    </div>
+                    
+                    {tesserato.dati_stagionali.scadenza_certificato && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Certificato:</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          isCertificateExpired(tesserato.dati_stagionali.scadenza_certificato)
+                            ? 'bg-red-100 text-red-800'
+                            : isCertificateExpiring(tesserato.dati_stagionali.scadenza_certificato)
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {isCertificateExpired(tesserato.dati_stagionali.scadenza_certificato)
+                            ? 'Scaduto'
+                            : isCertificateExpiring(tesserato.dati_stagionali.scadenza_certificato)
+                            ? 'In scadenza'
+                            : 'Valido'
+                          }
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-2">
+                    <span className="text-xs text-gray-500">
+                      Nessun dato per questa stagione
                     </span>
                   </div>
                 )}
@@ -307,31 +429,44 @@ export default function TesseratiPage() {
               </div>
               
               {(profile?.role === 'admin' || profile?.role === 'dirigente') && (
-                <div className="flex gap-2 mt-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => handleEdit(tesserato)}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Modifica
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    title="Documenti"
-                  >
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() => handleDelete(tesserato.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2 mt-4">
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEdit(tesserato)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Modifica
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      title="Documenti"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDelete(tesserato.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {stagioneCorrente && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-blue-600 hover:text-blue-700"
+                      onClick={() => handleAssignToSquadra(tesserato)}
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      {tesserato.squadra_stagione ? 'Modifica Squadra' : 'Assegna a Squadra'}
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -380,6 +515,21 @@ export default function TesseratiPage() {
             setShowForm(false)
             setSelectedTesserato(null)
             setIsEditMode(false)
+          }}
+        />
+      )}
+
+      {showAssignForm && tesseratoToAssign && (
+        <AssegnaSquadraForm
+          tesserato={tesseratoToAssign}
+          onClose={() => {
+            setShowAssignForm(false)
+            setTesseratoToAssign(null)
+          }}
+          onSuccess={() => {
+            fetchTesserati()
+            setShowAssignForm(false)
+            setTesseratoToAssign(null)
           }}
         />
       )}

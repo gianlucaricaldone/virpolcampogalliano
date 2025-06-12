@@ -189,30 +189,26 @@ export default function ParametriPage() {
         </p>
       </div>
 
-      {/* Stagione Corrente Alert */}
-      {stagioneCorrente ? (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-              <span className="font-medium text-green-900">
-                Stagione Corrente: {stagioneCorrente.nome}
+      {/* Stagione Corrente Status */}
+      <div className={`p-3 rounded-lg border ${stagioneCorrente ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}>
+        <div className="flex items-center">
+          {stagioneCorrente ? (
+            <>
+              <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+              <span className="text-sm font-medium text-green-900">
+                Stagione attiva: <strong>{stagioneCorrente.nome}</strong>
               </span>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
-              <span className="font-medium text-yellow-900">
-                Nessuna stagione corrente impostata. Seleziona una stagione per visualizzare i dati nella dashboard.
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mr-2" />
+              <span className="text-sm font-medium text-yellow-900">
+                Nessuna stagione corrente impostata
               </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Gestione Stagioni */}
       <Card>
