@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/hooks/useSupabase'
 import { useSeason } from '@/contexts/SeasonContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,7 +34,7 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
     certificato_medico: ''
   })
 
-  const supabase = createClient()
+  const supabase = useSupabase()
 
   useEffect(() => {
     if (stagioneCorrente?.id) {
@@ -76,9 +76,11 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
         `)
         .eq('tesserato_id', tesserato.id)
         .eq('stagione_id', stagioneCorrente.id)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') throw error // PGRST116 = no rows found
+      if (error) throw error
       
       if (data) {
         setCurrentAssignment(data)
@@ -103,9 +105,11 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
         .select('*')
         .eq('tesserato_id', tesserato.id)
         .eq('stagione_id', stagioneCorrente.id)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') throw error // PGRST116 = no rows found
+      if (error) throw error
       
       if (data) {
         setCurrentSeasonData(data)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabase } from '@/hooks/useSupabase'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -13,6 +13,7 @@ interface EventoFormProps {
 
 export default function EventoForm({ eventoId, onClose, onSuccess }: EventoFormProps) {
   const { user } = useAuth()
+  const supabase = useSupabase()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     nome: '',
@@ -32,7 +33,6 @@ export default function EventoForm({ eventoId, onClose, onSuccess }: EventoFormP
 
   const fetchEvento = async () => {
     try {
-      const supabase = createClient()
       const { data, error } = await supabase
         .from('eventi')
         .select('*')
@@ -68,7 +68,6 @@ export default function EventoForm({ eventoId, onClose, onSuccess }: EventoFormP
     setLoading(true)
 
     try {
-      const supabase = createClient()
       const eventData = {
         nome: formData.nome,
         descrizione: formData.descrizione || null,
