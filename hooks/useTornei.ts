@@ -6,11 +6,20 @@ import { createClient } from '@/lib/supabase/client'
 export interface Torneo {
   id: string
   nome: string
+  descrizione?: string | null
   data_inizio: string
   data_fine: string
   stato: string
+  attivo: boolean
+  iscrizioni_aperte: boolean
   regolamento: any
   costo_iscrizione: number | null
+  numero_squadre_max?: number | null
+  numero_squadre_iscritte?: number
+  luogo?: string | null
+  contatto_email?: string | null
+  contatto_telefono?: string | null
+  immagine_copertina?: string | null
   created_at: string
   updated_at: string
 }
@@ -66,6 +75,45 @@ export function useTornei() {
   return { tornei, loading, error }
 }
 
+export function useTorneiAttivi() {
+  const [tornei, setTornei] = useState<Torneo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function fetchTorneiAttivi() {
+      try {
+        const { data, error } = await supabase
+          .from('tornei')
+          .select('*')
+          .eq('attivo', true)
+          .order('data_inizio', { ascending: true })
+
+        if (error) {
+          console.error('Errore nel caricamento tornei attivi:', error)
+          setError(error.message)
+          // Fallback ai dati mock se il database non è disponibile
+          setTornei(getMockTorneiAttivi())
+        } else {
+          setTornei(data || [])
+        }
+      } catch (err) {
+        console.error('Errore di connessione:', err)
+        setError('Errore di connessione al database')
+        // Fallback ai dati mock
+        setTornei(getMockTorneiAttivi())
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTorneiAttivi()
+  }, [supabase])
+
+  return { tornei, loading, error }
+}
+
 export function useNews() {
   const [news, setNews] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,6 +162,51 @@ function getMockTornei(): Torneo[] {
       stato: 'iscrizioni_aperte',
       regolamento: { categoria: 'Prima Squadra', numero_squadre: 8 },
       costo_iscrizione: 300,
+      created_at: '2024-01-01T00:00:00.000Z',
+      updated_at: '2024-01-01T00:00:00.000Z'
+    }
+  ]
+}
+
+function getMockTorneiAttivi(): Torneo[] {
+  return [
+    {
+      id: 'primavera-u15',
+      nome: 'Torneo Primavera U15',
+      descrizione: 'Il torneo giovanile più atteso dell\'anno per la categoria Under 15',
+      data_inizio: '2024-06-15',
+      data_fine: '2024-06-16',
+      stato: 'pianificato',
+      attivo: true,
+      iscrizioni_aperte: true,
+      regolamento: { categoria: 'Under 15', numero_squadre: 16 },
+      costo_iscrizione: 150,
+      numero_squadre_max: 16,
+      numero_squadre_iscritte: 8,
+      luogo: 'Centro Sportivo Virpol Campogalliano',
+      contatto_email: 'tornei@virpolcampogalliano.it',
+      contatto_telefono: '059 123456',
+      immagine_copertina: 'https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      created_at: '2024-01-01T00:00:00.000Z',
+      updated_at: '2024-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'memorial-rossi',
+      nome: 'Memorial Franco Rossi',
+      descrizione: 'Torneo in memoria del nostro indimenticabile Franco Rossi',
+      data_inizio: '2024-08-10',
+      data_fine: '2024-08-11',
+      stato: 'pianificato',
+      attivo: true,
+      iscrizioni_aperte: true,
+      regolamento: { categoria: 'Prima Squadra', numero_squadre: 8 },
+      costo_iscrizione: 300,
+      numero_squadre_max: 8,
+      numero_squadre_iscritte: 3,
+      luogo: 'Centro Sportivo Virpol Campogalliano',
+      contatto_email: 'memorial@virpolcampogalliano.it',
+      contatto_telefono: '059 654321',
+      immagine_copertina: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
       created_at: '2024-01-01T00:00:00.000Z',
       updated_at: '2024-01-01T00:00:00.000Z'
     }

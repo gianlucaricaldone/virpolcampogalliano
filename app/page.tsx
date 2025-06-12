@@ -11,7 +11,7 @@ import AnimatedSection from '@/components/ui/AnimatedSection'
 import AnimatedCounter from '@/components/ui/AnimatedCounter'
 import ParallaxSection from '@/components/ui/ParallaxSection'
 import { useSquadre } from '@/hooks/useSquadre'
-import { useTornei, useNews } from '@/hooks/useTornei'
+import { useTorneiAttivi, useNews } from '@/hooks/useTornei'
 import { useStats } from '@/hooks/useStats'
 import { 
   Trophy, 
@@ -32,7 +32,8 @@ import {
   Medal,
   Timer,
   Globe,
-  Loader2
+  Loader2,
+  UserCheck
 } from 'lucide-react'
 
 // Colori per le squadre basati sull'indice
@@ -65,6 +66,7 @@ const descrizioniSquadre: { [key: string]: string } = {
 export default function ModernHomePage() {
   const [isLoaded, setIsLoaded] = useState(false)
   const { squadre, loading: squadreLoading } = useSquadre()
+  const { tornei, loading: torneiLoading } = useTorneiAttivi()
   const { news, loading: newsLoading } = useNews()
   const { stats, loading: statsLoading } = useStats()
 
@@ -408,6 +410,167 @@ export default function ModernHomePage() {
                 </Button>
               </Link>
             </AnimatedSection>
+          </div>
+        </section>
+
+        {/* Tornei Section */}
+        <section className="py-24 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <AnimatedSection animation="fade-in" className="text-center mb-16">
+              <h2 className="text-5xl font-bold text-gray-900 mb-6">
+                I Nostri <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Tornei</span>
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                Organizziamo tornei di calcio per tutte le categorie. Scopri gli eventi in programma e le iscrizioni aperte.
+              </p>
+            </AnimatedSection>
+
+            {torneiLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Caricamento tornei...</span>
+              </div>
+            ) : tornei.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {tornei.map((torneo, index) => (
+                  <AnimatedSection
+                    key={torneo.id}
+                    animation="slide-in-up"
+                    delay={index * 150}
+                  >
+                    <Card className="group overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border-0">
+                      <div className="relative h-48 overflow-hidden">
+                        <Image
+                          src={torneo.immagine_copertina || 'https://images.unsplash.com/photo-1579952363873-27d3bfad9c0d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+                          alt={torneo.nome}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                        
+                        {/* Badge iscrizioni */}
+                        <div className="absolute top-4 right-4">
+                          {torneo.iscrizioni_aperte ? (
+                            <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
+                              <UserCheck className="h-3 w-3 mr-1" />
+                              Iscrizioni Aperte
+                            </span>
+                          ) : (
+                            <span className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                              Iscrizioni Chiuse
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Titolo e date */}
+                        <div className="absolute bottom-4 left-4 right-4 text-white">
+                          <h3 className="text-xl font-bold mb-2">{torneo.nome}</h3>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              {new Date(torneo.data_inizio).toLocaleDateString('it-IT')} - {new Date(torneo.data_fine).toLocaleDateString('it-IT')}
+                            </span>
+                          </div>
+                          {torneo.luogo && (
+                            <div className="flex items-center space-x-2 text-sm mt-1">
+                              <MapPin className="h-4 w-4" />
+                              <span>{torneo.luogo}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {torneo.descrizione && (
+                            <p className="text-gray-600 leading-relaxed line-clamp-2">
+                              {torneo.descrizione}
+                            </p>
+                          )}
+                          
+                          {/* Info squadre e costo */}
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            {torneo.numero_squadre_max && (
+                              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                                <div className="flex items-center justify-center mb-1">
+                                  <Users className="h-4 w-4 text-blue-600 mr-1" />
+                                  <span className="font-semibold text-blue-600">
+                                    {torneo.numero_squadre_iscritte || 0}/{torneo.numero_squadre_max}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-600">Squadre</div>
+                              </div>
+                            )}
+                            
+                            {torneo.costo_iscrizione && (
+                              <div className="text-center p-3 bg-green-50 rounded-lg">
+                                <div className="font-semibold text-green-600 mb-1">
+                                  €{torneo.costo_iscrizione}
+                                </div>
+                                <div className="text-xs text-gray-600">Iscrizione</div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Contatti */}
+                          {(torneo.contatto_email || torneo.contatto_telefono) && (
+                            <div className="border-t pt-4 space-y-2">
+                              {torneo.contatto_email && (
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  <a href={`mailto:${torneo.contatto_email}`} className="hover:text-blue-600">
+                                    {torneo.contatto_email}
+                                  </a>
+                                </div>
+                              )}
+                              {torneo.contatto_telefono && (
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Phone className="h-4 w-4 mr-2" />
+                                  <a href={`tel:${torneo.contatto_telefono}`} className="hover:text-blue-600">
+                                    {torneo.contatto_telefono}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="mt-6">
+                          {torneo.iscrizioni_aperte ? (
+                            <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-xl">
+                              <Trophy className="mr-2 h-4 w-4" />
+                              Iscriviti al Torneo
+                            </Button>
+                          ) : (
+                            <Button variant="outline" className="w-full rounded-xl">
+                              <Trophy className="mr-2 h-4 w-4" />
+                              Scopri di più
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </AnimatedSection>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">Nessun torneo attivo al momento.</p>
+                <p className="text-sm text-gray-500 mt-2">Torna presto per scoprire i prossimi eventi!</p>
+              </div>
+            )}
+
+            {tornei.length > 0 && (
+              <AnimatedSection animation="fade-in" delay={600} className="text-center mt-12">
+                <Link href="/tornei">
+                  <Button size="lg" variant="outline" className="text-lg px-12 py-4 rounded-full border-2 hover:bg-gradient-to-r hover:from-green-600 hover:to-blue-600 hover:text-white hover:border-transparent transition-all">
+                    Vedi Tutti i Tornei
+                    <ArrowRight className="ml-2 h-6 w-6" />
+                  </Button>
+                </Link>
+              </AnimatedSection>
+            )}
           </div>
         </section>
 
