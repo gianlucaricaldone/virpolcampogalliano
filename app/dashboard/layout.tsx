@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TestRoleProvider, useTestRole } from '@/contexts/TestRoleContext'
 import { SeasonProvider, useSeason } from '@/contexts/SeasonContext'
@@ -27,7 +27,10 @@ import {
   MapPin,
   BarChart3,
   Cog,
-  Archive
+  Archive,
+  Menu,
+  X,
+  CalendarDays
 } from 'lucide-react'
 
 function DashboardContent({
@@ -39,6 +42,7 @@ function DashboardContent({
   const { user, profile, loading, signOut } = useAuth()
   const { stagioneCorrente, loading: seasonLoading } = useSeason()
   const router = useRouter()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -65,6 +69,7 @@ function DashboardContent({
     { name: 'Presenze', href: '/dashboard/presenze', icon: ClipboardList, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
     { name: 'Partite', href: '/dashboard/partite', icon: PlayCircle, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
     { name: 'Tornei', href: '/dashboard/tornei', icon: Trophy, roles: ['admin', 'dirigente', 'allenatore'] },
+    { name: 'Eventi', href: '/dashboard/eventi', icon: CalendarDays, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
     { name: 'Avversari', href: '/dashboard/avversari', icon: Building, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Report Mensili', href: '/dashboard/report', icon: BarChart3, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Calendario Campi', href: '/dashboard/campi', icon: MapPin, roles: ['admin', 'dirigente', 'allenatore'] },
@@ -85,13 +90,37 @@ function DashboardContent({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile menu button */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
+        <div className="flex items-center justify-between h-16 px-4">
+          <h1 className="text-lg font-bold text-blue-600">Virpol</h1>
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {isSidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg">
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
+          <div className="hidden lg:flex items-center justify-center h-16 px-4 bg-blue-600">
             <h1 className="text-white font-bold text-lg">Virpol</h1>
           </div>
+          <div className="lg:hidden h-16" /> {/* Spacer for mobile */}
           
           {/* User info */}
           <div className="p-4 border-b">
@@ -165,6 +194,7 @@ function DashboardContent({
                 <a
                   key={item.name}
                   href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
                   className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900"
                 >
                   <Icon className="mr-3 h-5 w-5" />
@@ -189,8 +219,8 @@ function DashboardContent({
       </div>
 
       {/* Main content */}
-      <div className="ml-64">
-        <main className="p-8">
+      <div className="lg:ml-64">
+        <main className="p-4 lg:p-8 pt-20 lg:pt-8">
           {children}
         </main>
       </div>
