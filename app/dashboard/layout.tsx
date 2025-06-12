@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { TestRoleProvider, useTestRole } from '@/contexts/TestRoleContext'
+import { SeasonProvider, useSeason } from '@/contexts/SeasonContext'
 import { 
   Users, 
   Calendar, 
@@ -17,7 +18,16 @@ import {
   ClipboardList,
   UserCog,
   FileText,
-  Building
+  Building,
+  AlertTriangle,
+  CheckCircle,
+  Shield,
+  UserCheck,
+  PlayCircle,
+  MapPin,
+  BarChart3,
+  Cog,
+  Archive
 } from 'lucide-react'
 
 function DashboardContent({
@@ -27,6 +37,7 @@ function DashboardContent({
 }) {
   const { testRole, setTestRole } = useTestRole()
   const { user, profile, loading, signOut } = useAuth()
+  const { stagioneCorrente, loading: seasonLoading } = useSeason()
   const router = useRouter()
 
   useEffect(() => {
@@ -49,17 +60,18 @@ function DashboardContent({
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
-    { name: 'Squadre', href: '/dashboard/squadre', icon: Users, roles: ['admin', 'dirigente', 'allenatore'] },
-    { name: 'Tesserati', href: '/dashboard/tesserati', icon: Users, roles: ['admin', 'dirigente'] },
+    { name: 'Squadre', href: '/dashboard/squadre', icon: Shield, roles: ['admin', 'dirigente', 'allenatore'] },
+    { name: 'Tesserati', href: '/dashboard/tesserati', icon: UserCheck, roles: ['admin', 'dirigente'] },
     { name: 'Presenze', href: '/dashboard/presenze', icon: ClipboardList, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
-    { name: 'Partite', href: '/dashboard/partite', icon: Trophy, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
+    { name: 'Partite', href: '/dashboard/partite', icon: PlayCircle, roles: ['admin', 'dirigente', 'allenatore', 'tesserato', 'genitore'] },
     { name: 'Tornei', href: '/dashboard/tornei', icon: Trophy, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Avversari', href: '/dashboard/avversari', icon: Building, roles: ['admin', 'dirigente', 'allenatore'] },
-    { name: 'Report Mensili', href: '/dashboard/report', icon: FileText, roles: ['admin', 'dirigente', 'allenatore'] },
-    { name: 'Calendario Campi', href: '/dashboard/campi', icon: Calendar, roles: ['admin', 'dirigente', 'allenatore'] },
+    { name: 'Report Mensili', href: '/dashboard/report', icon: BarChart3, roles: ['admin', 'dirigente', 'allenatore'] },
+    { name: 'Calendario Campi', href: '/dashboard/campi', icon: MapPin, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Magazzino', href: '/dashboard/magazzino', icon: Package, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Economia', href: '/dashboard/admin/economia', icon: DollarSign, roles: ['admin'] },
-    { name: 'Gestione Utenti', href: '/dashboard/admin/utenti', icon: Settings, roles: ['admin'] },
+    { name: 'Gestione Utenti', href: '/dashboard/admin/utenti', icon: UserCog, roles: ['admin'] },
+    { name: 'Parametri', href: '/dashboard/admin/parametri', icon: Cog, roles: ['admin'] },
   ]
 
   // Use test role if admin is testing, otherwise use actual roles
@@ -123,6 +135,28 @@ function DashboardContent({
             )}
           </div>
 
+          {/* Current Season Display */}
+          <div className="px-4 py-3 border-b bg-gray-50">
+            <div className="text-xs font-medium text-gray-600 mb-1">Stagione Corrente</div>
+            {seasonLoading ? (
+              <div className="text-xs text-gray-500">Caricamento...</div>
+            ) : stagioneCorrente ? (
+              <div className="flex items-center">
+                <CheckCircle className="h-3 w-3 text-green-500 mr-1" />
+                <span className="text-xs font-medium text-green-700">
+                  {stagioneCorrente.nome}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <AlertTriangle className="h-3 w-3 text-orange-500 mr-1" />
+                <span className="text-xs text-orange-700">
+                  Nessuna stagione impostata
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-2">
             {filteredNavigation.map((item) => {
@@ -171,7 +205,9 @@ export default function DashboardLayout({
 }) {
   return (
     <TestRoleProvider>
-      <DashboardContent>{children}</DashboardContent>
+      <SeasonProvider>
+        <DashboardContent>{children}</DashboardContent>
+      </SeasonProvider>
     </TestRoleProvider>
   )
 }

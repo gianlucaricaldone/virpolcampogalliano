@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useSeason } from '@/contexts/SeasonContext'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTestRole } from '@/contexts/TestRoleContext'
@@ -33,6 +34,7 @@ interface RecentActivity {
 
 export default function DashboardPage() {
   const { profile, loading, hasAnyRole } = useAuth()
+  const { stagioneCorrente } = useSeason()
   const { testRole, isInTestMode } = useTestRole()
   const router = useRouter()
   const [stats, setStats] = useState({
@@ -59,10 +61,18 @@ export default function DashboardPage() {
         magazzinoResult,
         scadenzeResult
       ] = await Promise.all([
-        // Conta squadre attive
-        supabase
-          .from('squadre')
-          .select('*', { count: 'exact', head: true }),
+        // Conta squadre attive per stagione corrente
+        (() => {
+          let query = supabase
+            .from('squadre')
+            .select('*', { count: 'exact', head: true })
+          
+          if (stagioneCorrente?.id) {
+            query = query.eq('stagione_id', stagioneCorrente.id)
+          }
+          
+          return query
+        })(),
 
         // Conta tesserati attivi
         supabase
@@ -77,11 +87,17 @@ export default function DashboardPage() {
           const weekEnd = new Date(weekStart)
           weekEnd.setDate(weekStart.getDate() + 6) // Sabato
           
-          return supabase
+          let query = supabase
             .from('partite')
             .select('*', { count: 'exact', head: true })
             .gte('data', weekStart.toISOString().split('T')[0])
             .lte('data', weekEnd.toISOString().split('T')[0])
+            
+          if (stagioneCorrente?.id) {
+            query = query.eq('stagione_id', stagioneCorrente.id)
+          }
+          
+          return query
         })(),
 
         // Conta presenze di oggi
@@ -130,7 +146,7 @@ export default function DashboardPage() {
     } finally {
       setLoadingStats(false)
     }
-  }, [supabase])
+  }, [supabase, stagioneCorrente?.id])
 
   const loadRecentActivities = useCallback(async () => {
     try {
@@ -429,6 +445,30 @@ export default function DashboardPage() {
                 Questa è solo una simulazione per l'admin. I dati e i permessi mostrati sono quelli del ruolo {testRole}.
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Season Info */}
+      {stagioneCorrente ? (
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <Calendar className="h-5 w-5 text-green-600 mr-2" />
+            <p className="text-sm font-medium">
+              Visualizzando dati per: <span className="font-bold">{stagioneCorrente.nome}</span>
+              <span className="text-green-600 ml-2">
+                ({new Date(stagioneCorrente.data_inizio).toLocaleDateString('it-IT')} - {new Date(stagioneCorrente.data_fine).toLocaleDateString('it-IT')})
+              </span>
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+            <p className="text-sm font-medium">
+              Nessuna stagione corrente impostata. Alcuni dati potrebbero non essere filtrati correttamente.
+            </p>
           </div>
         </div>
       )}

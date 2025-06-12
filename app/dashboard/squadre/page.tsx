@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useSeason } from '@/contexts/SeasonContext'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ type Squadra = Database['public']['Tables']['squadre']['Row'] & {
 
 export default function SquadrePage() {
   const { profile, hasAnyRole } = useAuth()
+  const { stagioneCorrente } = useSeason()
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -35,7 +37,7 @@ export default function SquadrePage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [stagioneCorrente?.id])
 
   const fetchSquadre = async () => {
     // Previeni chiamate multiple durante il caricamento
@@ -44,11 +46,18 @@ export default function SquadrePage() {
     try {
       setLoading(true)
       
-      // Otteniamo tutte le squadre
-      const { data: squadreData, error: squadreError } = await supabase
+      // Otteniamo squadre filtrate per stagione corrente
+      let squadreQuery = supabase
         .from('squadre')
         .select('*')
         .order('categoria', { ascending: true })
+
+      // Filtra per stagione corrente se impostata
+      if (stagioneCorrente?.id) {
+        squadreQuery = squadreQuery.eq('stagione_id', stagioneCorrente.id)
+      }
+
+      const { data: squadreData, error: squadreError } = await squadreQuery
 
       if (squadreError) throw squadreError
 
@@ -132,6 +141,19 @@ export default function SquadrePage() {
           </Button>
         )}
       </div>
+
+      {!stagioneCorrente && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center text-yellow-800">
+              <Users className="h-5 w-5 mr-2" />
+              <span className="font-medium">
+                Nessuna stagione corrente impostata. Contatta l'amministratore per impostare la stagione corrente.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {squadre.map((squadra) => (

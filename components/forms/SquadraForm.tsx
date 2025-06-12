@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useSeason } from '@/contexts/SeasonContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { X } from 'lucide-react'
@@ -18,6 +19,7 @@ interface SquadraFormProps {
 }
 
 export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraFormProps) {
+  const { stagioneCorrente } = useSeason()
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [formData, setFormData] = useState({
@@ -67,6 +69,7 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
         nome: formData.nome,
         categoria: formData.categoria,
         annata: parseInt(formData.stagione),
+        stagione_id: stagioneCorrente?.id || null,
         allenatore: formData.allenatore || null,
         allenatore_id: formData.allenatore_id || null,
         vice_allenatore_1: formData.vice_allenatore_1 || null,
@@ -172,6 +175,17 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
           </Button>
         </CardHeader>
         <CardContent>
+          {!isEditing && !stagioneCorrente && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="flex items-center text-yellow-800 text-sm">
+                <span className="font-medium">⚠️ Attenzione:</span>
+                <span className="ml-2">
+                  Nessuna stagione corrente impostata. La squadra verrà creata senza associazione a una stagione.
+                </span>
+              </div>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
