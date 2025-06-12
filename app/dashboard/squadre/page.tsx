@@ -9,7 +9,9 @@ import { Plus, Users, Edit, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
 import SquadraForm from '@/components/forms/SquadraForm'
 
-type Squadra = Database['public']['Tables']['squadre']['Row']
+type Squadra = Database['public']['Tables']['squadre']['Row'] & {
+  tesserati_count?: number
+}
 
 export default function SquadrePage() {
   const { profile, hasAnyRole } = useAuth()
@@ -25,13 +27,32 @@ export default function SquadrePage() {
 
   const fetchSquadre = async () => {
     try {
-      const { data, error } = await supabase
+      // Prima otteniamo tutte le squadre
+      const { data: squadreData, error: squadreError } = await supabase
         .from('squadre')
         .select('*')
         .order('categoria', { ascending: true })
 
-      if (error) throw error
-      setSquadre(data || [])
+      if (squadreError) throw squadreError
+
+      // Poi contiamo i tesserati per ogni squadra
+      const squadreWithCount = await Promise.all(
+        (squadreData || []).map(async (squadra) => {
+          const { count, error: countError } = await supabase
+            .from('tesserati')
+            .select('*', { count: 'exact', head: true })
+            .eq('squadra_id', squadra.id)
+
+          if (countError) {
+            console.error('Error counting tesserati:', countError)
+            return { ...squadra, tesserati_count: 0 }
+          }
+
+          return { ...squadra, tesserati_count: count || 0 }
+        })
+      )
+
+      setSquadre(squadreWithCount)
     } catch (error) {
       console.error('Error fetching squadre:', error)
     } finally {
@@ -104,7 +125,7 @@ export default function SquadrePage() {
                 </div>
                 <div className="flex items-center text-sm text-gray-500">
                   <Users className="h-4 w-4 mr-1" />
-                  <span>25</span>
+                  <span>{squadra.tesserati_count || 0}</span>
                 </div>
               </div>
             </CardHeader>

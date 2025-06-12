@@ -13,16 +13,25 @@ type Tesserato = Database['public']['Tables']['tesserati']['Row'] & {
   squadre?: { nome: string }
 }
 
+type Squadra = Database['public']['Tables']['squadre']['Row']
+
 export default function TesseratiPage() {
   const { profile } = useAuth()
   const [tesserati, setTesserati] = useState<Tesserato[]>([])
+  const [squadre, setSquadre] = useState<Squadra[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSquadra, setSelectedSquadra] = useState<string>('')
+  const [selectedStatoPagamento, setSelectedStatoPagamento] = useState<string>('')
+  const [filterVisitaSportiva, setFilterVisitaSportiva] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [selectedTesserato, setSelectedTesserato] = useState<Tesserato | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     fetchTesserati()
+    fetchSquadre()
   }, [])
 
   const fetchTesserati = async () => {
@@ -44,10 +53,60 @@ export default function TesseratiPage() {
     }
   }
 
-  const filteredTesserati = tesserati.filter(tesserato =>
-    `${tesserato.nome} ${tesserato.cognome}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tesserato.codice_fiscale?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const fetchSquadre = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('squadre')
+        .select('*')
+        .order('nome', { ascending: true })
+
+      if (error) throw error
+      setSquadre(data || [])
+    } catch (error) {
+      console.error('Error fetching squadre:', error)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo tesserato?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('tesserati')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      
+      fetchTesserati()
+    } catch (error) {
+      console.error('Error deleting tesserato:', error)
+      alert('Errore durante l\'eliminazione del tesserato')
+    }
+  }
+
+  const handleEdit = (tesserato: Tesserato) => {
+    setSelectedTesserato(tesserato)
+    setIsEditMode(true)
+    setShowForm(true)
+  }
+
+  const filteredTesserati = tesserati.filter(tesserato => {
+    const matchesSearch = searchTerm === '' || 
+      `${tesserato.nome} ${tesserato.cognome}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tesserato.codice_fiscale?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tesserato.codice_cartellino?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesSquadra = selectedSquadra === '' || tesserato.squadra_id === selectedSquadra
+    
+    const matchesStatoPagamento = selectedStatoPagamento === '' || tesserato.stato_pagamento === selectedStatoPagamento
+    
+    const matchesVisitaSportiva = filterVisitaSportiva === '' || 
+      (filterVisitaSportiva === 'si' && tesserato.visita_sportiva === true) ||
+      (filterVisitaSportiva === 'no' && (tesserato.visita_sportiva === false || tesserato.visita_sportiva === null))
+    
+    return matchesSearch && matchesSquadra && matchesStatoPagamento && matchesVisitaSportiva
+  })
 
   const getStatusColor = (stato: string) => {
     switch (stato) {
@@ -111,21 +170,52 @@ export default function TesseratiPage() {
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Cerca per nome, cognome o codice fiscale..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Cerca per nome, cognome, CF o codice cartellino..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtri
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedSquadra}
+                onChange={(e) => setSelectedSquadra(e.target.value)}
+              >
+                <option value="">Tutte le squadre</option>
+                {squadre.map(squadra => (
+                  <option key={squadra.id} value={squadra.id}>
+                    {squadra.nome}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedStatoPagamento}
+                onChange={(e) => setSelectedStatoPagamento(e.target.value)}
+              >
+                <option value="">Tutti i pagamenti</option>
+                <option value="pagato">Pagato</option>
+                <option value="non_pagato">Non Pagato</option>
+                <option value="parziale">Parziale</option>
+              </select>
+              <select
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={filterVisitaSportiva}
+                onChange={(e) => setFilterVisitaSportiva(e.target.value)}
+              >
+                <option value="">Tutte le visite</option>
+                <option value="si">Con visita sportiva</option>
+                <option value="no">Senza visita sportiva</option>
+              </select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -155,12 +245,14 @@ export default function TesseratiPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Ruolo:</span>
-                  <span className="text-sm text-gray-600 capitalize">
-                    {tesserato.ruolo_squadra}
-                  </span>
-                </div>
+                {tesserato.codice_cartellino && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Cartellino:</span>
+                    <span className="text-sm text-gray-600">
+                      {tesserato.codice_cartellino}
+                    </span>
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Data di nascita:</span>
@@ -173,6 +265,17 @@ export default function TesseratiPage() {
                   <span className="text-sm font-medium">Pagamento:</span>
                   <span className={`text-xs px-2 py-1 rounded-full capitalize ${getStatusColor(tesserato.stato_pagamento)}`}>
                     {tesserato.stato_pagamento.replace('_', ' ')}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Visita sportiva:</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    tesserato.visita_sportiva 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {tesserato.visita_sportiva ? 'Effettuata' : 'Non effettuata'}
                   </span>
                 </div>
                 
@@ -205,14 +308,28 @@ export default function TesseratiPage() {
               
               {(profile?.role === 'admin' || profile?.role === 'dirigente') && (
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEdit(tesserato)}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Modifica
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    title="Documenti"
+                  >
                     <FileText className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDelete(tesserato.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -251,10 +368,18 @@ export default function TesseratiPage() {
 
       {showForm && (
         <TesseratoForm
-          onClose={() => setShowForm(false)}
+          tesserato={selectedTesserato}
+          isEditMode={isEditMode}
+          onClose={() => {
+            setShowForm(false)
+            setSelectedTesserato(null)
+            setIsEditMode(false)
+          }}
           onSuccess={() => {
             fetchTesserati()
             setShowForm(false)
+            setSelectedTesserato(null)
+            setIsEditMode(false)
           }}
         />
       )}
