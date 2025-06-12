@@ -22,12 +22,29 @@ export default function SquadrePage() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchSquadre()
+    let isMounted = true
+
+    const loadData = async () => {
+      if (isMounted) {
+        await fetchSquadre()
+      }
+    }
+
+    loadData()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const fetchSquadre = async () => {
+    // Previeni chiamate multiple durante il caricamento
+    if (loading && squadre.length > 0) return
+    
     try {
-      // Prima otteniamo tutte le squadre
+      setLoading(true)
+      
+      // Otteniamo tutte le squadre
       const { data: squadreData, error: squadreError } = await supabase
         .from('squadre')
         .select('*')
@@ -35,22 +52,26 @@ export default function SquadrePage() {
 
       if (squadreError) throw squadreError
 
-      // Poi contiamo i tesserati per ogni squadra
-      const squadreWithCount = await Promise.all(
-        (squadreData || []).map(async (squadra) => {
-          const { count, error: countError } = await supabase
-            .from('tesserati')
-            .select('*', { count: 'exact', head: true })
-            .eq('squadra_id', squadra.id)
+      // Otteniamo tutti i tesserati in una singola query
+      const { data: tesseratiData, error: tesseratiError } = await supabase
+        .from('tesserati')
+        .select('squadra_id')
 
-          if (countError) {
-            console.error('Error counting tesserati:', countError)
-            return { ...squadra, tesserati_count: 0 }
-          }
+      if (tesseratiError) throw tesseratiError
 
-          return { ...squadra, tesserati_count: count || 0 }
-        })
-      )
+      // Contiamo i tesserati per ogni squadra
+      const tesseratiCount: Record<string, number> = {}
+      tesseratiData?.forEach(tesserato => {
+        if (tesserato.squadra_id) {
+          tesseratiCount[tesserato.squadra_id] = (tesseratiCount[tesserato.squadra_id] || 0) + 1
+        }
+      })
+
+      // Combiniamo i dati
+      const squadreWithCount = (squadreData || []).map(squadra => ({
+        ...squadra,
+        tesserati_count: tesseratiCount[squadra.id] || 0
+      }))
 
       setSquadre(squadreWithCount)
     } catch (error) {

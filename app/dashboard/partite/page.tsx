@@ -7,9 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Plus, Trophy, Calendar, Clock, MapPin, Edit, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
+import PartitaForm from '@/components/forms/PartitaForm'
 
 type Partita = Database['public']['Tables']['partite']['Row'] & {
   squadre?: { nome: string }
+  categorie_avversari?: {
+    nome_categoria: string
+    avversari: {
+      nome_societa: string
+    }
+  }
 }
 
 export default function PartitePage() {
@@ -17,6 +24,9 @@ export default function PartitePage() {
   const [partite, setPartite] = useState<Partita[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming')
+  const [showForm, setShowForm] = useState(false)
+  const [selectedPartita, setSelectedPartita] = useState<Partita | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -29,7 +39,13 @@ export default function PartitePage() {
         .from('partite')
         .select(`
           *,
-          squadre:squadra_id (nome)
+          squadre:squadra_id (nome),
+          categorie_avversari:categoria_avversario_id (
+            nome_categoria,
+            avversari:avversario_id (
+              nome_societa
+            )
+          )
         `)
 
       const today = new Date().toISOString().split('T')[0]
@@ -53,6 +69,30 @@ export default function PartitePage() {
     }
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa partita?')) return
+    
+    try {
+      const { error } = await supabase
+        .from('partite')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      
+      fetchPartite()
+    } catch (error) {
+      console.error('Error deleting partita:', error)
+      alert('Errore durante l\'eliminazione della partita')
+    }
+  }
+
+  const handleEdit = (partita: Partita) => {
+    setSelectedPartita(partita)
+    setIsEditMode(true)
+    setShowForm(true)
+  }
+
   const getCompetitionColor = (tipo: string) => {
     switch (tipo.toLowerCase()) {
       case 'campionato':
@@ -72,6 +112,15 @@ export default function PartitePage() {
     const today = new Date()
     const matchDate = new Date(data)
     return matchDate >= today
+  }
+
+  const getAvversarioDisplay = (partita: Partita) => {
+    // Se abbiamo i dati della nuova struttura, usali
+    if (partita.categorie_avversari?.avversari?.nome_societa) {
+      return `${partita.categorie_avversari.avversari.nome_societa} ${partita.categorie_avversari.nome_categoria}`
+    }
+    // Altrimenti usa il campo vecchio per compatibilità
+    return partita.avversario || 'Avversario non specificato'
   }
 
   if (loading) {
@@ -95,7 +144,10 @@ export default function PartitePage() {
           </p>
         </div>
         {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => setShowForm(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Nuova Partita
           </Button>
@@ -140,7 +192,7 @@ export default function PartitePage() {
                 <div className="md:col-span-2">
                   <div className="flex items-center space-x-3 mb-2">
                     <h3 className="text-lg font-semibold">
-                      {partita.squadre?.nome} vs {partita.avversario}
+                      {partita.squadre?.nome} vs {getAvversarioDisplay(partita)}
                     </h3>
                     <span className={`text-xs px-2 py-1 rounded-full ${getCompetitionColor(partita.tipo_competizione)}`}>
                       {partita.tipo_competizione}
@@ -188,7 +240,11 @@ export default function PartitePage() {
                 {/* Actions */}
                 {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
                   <div className="flex space-x-2 justify-end">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(partita)}
+                    >
                       <Edit className="h-4 w-4 mr-1" />
                       Modifica
                     </Button>
@@ -198,7 +254,12 @@ export default function PartitePage() {
                         Convoca
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDelete(partita.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -222,7 +283,10 @@ export default function PartitePage() {
               }
             </p>
             {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
-              <Button className="mt-4">
+              <Button 
+                className="mt-4"
+                onClick={() => setShowForm(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Programma una partita
               </Button>
@@ -263,6 +327,24 @@ export default function PartitePage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {showForm && (
+        <PartitaForm
+          partita={selectedPartita}
+          isEditMode={isEditMode}
+          onClose={() => {
+            setShowForm(false)
+            setSelectedPartita(null)
+            setIsEditMode(false)
+          }}
+          onSuccess={() => {
+            fetchPartite()
+            setShowForm(false)
+            setSelectedPartita(null)
+            setIsEditMode(false)
+          }}
+        />
       )}
     </div>
   )
