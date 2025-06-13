@@ -188,7 +188,7 @@ function DashboardContent({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-2">
+          <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
             {filteredNavigation.map((item) => {
               const Icon = item.icon
               return (
