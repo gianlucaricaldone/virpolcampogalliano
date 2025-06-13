@@ -15,7 +15,7 @@ type CategoriaAvversario = Database['public']['Tables']['categorie_avversari']['
 
 interface CategoriaForm {
   id?: string
-  nome_categoria: string
+  nome_categoria: string | null
   responsabile_nome: string
   responsabile_telefono: string
   responsabile_email: string
@@ -52,16 +52,16 @@ export default function AvversarioForm({ onClose, onSuccess, avversario, isEditM
       setCategorie(avversario.categorie_avversari.map(cat => ({
         id: cat.id,
         nome_categoria: cat.nome_categoria,
-        responsabile_nome: cat.responsabile_nome || '',
-        responsabile_telefono: cat.responsabile_telefono || '',
-        responsabile_email: cat.responsabile_email || '',
-        note: cat.note || '',
+        responsabile_nome: cat.responsabile_nome ?? '',
+        responsabile_telefono: cat.responsabile_telefono ?? '',
+        responsabile_email: cat.responsabile_email ?? '',
+        note: cat.note ?? '',
         isNew: false
       })))
     } else {
       // Aggiungi una categoria vuota di default
       setCategorie([{
-        nome_categoria: '',
+        nome_categoria: null,
         responsabile_nome: '',
         responsabile_telefono: '',
         responsabile_email: '',
@@ -86,7 +86,7 @@ export default function AvversarioForm({ onClose, onSuccess, avversario, isEditM
 
   const addCategoria = () => {
     setCategorie(prev => [...prev, {
-      nome_categoria: '',
+      nome_categoria: null,
       responsabile_nome: '',
       responsabile_telefono: '',
       responsabile_email: '',
@@ -134,7 +134,7 @@ export default function AvversarioForm({ onClose, onSuccess, avversario, isEditM
       }
 
       // Verifica che ci sia almeno una categoria con nome
-      const categorieValide = categorie.filter(cat => cat.nome_categoria.trim() !== '')
+      const categorieValide = categorie.filter(cat => cat.nome_categoria && cat.nome_categoria.trim() !== '')
       if (categorieValide.length === 0) {
         alert('Inserisci almeno una categoria')
         setLoading(false)
@@ -384,7 +384,7 @@ export default function AvversarioForm({ onClose, onSuccess, avversario, isEditM
                         </label>
                         <input
                           type="text"
-                          value={categoria.nome_categoria}
+                          value={categoria.nome_categoria ?? ''}
                           onChange={(e) => handleCategoriaChange(index, 'nome_categoria', e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="es. Pulcini, Esordienti, Giovanissimi..."

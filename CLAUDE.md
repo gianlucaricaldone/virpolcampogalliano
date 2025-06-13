@@ -181,3 +181,39 @@ npm run lint
 
 5. **Per Supabase queries**:
    - I campi nullable del database devono essere tipizzati come `T | null`, non `T | null | undefined`
+
+### Utility Functions per Form
+
+Usa sempre le utility functions in `lib/form-utils.ts` per gestire conversioni tra form e database:
+
+```typescript
+import { databaseToFormValues, formToDatabaseValues, validateFormData } from '@/lib/form-utils'
+
+// Conversione da database a form
+const formData = databaseToFormValues(dbData)
+
+// Validazione e conversione per salvataggio
+const validation = validateFormData(formData, schema)
+if (validation.success) {
+  await saveToDatabase(validation.data)
+}
+```
+
+### Pattern Corretti per SetStateAction
+
+Quando usi `setState` con mapping di array, assicurati che i tipi corrispondano:
+
+```typescript
+// ❌ Sbagliato - tipo database ha campi nullable ma interfaccia form no
+interface FormItem {
+  nome: string
+}
+setState(dbItems.map(item => ({ nome: item.nome }))) // Error se item.nome è string | null
+
+// ✅ Corretto - gestisci i nullable
+interface FormItem {
+  nome: string | null
+}
+// oppure
+setState(dbItems.map(item => ({ nome: item.nome ?? '' })))
+```
