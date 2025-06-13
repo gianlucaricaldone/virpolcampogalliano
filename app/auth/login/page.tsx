@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [loginMode, setLoginMode] = useState<'magic' | 'password'>('magic')
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -18,16 +20,20 @@ function LoginForm() {
       let errorMessage = ''
       switch (error) {
         case 'otp_expired':
-          errorMessage = 'Il link di accesso è scaduto. Richiedi un nuovo link.'
+          errorMessage = 'Il link di accesso è scaduto. Prova con username e password.'
+          setLoginMode('password')
           break
         case 'session_failed':
-          errorMessage = 'Errore nella creazione della sessione. Riprova.'
+          errorMessage = 'Errore nella creazione della sessione su mobile. Usa username e password.'
+          setLoginMode('password')
           break
         case 'exchange_error':
-          errorMessage = 'Errore nell\'autenticazione. Riprova.'
+          errorMessage = 'Errore nell\'autenticazione. Prova con username e password.'
+          setLoginMode('password')
           break
         case 'no_code':
-          errorMessage = 'Link di accesso non valido. Richiedi un nuovo link.'
+          errorMessage = 'Link di accesso non valido. Prova con username e password.'
+          setLoginMode('password')
           break
         case 'auth_failed':
         default:
@@ -50,33 +56,57 @@ function LoginForm() {
     setMessage('')
 
     try {
-      console.log('[Login] Attempting login for:', email)
-      console.log('[Login] Redirect URL:', getRedirectURL())
-
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: getRedirectURL(),
-          // Aumenta il tempo di validità del link (default è 1 ora)
-          // Su mobile potrebbe essere necessario più tempo
-          shouldCreateUser: false, // Non creare utenti automaticamente
-        },
-      })
-
-      console.log('[Login] OTP result:', { data, error })
-
-      if (error) {
-        console.error('[Login] OTP error:', error)
+      if (loginMode === 'password') {
+        console.log('[Login] Attempting password login for:', email)
         
-        if (error.message.includes('signup_disabled') || error.message.includes('User not found')) {
-          setMessage('Utente non trovato. Contatta l\'amministratore per essere aggiunto al sistema.')
-        } else if (error.message.includes('rate_limit')) {
-          setMessage('Troppi tentativi. Attendi qualche minuto prima di riprovare.')
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        console.log('[Login] Password result:', { data, error })
+
+        if (error) {
+          console.error('[Login] Password error:', error)
+          
+          if (error.message.includes('Invalid login credentials')) {
+            setMessage('Email o password non corretti.')
+          } else if (error.message.includes('rate_limit')) {
+            setMessage('Troppi tentativi. Attendi qualche minuto prima di riprovare.')
+          } else {
+            setMessage('Errore durante il login: ' + error.message)
+          }
         } else {
-          setMessage('Errore durante l\'invio del link: ' + error.message)
+          console.log('[Login] Password login successful, redirecting to dashboard')
+          router.push('/dashboard')
         }
       } else {
-        setMessage('Link di accesso inviato! Controlla la tua email (anche nello spam). Il link è valido per 1 ora.')
+        console.log('[Login] Attempting magic link login for:', email)
+        console.log('[Login] Redirect URL:', getRedirectURL())
+
+        const { data, error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: getRedirectURL(),
+            shouldCreateUser: false,
+          },
+        })
+
+        console.log('[Login] OTP result:', { data, error })
+
+        if (error) {
+          console.error('[Login] OTP error:', error)
+          
+          if (error.message.includes('signup_disabled') || error.message.includes('User not found')) {
+            setMessage('Utente non trovato. Contatta l\'amministratore per essere aggiunto al sistema.')
+          } else if (error.message.includes('rate_limit')) {
+            setMessage('Troppi tentativi. Attendi qualche minuto prima di riprovare.')
+          } else {
+            setMessage('Errore durante l\'invio del link: ' + error.message)
+          }
+        } else {
+          setMessage('Link di accesso inviato! Controlla la tua email (anche nello spam). Il link è valido per 1 ora.')
+        }
       }
     } catch (error: any) {
       console.error('[Login] Unexpected error:', error)
@@ -98,6 +128,32 @@ function LoginForm() {
           </p>
         </div>
 
+        {/* Toggle Metodo Login */}
+        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setLoginMode('magic')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              loginMode === 'magic' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Link via Email
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginMode('password')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              loginMode === 'password' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Username e Password
+          </button>
+        </div>
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -114,14 +170,42 @@ function LoginForm() {
             />
           </div>
 
+          {loginMode === 'password' && (
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Inserisci la password"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Invio in corso...' : 'Invia Link di Accesso'}
+            {loading ? 'Accesso in corso...' : 
+             loginMode === 'password' ? 'Accedi' : 'Invia Link di Accesso'}
           </button>
         </form>
+
+        {/* Suggerimento per mobile */}
+        {loginMode === 'magic' && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-md">
+            <p className="text-sm text-blue-700">
+              📱 <strong>Su mobile?</strong> Se hai problemi con il link email, 
+              usa "Username e Password" qui sopra per un accesso più affidabile.
+            </p>
+          </div>
+        )}
 
         {message && (
           <div className={`mt-4 p-3 rounded-md text-sm ${

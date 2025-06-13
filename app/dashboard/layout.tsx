@@ -76,6 +76,7 @@ function DashboardContent({
     { name: 'Magazzino', href: '/dashboard/magazzino', icon: Package, roles: ['admin', 'dirigente', 'allenatore'] },
     { name: 'Economia', href: '/dashboard/admin/economia', icon: DollarSign, roles: ['admin'] },
     { name: 'Gestione Utenti', href: '/dashboard/admin/utenti', icon: UserCog, roles: ['admin'] },
+    { name: 'Password Utenti', href: '/dashboard/admin/password-setup', icon: Shield, roles: ['admin'] },
     { name: 'Parametri', href: '/dashboard/admin/parametri', icon: Cog, roles: ['admin'] },
   ]
 
