@@ -85,3 +85,99 @@ npm run lint
 - Fixed RLS policies to prevent recursion
 - Added auth trigger for automatic profile creation
 - Updated navigation with Tornei submenu
+
+## TypeScript Best Practices per Build Vercel
+
+### Errori Comuni e Soluzioni
+
+1. **Errore: `Argument of type 'string | null | undefined' is not assignable to parameter of type 'string | null'`**
+   - **Causa**: Le funzioni accettano `string | null` ma ricevono `string | null | undefined`
+   - **Soluzione**: Usa il nullish coalescing operator `??` invece di optional chaining quando passi parametri
+   ```typescript
+   // ❌ Sbagliato
+   isCertificateExpiring(tesserato.dati_stagionali?.scadenza_certificato)
+   
+   // ✅ Corretto
+   isCertificateExpiring(tesserato.dati_stagionali?.scadenza_certificato ?? null)
+   ```
+
+2. **Gestione Form Data**
+   - **Regola**: Inizializza i campi opzionali con `null` invece di stringa vuota
+   - **Usa type safety per form data**:
+   ```typescript
+   interface FormData {
+     telefono: string | null
+     email: string | null
+   }
+   
+   // Inizializzazione corretta
+   const [formData, setFormData] = useState<FormData>({
+     telefono: tesserato?.telefono ?? null,
+     email: tesserato?.email ?? null
+   })
+   ```
+
+3. **Conversione Stringhe Vuote**
+   - **Crea utility functions dedicate**:
+   ```typescript
+   const toNullableString = (value: string): string | null => 
+     value.trim() === '' ? null : value
+   
+   const toNullableNumber = (value: string): number | null => {
+     const num = Number(value)
+     return isNaN(num) ? null : num
+   }
+   ```
+
+4. **Evita Type Casting con `as any`**
+   - **Definisci tipi union espliciti**:
+   ```typescript
+   type UserRole = 'admin' | 'dirigente' | 'allenatore' | 'vice_allenatore' | 'tesserato' | 'genitore'
+   
+   // Type guard
+   const isValidRole = (role: string): role is UserRole => {
+     const validRoles: UserRole[] = ['admin', 'dirigente', 'allenatore', 'vice_allenatore', 'tesserato', 'genitore']
+     return validRoles.includes(role as UserRole)
+   }
+   ```
+
+5. **Gestione Errori**
+   - **Non usare `catch (error: any)`**:
+   ```typescript
+   // ✅ Corretto
+   catch (error) {
+     console.error(error instanceof Error ? error.message : 'Unknown error')
+   }
+   ```
+
+6. **Optional Properties nei Tipi Database**
+   - **Sii esplicito con undefined vs null**:
+   ```typescript
+   interface DatiStagionali {
+     scadenza_certificato: string | null  // NON string | null | undefined
+   }
+   ```
+
+### Regole da Seguire
+
+1. **Prima di ogni build**:
+   ```bash
+   npm run typecheck
+   npm run lint
+   ```
+
+2. **Quando usi optional chaining (`?.`)**:
+   - Se il risultato deve essere passato a una funzione, usa `?? null`
+   - Non lasciare mai che `undefined` si propaghi implicitamente
+
+3. **Per i form**:
+   - Definisci sempre tipi espliciti per FormData
+   - Usa `null` per campi vuoti, non stringhe vuote
+   - Crea funzioni di conversione riutilizzabili
+
+4. **Per le funzioni di validazione**:
+   - Usa type predicates per type narrowing
+   - Gestisci esplicitamente null e undefined
+
+5. **Per Supabase queries**:
+   - I campi nullable del database devono essere tipizzati come `T | null`, non `T | null | undefined`

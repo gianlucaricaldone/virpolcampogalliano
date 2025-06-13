@@ -208,7 +208,7 @@ export default function TesseratiPage() {
     }
   }
 
-  const isCertificateExpiring = (scadenza: string | null) => {
+  const isCertificateExpiring = (scadenza: string | null | undefined) => {
     if (!scadenza) return false
     const today = new Date()
     const expiry = new Date(scadenza)
@@ -216,7 +216,7 @@ export default function TesseratiPage() {
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0
   }
 
-  const isCertificateExpired = (scadenza: string | null) => {
+  const isCertificateExpired = (scadenza: string | null | undefined) => {
     if (!scadenza) return false
     const today = new Date()
     const expiry = new Date(scadenza)
