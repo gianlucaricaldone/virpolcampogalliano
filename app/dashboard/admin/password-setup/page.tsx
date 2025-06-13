@@ -33,7 +33,9 @@ export default function PasswordSetupPage() {
 
   // Solo admin possono accedere
   useEffect(() => {
-    if (profile?.role !== 'admin') {
+    console.log('Password setup - profile check:', { profile, role: profile?.role })
+    if (profile && profile.role !== 'admin') {
+      console.log('Not admin, redirecting...')
       window.location.href = '/dashboard'
     }
   }, [profile])
@@ -45,8 +47,10 @@ export default function PasswordSetupPage() {
   }, [profile])
 
   const fetchUsers = async () => {
+    console.log('fetchUsers called')
     try {
       // Query diretta alla tabella users per evitare problemi con viste
+      console.log('Making query to users table...')
       const { data, error } = await supabase
         .from('users')
         .select(`
@@ -59,6 +63,8 @@ export default function PasswordSetupPage() {
         `)
         .order('created_at', { ascending: false })
 
+      console.log('Query result:', { data, error })
+      
       if (error) throw error
       
       // Aggiungiamo i campi necessari per la compatibilità con l'interfaccia
@@ -68,6 +74,7 @@ export default function PasswordSetupPage() {
         last_sign_in_at: null
       }))
       
+      console.log('Users processed:', usersWithAuthStatus.length)
       setUsers(usersWithAuthStatus)
     } catch (error) {
       console.error('Errore nel caricamento utenti:', error)
