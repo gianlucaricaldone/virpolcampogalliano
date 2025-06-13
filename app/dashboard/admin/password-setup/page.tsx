@@ -46,13 +46,29 @@ export default function PasswordSetupPage() {
 
   const fetchUsers = async () => {
     try {
+      // Query diretta alla tabella users per evitare problemi con viste
       const { data, error } = await supabase
-        .from('v_users_auth_status')
-        .select('*')
+        .from('users')
+        .select(`
+          id,
+          email,
+          nome,
+          cognome,
+          role,
+          created_at
+        `)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setUsers(data || [])
+      
+      // Aggiungiamo i campi necessari per la compatibilità con l'interfaccia
+      const usersWithAuthStatus = (data || []).map(user => ({
+        ...user,
+        auth_method: 'magic_link_only' as const,
+        last_sign_in_at: null
+      }))
+      
+      setUsers(usersWithAuthStatus)
     } catch (error) {
       console.error('Errore nel caricamento utenti:', error)
     } finally {

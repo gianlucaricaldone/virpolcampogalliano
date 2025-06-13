@@ -56,34 +56,37 @@ IMPORTANTE: Per abilitare il login con password:
 4. Gli utenti possono poi cambiare la password dal dashboard
 ';
 
+-- NOTA: Vista disabilitata a causa di problemi con RLS e accesso auth.users
+-- La funzionalità è stata implementata direttamente nel codice usando la tabella users
+
 -- Crea una vista per vedere quali utenti hanno password impostata
-CREATE OR REPLACE VIEW public.v_users_auth_status AS
-SELECT 
-    u.id,
-    u.email,
-    p.nome,
-    p.cognome,
-    p.role,
-    CASE 
-        WHEN u.encrypted_password IS NOT NULL AND u.encrypted_password != '' 
-        THEN 'password_set'
-        ELSE 'magic_link_only'
-    END as auth_method,
-    u.created_at,
-    u.last_sign_in_at
-FROM auth.users u
-JOIN public.users p ON u.id = p.id
-ORDER BY u.created_at DESC;
+-- CREATE OR REPLACE VIEW public.v_users_auth_status AS
+-- SELECT 
+--     u.id,
+--     u.email,
+--     p.nome,
+--     p.cognome,
+--     p.role,
+--     CASE 
+--         WHEN u.encrypted_password IS NOT NULL AND u.encrypted_password != '' 
+--         THEN 'password_set'
+--         ELSE 'magic_link_only'
+--     END as auth_method,
+--     u.created_at,
+--     u.last_sign_in_at
+-- FROM auth.users u
+-- JOIN public.users p ON u.id = p.id
+-- ORDER BY u.created_at DESC;
 
 -- Aggiungi RLS alla vista
-ALTER VIEW public.v_users_auth_status OWNER TO postgres;
-GRANT SELECT ON public.v_users_auth_status TO authenticated;
+-- ALTER VIEW public.v_users_auth_status OWNER TO postgres;
+-- GRANT SELECT ON public.v_users_auth_status TO authenticated;
 
 -- Solo admin possono vedere lo status di autenticazione
-CREATE POLICY "Admin can view auth status" ON public.v_users_auth_status
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
+-- CREATE POLICY "Admin can view auth status" ON public.v_users_auth_status
+--     FOR SELECT USING (
+--         EXISTS (
+--             SELECT 1 FROM public.users 
+--             WHERE id = auth.uid() AND role = 'admin'
+--         )
+--     );
