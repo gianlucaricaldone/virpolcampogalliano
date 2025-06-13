@@ -29,7 +29,8 @@
       "Bash(NODE_ENV=production npm run build 2>&1)",
       "WebFetch(domain:supabase.com)",
       "Bash(vercel env:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
