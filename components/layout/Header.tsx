@@ -18,7 +18,15 @@ const navigation = [
       { name: 'Prima Squadra', href: '/squadre/prima-squadra' },
     ]
   },
-  { name: 'Tornei', href: '/tornei' },
+  { 
+    name: 'Tornei', 
+    href: '/tornei',
+    submenu: [
+      { name: 'Tutti i tornei', href: '/tornei' },
+      { name: 'Iscrizioni', href: '/tornei/iscrizioni' },
+      { name: 'Calendario', href: '/tornei/calendario' },
+    ]
+  },
   { name: 'News', href: '/news' },
   { name: 'Dove Siamo', href: '/dove-siamo' },
   { name: 'Contatti', href: '/contatti' },
