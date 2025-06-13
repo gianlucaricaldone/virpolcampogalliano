@@ -41,6 +41,17 @@ Sistema gestionale completo per la società sportiva Virpol Campogalliano, costr
    - Error: "Hydration failed because the initial UI does not match"
    - Solution: Ensure consistent loading states between server and client
 
+6. **Authentication Email URLs pointing to localhost**
+   - Problem: Email links contain localhost instead of production URL
+   - Solution: Configure Supabase Dashboard Authentication settings:
+     - Site URL: `https://virpolcampogalliano.vercel.app/`
+     - Redirect URLs: Add both production and development URLs:
+       ```
+       https://virpolcampogalliano.vercel.app/auth/callback
+       http://localhost:3000/auth/callback
+       ```
+   - Code uses `NEXT_PUBLIC_APP_URL` environment variable as primary redirect URL
+
 ### UI Components
 - **Header**: Using `ModernHeader` component (not the basic `Header`)
 - **Navigation**: Desktop uses hover dropdowns, mobile uses click-to-expand

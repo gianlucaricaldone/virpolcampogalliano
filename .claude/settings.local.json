@@ -26,7 +26,10 @@
       "Bash(npx tsc:*)",
       "Bash(vercel build:*)",
       "Bash(vercel pull:*)",
-      "Bash(NODE_ENV=production npm run build 2>&1)"
+      "Bash(NODE_ENV=production npm run build 2>&1)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(vercel env:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

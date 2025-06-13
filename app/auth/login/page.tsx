@@ -11,6 +11,12 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const getRedirectURL = () => {
+    // In produzione usa la variabile ambiente, altrimenti usa l'origin corrente
+    const baseURL = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    return `${baseURL}/auth/callback`
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -20,7 +26,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: getRedirectURL(),
         },
       })
 
