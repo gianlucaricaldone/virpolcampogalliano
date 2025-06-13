@@ -125,11 +125,25 @@ export default function LoginPage() {
 
         {message && (
           <div className={`mt-4 p-3 rounded-md text-sm ${
-            message.includes('Errore') 
+            message.includes('Errore') || message.includes('scaduto') || message.includes('non valido')
               ? 'bg-red-50 text-red-700 border border-red-200' 
               : 'bg-green-50 text-green-700 border border-green-200'
           }`}>
             {message}
+            {(message.includes('scaduto') || message.includes('non valido')) && email && (
+              <div className="mt-3">
+                <button
+                  onClick={() => {
+                    setMessage('')
+                    handleLogin({ preventDefault: () => {} } as React.FormEvent)
+                  }}
+                  className="text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                  disabled={loading}
+                >
+                  Richiedi nuovo link
+                </button>
+              </div>
+            )}
           </div>
         )}
 
