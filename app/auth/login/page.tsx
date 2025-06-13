@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -9,7 +9,34 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  useEffect(() => {
+    const error = searchParams.get('error')
+    if (error) {
+      let errorMessage = ''
+      switch (error) {
+        case 'otp_expired':
+          errorMessage = 'Il link di accesso è scaduto. Richiedi un nuovo link.'
+          break
+        case 'session_failed':
+          errorMessage = 'Errore nella creazione della sessione. Riprova.'
+          break
+        case 'exchange_error':
+          errorMessage = 'Errore nell\'autenticazione. Riprova.'
+          break
+        case 'no_code':
+          errorMessage = 'Link di accesso non valido. Richiedi un nuovo link.'
+          break
+        case 'auth_failed':
+        default:
+          errorMessage = 'Errore durante l\'autenticazione. Riprova.'
+          break
+      }
+      setMessage(errorMessage)
+    }
+  }, [searchParams])
 
   const getRedirectURL = () => {
     // In produzione usa la variabile ambiente, altrimenti usa l'origin corrente
@@ -23,20 +50,37 @@ export default function LoginPage() {
     setMessage('')
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      console.log('[Login] Attempting login for:', email)
+      console.log('[Login] Redirect URL:', getRedirectURL())
+
+      const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: getRedirectURL(),
+          // Aumenta il tempo di validità del link (default è 1 ora)
+          // Su mobile potrebbe essere necessario più tempo
+          shouldCreateUser: false, // Non creare utenti automaticamente
         },
       })
 
+      console.log('[Login] OTP result:', { data, error })
+
       if (error) {
-        setMessage('Errore durante l\'invio del link: ' + error.message)
+        console.error('[Login] OTP error:', error)
+        
+        if (error.message.includes('signup_disabled') || error.message.includes('User not found')) {
+          setMessage('Utente non trovato. Contatta l\'amministratore per essere aggiunto al sistema.')
+        } else if (error.message.includes('rate_limit')) {
+          setMessage('Troppi tentativi. Attendi qualche minuto prima di riprovare.')
+        } else {
+          setMessage('Errore durante l\'invio del link: ' + error.message)
+        }
       } else {
-        setMessage('Link di accesso inviato! Controlla la tua email.')
+        setMessage('Link di accesso inviato! Controlla la tua email (anche nello spam). Il link è valido per 1 ora.')
       }
-    } catch (error) {
-      setMessage('Errore imprevisto durante l\'accesso')
+    } catch (error: any) {
+      console.error('[Login] Unexpected error:', error)
+      setMessage('Errore imprevisto durante l\'accesso: ' + (error?.message || 'Errore sconosciuto'))
     } finally {
       setLoading(false)
     }
