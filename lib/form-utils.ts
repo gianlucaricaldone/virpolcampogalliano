@@ -139,17 +139,8 @@ export function databaseToFormValues<T extends Record<string, any>>(
     
     if (value === null || value === undefined) {
       result[key] = ''
-    } else if (typeof value === 'boolean') {
-      result[key] = value.toString()
-    } else if (typeof value === 'number') {
-      result[key] = value.toString()
-    } else if (value instanceof Date) {
-      result[key] = dateToString(value)
-    } else if (typeof value === 'string') {
-      result[key] = value
     } else {
-      // For complex types, keep as is
-      result[key] = value
+      result[key] = String(value)
     }
   }
   

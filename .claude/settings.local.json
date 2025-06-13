@@ -23,7 +23,10 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(supabase db:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(vercel build:*)",
+      "Bash(vercel pull:*)",
+      "Bash(NODE_ENV=production npm run build 2>&1)"
     ],
     "deny": []
   }
