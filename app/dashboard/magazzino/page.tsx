@@ -711,7 +711,6 @@ export default function MagazzinoPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Squadra</label>
               <select
                 value={filtroSquadra}
                 onChange={(e) => setFiltroSquadra(e.target.value)}
