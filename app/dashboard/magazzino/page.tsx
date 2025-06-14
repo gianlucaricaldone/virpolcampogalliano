@@ -6,7 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Package, Search, Filter, History, AlertCircle, Users, User, Calendar, Minus, Upload, Image, X } from 'lucide-react'
+import { Plus, Package, Search, Filter, History, AlertCircle, Users, User, Calendar, Minus, Upload, Image, X, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 
@@ -28,6 +28,7 @@ interface ArticoloMagazzino {
   codice_tracking: string | null
   foto_url: string | null
   assegnazioni_attive: any[] | null
+  variazione_quantita?: number  // Differenza dalla quantità iniziale (escludendo rettifiche e assegnazioni)
 }
 
 interface FormData {
@@ -133,7 +134,20 @@ export default function MagazzinoPage() {
         .order('nome_articolo')
 
       if (error) throw error
-      setArticoli(data || [])
+      
+      // Calcola la variazione per ogni articolo
+      const articoliConVariazione = await Promise.all((data || []).map(async (articolo) => {
+        // Calcola la variazione escludendo rettifiche e assegnazioni
+        // La variazione è la differenza tra quantità attuale e iniziale
+        const variazione_quantita = articolo.quantita - articolo.quantita_iniziale
+        
+        return {
+          ...articolo,
+          variazione_quantita
+        }
+      }))
+      
+      setArticoli(articoliConVariazione)
     } catch (error) {
       console.error('Errore nel caricamento articoli:', error)
     } finally {
@@ -391,6 +405,76 @@ export default function MagazzinoPage() {
     }
   }
 
+  const handleDeleteArticolo = async (articolo: ArticoloMagazzino) => {
+    // Verifica se ci sono assegnazioni attive
+    if (articolo.assegnazioni_attive && articolo.assegnazioni_attive.length > 0) {
+      alert('⚠️ Non è possibile eliminare questo articolo perché ha delle assegnazioni attive. Prima restituisci tutto il materiale assegnato.')
+      return
+    }
+
+    // Conferma eliminazione
+    const confirmDelete = confirm(
+      `⚠️ ATTENZIONE: Eliminazione Articolo\n\n` +
+      `Stai per eliminare definitivamente:\n` +
+      `📦 ${articolo.nome_articolo}\n` +
+      `🏷️ ${articolo.tipo_materiale}\n` +
+      `📊 Quantità: ${articolo.quantita}\n\n` +
+      `Questa azione NON può essere annullata!\n` +
+      `Tutti i movimenti storici verranno persi.\n\n` +
+      `Sei sicuro di voler procedere?`
+    )
+
+    if (!confirmDelete) return
+
+    try {
+      setLoading(true)
+
+      // Elimina l'immagine dallo storage se presente
+      if (articolo.foto_url) {
+        const fileName = articolo.foto_url.split('/').pop()
+        if (fileName) {
+          const { error: deleteImageError } = await supabase.storage
+            .from('magazzino')
+            .remove([`articoli/${fileName}`])
+          
+          if (deleteImageError) {
+            console.warn('Errore nell\'eliminazione dell\'immagine:', deleteImageError)
+            // Non bloccare l'eliminazione per errori dell'immagine
+          }
+        }
+      }
+
+      // Elimina prima i movimenti (per evitare constraint violations)
+      const { error: movimentiError } = await supabase
+        .from('movimenti_magazzino')
+        .delete()
+        .eq('materiale_id', articolo.id)
+
+      if (movimentiError) {
+        console.warn('Errore nell\'eliminazione movimenti:', movimentiError)
+        // Continua comunque, potrebbero non esserci movimenti
+      }
+
+      // Elimina l'articolo
+      const { error: deleteError } = await supabase
+        .from('magazzino')
+        .delete()
+        .eq('id', articolo.id)
+
+      if (deleteError) throw deleteError
+
+      // Ricarica la lista
+      await fetchArticoli()
+      
+      alert(`✅ Articolo "${articolo.nome_articolo}" eliminato con successo`)
+    } catch (error: any) {
+      console.error('Errore nell\'eliminazione:', error)
+      alert(`❌ Errore nell'eliminazione: ${error.message || 'Errore sconosciuto'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getStatoBadge = (stato: string) => {
     switch (stato) {
       case 'disponibile':
@@ -401,6 +485,28 @@ export default function MagazzinoPage() {
         return <Badge className="bg-red-100 text-red-800">Esaurito</Badge>
       default:
         return <Badge>{stato}</Badge>
+    }
+  }
+
+  const getVariazioneBadge = (variazione: number) => {
+    if (variazione === 0) {
+      return null // Non mostrare nulla se non c'è variazione
+    }
+    
+    if (variazione > 0) {
+      return (
+        <Badge className="bg-blue-100 text-blue-800 ml-2">
+          <Plus className="h-3 w-3 mr-1" />
+          +{variazione}
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge className="bg-orange-100 text-orange-800 ml-2">
+          <Minus className="h-3 w-3 mr-1" />
+          {Math.abs(variazione)}
+        </Badge>
+      )
     }
   }
 
@@ -862,9 +968,16 @@ export default function MagazzinoPage() {
               </div>
 
               <div className="space-y-2 mb-4">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Quantità totale:</span>
-                  <span className="font-medium">{articolo.quantita}</span>
+                  <div className="flex items-center">
+                    <span className="font-medium">{articolo.quantita}</span>
+                    {articolo.variazione_quantita !== undefined && getVariazioneBadge(articolo.variazione_quantita)}
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Iniziale:</span>
+                  <span className="font-medium text-gray-500">{articolo.quantita_iniziale}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Assegnati:</span>
@@ -906,42 +1019,53 @@ export default function MagazzinoPage() {
                 </div>
                 
                 {canEdit && (
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => {
+                          setSelectedArticolo(articolo)
+                          setMovimentoForm({
+                            tipo: 'scarico',
+                            quantita: 1,
+                            causale: 'Materiale perso',
+                            note: ''
+                          })
+                          setShowMovimentoModal(true)
+                        }}
+                      >
+                        <Minus className="mr-1 h-3 w-3" />
+                        Perso
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
+                        onClick={() => {
+                          setSelectedArticolo(articolo)
+                          setMovimentoForm({
+                            tipo: 'carico',
+                            quantita: 1,
+                            causale: 'Materiale ritrovato',
+                            note: ''
+                          })
+                          setShowMovimentoModal(true)
+                        }}
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        Ritrovato
+                      </Button>
+                    </div>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => {
-                        setSelectedArticolo(articolo)
-                        setMovimentoForm({
-                          tipo: 'scarico',
-                          quantita: 1,
-                          causale: 'Materiale perso',
-                          note: ''
-                        })
-                        setShowMovimentoModal(true)
-                      }}
+                      className="w-full text-red-700 border-red-300 hover:bg-red-50"
+                      onClick={() => handleDeleteArticolo(articolo)}
                     >
-                      <Minus className="mr-1 h-3 w-3" />
-                      Perso
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={() => {
-                        setSelectedArticolo(articolo)
-                        setMovimentoForm({
-                          tipo: 'carico',
-                          quantita: 1,
-                          causale: 'Materiale ritrovato',
-                          note: ''
-                        })
-                        setShowMovimentoModal(true)
-                      }}
-                    >
-                      <Plus className="mr-1 h-3 w-3" />
-                      Ritrovato
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      Elimina Articolo
                     </Button>
                   </div>
                 )}
