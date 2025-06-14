@@ -6,7 +6,7 @@ import { useSeason } from '@/contexts/SeasonContext'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Calendar, Check, X, Filter, Search, Users, BarChart3, FileText, Clock, UserCheck } from 'lucide-react'
+import { Plus, Calendar, Check, X, Filter, Search, Users, BarChart3, FileText, Clock, UserCheck, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
 
 type Presenza = Database['public']['Tables']['presenze']['Row'] & {
@@ -241,6 +241,58 @@ export default function PresenzePage() {
       fetchPresenze()
     } catch (error) {
       console.error('Error updating bulk presences:', error)
+    }
+  }
+
+  const handleDeleteAllPresences = async () => {
+    if (!stagioneCorrente?.id) return
+    
+    // Conferma multipla per sicurezza
+    const squadraNome = squadre.find(s => s.id === selectedSquadra)?.nome || 'Squadra sconosciuta'
+    const dataFormatted = new Date(selectedDate).toLocaleDateString('it-IT')
+    
+    const firstConfirm = confirm(
+      `⚠️ ATTENZIONE!\n\n` +
+      `Stai per eliminare TUTTE le presenze per:\n` +
+      `• Data: ${dataFormatted}\n` +
+      `• Squadra: ${squadraNome}\n` +
+      `• Attività: ${selectedType}\n\n` +
+      `Questa azione NON può essere annullata.\n\n` +
+      `Vuoi continuare?`
+    )
+    
+    if (!firstConfirm) return
+    
+    const secondConfirm = confirm(
+      `🚨 ULTIMA CONFERMA\n\n` +
+      `Confermi di voler eliminare ${presenze.length} presenze?\n\n` +
+      `Questa azione è IRREVERSIBILE!`
+    )
+    
+    if (!secondConfirm) return
+
+    try {
+      setLoading(true)
+      
+      const { error } = await supabase
+        .from('presenze')
+        .delete()
+        .eq('data', selectedDate)
+        .eq('tipo', selectedType)
+        .eq('squadra_id', selectedSquadra)
+        .eq('stagione_id', stagioneCorrente.id)
+
+      if (error) throw error
+
+      // Aggiorna la lista
+      await fetchPresenze()
+      
+      alert(`✅ Eliminate con successo ${presenze.length} presenze per ${squadraNome} del ${dataFormatted}`)
+    } catch (error) {
+      console.error('Error deleting all presences:', error)
+      alert('❌ Errore durante l\'eliminazione delle presenze')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -536,10 +588,33 @@ export default function PresenzePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Lista Presenze - {new Date(selectedDate).toLocaleDateString('it-IT')}</CardTitle>
-              <CardDescription>
-                Attività: {selectedType}
-              </CardDescription>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>Lista Presenze - {new Date(selectedDate).toLocaleDateString('it-IT')}</CardTitle>
+                  <CardDescription>
+                    Attività: {selectedType}
+                    {selectedSquadra !== 'all' && (
+                      <span className="ml-2">
+                        • Squadra: {squadre.find(s => s.id === selectedSquadra)?.nome}
+                      </span>
+                    )}
+                  </CardDescription>
+                </div>
+                
+                {/* Pulsante Elimina Tutte le Presenze */}
+                {hasAnyRole(['admin', 'dirigente']) && presenze.length > 0 && selectedSquadra !== 'all' && (
+                  <Button
+                    onClick={handleDeleteAllPresences}
+                    variant="destructive"
+                    size="sm"
+                    className="ml-4"
+                    disabled={loading}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Elimina Tutte ({presenze.length})
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {presenze.length === 0 ? (
