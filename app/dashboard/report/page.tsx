@@ -134,6 +134,7 @@ export default function ReportPage() {
         .select('id, nome, cognome')
         .eq('squadra_id', selectedSquadra)
         .eq('stato', true)
+        .order('cognome', { ascending: true })
 
       if (tesseratiError) throw tesseratiError
 

@@ -96,14 +96,14 @@ export default function PresenzePage() {
         `)
         .eq('squadra_id', selectedSquadra)
         .eq('stagione_id', stagioneCorrente.id)
-        .order('tesserati(cognome)')
 
       if (error) throw error
       
-      // Estrai i tesserati e filtra quelli attivi
+      // Estrai i tesserati e filtra quelli attivi, poi ordina per cognome
       const tesseratiAttivi = (data || [])
         .map(item => item.tesserati)
         .filter(t => t !== null)
+        .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''))
       
       setTesserati(tesseratiAttivi)
     } catch (error) {
@@ -112,14 +112,17 @@ export default function PresenzePage() {
   }
 
   const fetchPresenze = async () => {
+    if (!stagioneCorrente?.id) return
+    
     try {
       let query = supabase
         .from('presenze')
         .select(`
           *,
-          tesserati:tesserato_id (nome, cognome, squadra_id)
+          tesserati:tesserato_id (id, nome, cognome)
         `)
         .eq('data', selectedDate)
+        .eq('stagione_id', stagioneCorrente.id)
         .order('created_at', { ascending: false })
 
       query = query.eq('tipo', selectedType)
@@ -128,10 +131,21 @@ export default function PresenzePage() {
 
       if (error) throw error
       
-      // Filtra per squadra se selezionata
       let filteredData = data || []
+      
+      // Filtra per squadra se selezionata
       if (selectedSquadra !== 'all') {
-        filteredData = filteredData.filter(p => p.tesserati?.squadra_id === selectedSquadra)
+        // Ottieni i tesserati della squadra selezionata nella stagione corrente
+        const { data: tesseratiSquadra, error: tesseratiError } = await supabase
+          .from('tesserati_squadre_stagioni')
+          .select('tesserato_id')
+          .eq('squadra_id', selectedSquadra)
+          .eq('stagione_id', stagioneCorrente.id)
+        
+        if (tesseratiError) throw tesseratiError
+        
+        const tesseratiIds = (tesseratiSquadra || []).map(t => t.tesserato_id)
+        filteredData = filteredData.filter(p => tesseratiIds.includes(p.tesserato_id))
       }
       
       setPresenze(filteredData)
@@ -208,7 +222,8 @@ export default function PresenzePage() {
               data: selectedDate,
               tipo: selectedType,
               presente: isPresent,
-              squadra_id: selectedSquadra !== 'all' ? selectedSquadra : null
+              squadra_id: selectedSquadra !== 'all' ? selectedSquadra : null,
+              stagione_id: stagioneCorrente?.id
             })
         }
       })
