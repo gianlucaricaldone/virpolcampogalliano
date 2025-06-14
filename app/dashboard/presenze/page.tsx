@@ -247,33 +247,52 @@ export default function PresenzePage() {
   const handleDeleteAllPresences = async () => {
     if (!stagioneCorrente?.id) return
     
-    // Conferma multipla per sicurezza
+    // Una sola conferma
     const squadraNome = squadre.find(s => s.id === selectedSquadra)?.nome || 'Squadra sconosciuta'
     const dataFormatted = new Date(selectedDate).toLocaleDateString('it-IT')
     
-    const firstConfirm = confirm(
-      `⚠️ ATTENZIONE!\n\n` +
-      `Stai per eliminare TUTTE le presenze per:\n` +
-      `• Data: ${dataFormatted}\n` +
-      `• Squadra: ${squadraNome}\n` +
-      `• Attività: ${selectedType}\n\n` +
-      `Questa azione NON può essere annullata.\n\n` +
-      `Vuoi continuare?`
+    const confirm_delete = confirm(
+      `Eliminare TUTTE le ${presenze.length} presenze per:\n\n` +
+      `📅 Data: ${dataFormatted}\n` +
+      `👥 Squadra: ${squadraNome}\n` +
+      `🏃 Attività: ${selectedType}\n\n` +
+      `⚠️ Questa azione non può essere annullata!`
     )
     
-    if (!firstConfirm) return
-    
-    const secondConfirm = confirm(
-      `🚨 ULTIMA CONFERMA\n\n` +
-      `Confermi di voler eliminare ${presenze.length} presenze?\n\n` +
-      `Questa azione è IRREVERSIBILE!`
-    )
-    
-    if (!secondConfirm) return
+    if (!confirm_delete) return
 
     try {
       setLoading(true)
       
+      console.log('Deleting presences with filters:', {
+        data: selectedDate,
+        tipo: selectedType,
+        squadra_id: selectedSquadra,
+        stagione_id: stagioneCorrente.id
+      })
+      
+      // Prima ottieni gli ID delle presenze da eliminare per debug
+      const { data: presenzeToDelete, error: fetchError } = await supabase
+        .from('presenze')
+        .select('id')
+        .eq('data', selectedDate)
+        .eq('tipo', selectedType)
+        .eq('squadra_id', selectedSquadra)
+        .eq('stagione_id', stagioneCorrente.id)
+      
+      if (fetchError) {
+        console.error('Error fetching presences to delete:', fetchError)
+        throw fetchError
+      }
+      
+      console.log('Presences found to delete:', presenzeToDelete?.length || 0)
+      
+      if (!presenzeToDelete || presenzeToDelete.length === 0) {
+        alert('❌ Nessuna presenza trovata con i filtri specificati')
+        return
+      }
+      
+      // Ora elimina
       const { error } = await supabase
         .from('presenze')
         .delete()
@@ -282,15 +301,20 @@ export default function PresenzePage() {
         .eq('squadra_id', selectedSquadra)
         .eq('stagione_id', stagioneCorrente.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('Delete error:', error)
+        throw error
+      }
 
+      console.log('Delete successful')
+      
       // Aggiorna la lista
       await fetchPresenze()
       
-      alert(`✅ Eliminate con successo ${presenze.length} presenze per ${squadraNome} del ${dataFormatted}`)
+      alert(`✅ Eliminate con successo ${presenzeToDelete.length} presenze per ${squadraNome} del ${dataFormatted}`)
     } catch (error) {
       console.error('Error deleting all presences:', error)
-      alert('❌ Errore durante l\'eliminazione delle presenze')
+      alert(`❌ Errore durante l'eliminazione: ${error.message || 'Errore sconosciuto'}`)
     } finally {
       setLoading(false)
     }
