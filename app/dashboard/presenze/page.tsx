@@ -264,17 +264,28 @@ export default function PresenzePage() {
     try {
       setLoading(true)
       
-      console.log('Deleting presences with filters:', {
+      console.log('=== DEBUG ELIMINAZIONE PRESENZE ===')
+      console.log('Filtri utilizzati:', {
         data: selectedDate,
         tipo: selectedType,
         squadra_id: selectedSquadra,
         stagione_id: stagioneCorrente.id
       })
       
-      // Prima ottieni gli ID delle presenze da eliminare per debug
+      console.log('Presenze attualmente visualizzate:', presenze.length)
+      console.log('Dettagli presenze visualizzate:', presenze.map(p => ({
+        id: p.id,
+        data: p.data,
+        tipo: p.tipo,
+        squadra_id: p.squadra_id,
+        stagione_id: p.stagione_id,
+        tesserato: p.tesserati?.nome + ' ' + p.tesserati?.cognome
+      })))
+      
+      // Prima ottieni TUTTE le presenze con questi filtri per debug
       const { data: presenzeToDelete, error: fetchError } = await supabase
         .from('presenze')
-        .select('id')
+        .select('*')
         .eq('data', selectedDate)
         .eq('tipo', selectedType)
         .eq('squadra_id', selectedSquadra)
@@ -285,33 +296,65 @@ export default function PresenzePage() {
         throw fetchError
       }
       
-      console.log('Presences found to delete:', presenzeToDelete?.length || 0)
+      console.log('Presenze trovate dal database con i filtri:', presenzeToDelete?.length || 0)
+      console.log('Dettagli presenze dal DB:', presenzeToDelete?.map(p => ({
+        id: p.id,
+        data: p.data,
+        tipo: p.tipo,
+        squadra_id: p.squadra_id,
+        stagione_id: p.stagione_id
+      })))
       
       if (!presenzeToDelete || presenzeToDelete.length === 0) {
-        alert('❌ Nessuna presenza trovata con i filtri specificati')
+        console.log('PROBLEMA: Nessuna presenza trovata con i filtri specificati')
+        console.log('Verifica manuale:')
+        
+        // Prova query senza stagione_id
+        const { data: testSenzaStagione } = await supabase
+          .from('presenze')
+          .select('*')
+          .eq('data', selectedDate)
+          .eq('tipo', selectedType)
+          .eq('squadra_id', selectedSquadra)
+        
+        console.log('Presenze senza filtro stagione_id:', testSenzaStagione?.length || 0)
+        
+        // Prova query senza squadra_id
+        const { data: testSenzaSquadra } = await supabase
+          .from('presenze')
+          .select('*')
+          .eq('data', selectedDate)
+          .eq('tipo', selectedType)
+          .eq('stagione_id', stagioneCorrente.id)
+        
+        console.log('Presenze senza filtro squadra_id:', testSenzaSquadra?.length || 0)
+        
+        alert('❌ Nessuna presenza trovata con i filtri specificati. Controlla la console per debug.')
         return
       }
       
-      // Ora elimina
-      const { error } = await supabase
+      console.log('Procedo con eliminazione di', presenzeToDelete.length, 'presenze')
+      
+      // Elimina usando gli ID specifici invece dei filtri
+      const idsToDelete = presenzeToDelete.map(p => p.id)
+      console.log('IDs da eliminare:', idsToDelete)
+      
+      const { error, count } = await supabase
         .from('presenze')
         .delete()
-        .eq('data', selectedDate)
-        .eq('tipo', selectedType)
-        .eq('squadra_id', selectedSquadra)
-        .eq('stagione_id', stagioneCorrente.id)
+        .in('id', idsToDelete)
 
       if (error) {
         console.error('Delete error:', error)
         throw error
       }
 
-      console.log('Delete successful')
+      console.log('Delete successful. Rows affected:', count)
       
       // Aggiorna la lista
       await fetchPresenze()
       
-      alert(`✅ Eliminate con successo ${presenzeToDelete.length} presenze per ${squadraNome} del ${dataFormatted}`)
+      alert(`✅ Eliminate con successo ${idsToDelete.length} presenze per ${squadraNome} del ${dataFormatted}`)
     } catch (error) {
       console.error('Error deleting all presences:', error)
       alert(`❌ Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`)
