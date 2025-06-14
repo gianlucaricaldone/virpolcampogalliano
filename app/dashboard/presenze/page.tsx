@@ -134,6 +134,7 @@ export default function PresenzePage() {
     }
     
     try {
+      // Query base per presenze
       let query = supabase
         .from('presenze')
         .select(`
@@ -142,32 +143,19 @@ export default function PresenzePage() {
         `)
         .eq('data', selectedDate)
         .eq('stagione_id', stagioneCorrente.id)
+        .eq('tipo', selectedType)
         .order('created_at', { ascending: false })
 
-      query = query.eq('tipo', selectedType)
+      // Se è selezionata una squadra specifica, filtra per squadra_id nella tabella presenze
+      if (selectedSquadra !== 'all') {
+        query = query.eq('squadra_id', selectedSquadra)
+      }
 
       const { data, error } = await query
 
       if (error) throw error
       
-      let filteredData = data || []
-      
-      // Filtra per squadra se selezionata
-      if (selectedSquadra !== 'all') {
-        // Ottieni i tesserati della squadra selezionata nella stagione corrente
-        const { data: tesseratiSquadra, error: tesseratiError } = await supabase
-          .from('tesserati_squadre_stagioni')
-          .select('tesserato_id')
-          .eq('squadra_id', selectedSquadra)
-          .eq('stagione_id', stagioneCorrente.id)
-        
-        if (tesseratiError) throw tesseratiError
-        
-        const tesseratiIds = (tesseratiSquadra || []).map(t => t.tesserato_id)
-        filteredData = filteredData.filter(p => tesseratiIds.includes(p.tesserato_id))
-      }
-      
-      setPresenze(filteredData)
+      setPresenze(data || [])
     } catch (error) {
       console.error('Error fetching presenze:', error)
     } finally {
