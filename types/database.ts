@@ -160,6 +160,7 @@ export type Database = {
           presente: boolean
           note: string | null
           squadra_id: string | null
+          stagione_id: string | null
           created_at: string
         }
         Insert: {
@@ -170,6 +171,7 @@ export type Database = {
           presente?: boolean
           note?: string | null
           squadra_id?: string | null
+          stagione_id?: string | null
           created_at?: string
         }
         Update: {
@@ -180,6 +182,7 @@ export type Database = {
           presente?: boolean
           note?: string | null
           squadra_id?: string | null
+          stagione_id?: string | null
           created_at?: string
         }
       }

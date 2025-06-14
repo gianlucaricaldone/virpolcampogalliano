@@ -72,6 +72,16 @@ npm run lint
 npm run build
 ```
 
+## 📚 Documentazione Completa del Progetto
+
+Il progetto dispone di documentazione completa nella cartella `/docs`:
+
+- **`PROJECT_OVERVIEW.md`** - Panoramica generale del progetto, stack tecnologico, architettura
+- **`DATABASE_SCHEMA.md`** - Schema database dettagliato con tutte le tabelle, relazioni, indici
+- **`API_PATTERNS.md`** - Pattern di query Supabase comuni, best practices per performance
+- **`DEVELOPMENT_GUIDE.md`** - Guida completa allo sviluppo, setup, workflow, debugging
+- **`TROUBLESHOOTING.md`** - Risoluzione problemi comuni, error handling, recovery procedures
+
 ## 🚨 IMPORTANTE: Best Practices di Sviluppo
 
 ### Prima di ogni commit/push:
@@ -121,6 +131,8 @@ cat build.log | grep -E "Error|Failed"
 - Fixed RLS policies to prevent recursion
 - Added auth trigger for automatic profile creation
 - Updated navigation with Tornei submenu
+- Completed comprehensive database analysis and optimization (29 migrations)
+- Added full documentation suite in `/docs` directory
 
 ## TypeScript Best Practices per Build Vercel
 
