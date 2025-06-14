@@ -314,7 +314,7 @@ export default function PresenzePage() {
       alert(`✅ Eliminate con successo ${presenzeToDelete.length} presenze per ${squadraNome} del ${dataFormatted}`)
     } catch (error) {
       console.error('Error deleting all presences:', error)
-      alert(`❌ Errore durante l'eliminazione: ${error.message || 'Errore sconosciuto'}`)
+      alert(`❌ Errore durante l'eliminazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`)
     } finally {
       setLoading(false)
     }

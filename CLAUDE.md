@@ -63,10 +63,35 @@ Sistema gestionale completo per la società sportiva Virpol Campogalliano, costr
 npm run dev
 
 # Run type checking
-npm run typecheck
+npm run type-check
 
 # Run linting
 npm run lint
+
+# Run build (SEMPRE TESTARE PRIMA DI PUSH)
+npm run build
+```
+
+## 🚨 IMPORTANTE: Best Practices di Sviluppo
+
+### Prima di ogni commit/push:
+1. **SEMPRE** eseguire `npm run build` per verificare che non ci siano errori di build
+2. Eseguire `npm run type-check` per controllare errori TypeScript
+3. **Mai pushare codice che non builda** - Vercel fallirà il deploy
+4. In caso di errori di build, risolverli prima di procedere
+
+### Gestione Errori TypeScript Comuni:
+- **`error` is of type 'unknown'**: Usare `error instanceof Error ? error.message : 'Errore'`
+- **Missing closing parenthesis**: Controllare tutte le parentesi e template literals
+- **Property does not exist**: Verificare tipizzazioni e optional chaining
+
+### Debug Build Errors:
+```bash
+# Se il build fallisce localmente
+npm run build 2>&1 | tee build.log
+
+# Controllare errori specifici nel log
+cat build.log | grep -E "Error|Failed"
 ```
 
 ### Testing Credentials
