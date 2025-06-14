@@ -100,9 +100,18 @@ export default function PresenzePage() {
       if (error) throw error
       
       // Estrai i tesserati e filtra quelli attivi, poi ordina per cognome
-      const tesseratiAttivi = (data || [])
-        .map(item => item.tesserati)
-        .filter(t => t !== null)
+      const tesseratiData = data || []
+      const tesseratiAttivi = tesseratiData
+        .map(item => {
+          const tesserato = item.tesserati
+          if (Array.isArray(tesserato)) {
+            return tesserato[0] || null
+          }
+          return tesserato
+        })
+        .filter((t): t is { id: string; nome: string; cognome: string; stato: boolean } => 
+          t !== null && typeof t === 'object' && 'cognome' in t
+        )
         .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''))
       
       setTesserati(tesseratiAttivi)
