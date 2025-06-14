@@ -30,7 +30,9 @@
       "WebFetch(domain:supabase.com)",
       "Bash(vercel env:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(brew list:*)",
+      "Bash(supabase:*)"
     ],
     "deny": []
   }

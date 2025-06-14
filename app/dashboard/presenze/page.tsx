@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useSeason } from '@/contexts/SeasonContext'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ type StatistichePeriodo = 'settimanale' | 'mensile'
 
 export default function PresenzePage() {
   const { profile, hasAnyRole } = useAuth()
+  const { stagioneCorrente } = useSeason()
   const [presenze, setPresenze] = useState<Presenza[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -33,8 +35,10 @@ export default function PresenzePage() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchSquadre()
-  }, [])
+    if (stagioneCorrente?.id) {
+      fetchSquadre()
+    }
+  }, [stagioneCorrente?.id, profile?.squadra_id])
 
   useEffect(() => {
     if (activeTab === 'presenze') {
@@ -51,11 +55,21 @@ export default function PresenzePage() {
   }, [selectedSquadra])
 
   const fetchSquadre = async () => {
+    if (!stagioneCorrente?.id) return
+    
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('squadre')
         .select('*')
+        .eq('stagione_id', stagioneCorrente.id)
         .order('categoria')
+
+      // Se l'utente è un allenatore o vice_allenatore, filtra solo le sue squadre
+      if (hasAnyRole(['allenatore', 'vice_allenatore']) && profile?.squadra_id && profile.squadra_id.length > 0) {
+        query = query.in('id', profile.squadra_id)
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       setSquadre(data || [])
@@ -65,16 +79,33 @@ export default function PresenzePage() {
   }
 
   const fetchTesserati = async () => {
+    if (!stagioneCorrente?.id) return
+    
     try {
+      // Usa la tabella di relazione tesserati_squadre_stagioni per ottenere i tesserati della squadra nella stagione corrente
       const { data, error } = await supabase
-        .from('tesserati')
-        .select('*')
+        .from('tesserati_squadre_stagioni')
+        .select(`
+          tesserato_id,
+          tesserati:tesserato_id (
+            id,
+            nome,
+            cognome,
+            stato
+          )
+        `)
         .eq('squadra_id', selectedSquadra)
-        .eq('stato', true)
-        .order('cognome')
+        .eq('stagione_id', stagioneCorrente.id)
+        .order('tesserati(cognome)')
 
       if (error) throw error
-      setTesserati(data || [])
+      
+      // Estrai i tesserati e filtra quelli attivi
+      const tesseratiAttivi = (data || [])
+        .map(item => item.tesserati)
+        .filter(t => t !== null)
+      
+      setTesserati(tesseratiAttivi)
     } catch (error) {
       console.error('Error fetching tesserati:', error)
     }
