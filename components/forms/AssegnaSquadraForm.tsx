@@ -25,8 +25,6 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
   const [currentSeasonData, setCurrentSeasonData] = useState<any>(null)
   const [formData, setFormData] = useState({
     squadra_id: '',
-    ruolo_squadra: '',
-    numero_maglia: '',
     stato_pagamento: 'non_pagato',
     note_pagamento: '',
     visita_sportiva: false,
@@ -86,9 +84,7 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
         setCurrentAssignment(data)
         setFormData(prev => ({
           ...prev,
-          squadra_id: data.squadra_id,
-          ruolo_squadra: data.ruolo_squadra || '',
-          numero_maglia: data.numero_maglia?.toString() || ''
+          squadra_id: data.squadra_id
         }))
       }
     } catch (error) {
@@ -139,9 +135,7 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
         const assignmentData = {
           tesserato_id: tesserato.id,
           squadra_id: formData.squadra_id,
-          stagione_id: stagioneCorrente.id,
-          ruolo_squadra: formData.ruolo_squadra || null,
-          numero_maglia: formData.numero_maglia ? parseInt(formData.numero_maglia) : null
+          stagione_id: stagioneCorrente.id
         }
 
         if (currentAssignment) {
@@ -295,37 +289,6 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
                   </select>
                 </div>
 
-                {formData.squadra_id && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ruolo in squadra
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.ruolo_squadra}
-                        onChange={(e) => setFormData(prev => ({ ...prev, ruolo_squadra: e.target.value }))}
-                        placeholder="es. Capitano, Portiere..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Numero maglia
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={formData.numero_maglia}
-                        onChange={(e) => setFormData(prev => ({ ...prev, numero_maglia: e.target.value }))}
-                        placeholder="es. 10"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </>
-                )}
               </div>
             </div>
 

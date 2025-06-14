@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useSeason } from '@/contexts/SeasonContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { X } from 'lucide-react'
@@ -14,8 +15,13 @@ interface TesseratoFormProps {
   isEditMode?: boolean
 }
 
+type Squadra = Database['public']['Tables']['squadre']['Row']
+
 export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMode = false }: TesseratoFormProps) {
+  const { stagioneCorrente } = useSeason()
   const [loading, setLoading] = useState(false)
+  const [squadre, setSquadre] = useState<Squadra[]>([])
+  const [selectedSquadra, setSelectedSquadra] = useState<string>('')
   const [formData, setFormData] = useState({
     nome: tesserato?.nome || '',
     cognome: tesserato?.cognome || '',
@@ -31,6 +37,29 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
   })
 
   const supabase = createClient()
+
+  useEffect(() => {
+    if (!isEditMode && stagioneCorrente?.id) {
+      fetchSquadre()
+    }
+  }, [stagioneCorrente?.id, isEditMode])
+
+  const fetchSquadre = async () => {
+    if (!stagioneCorrente?.id) return
+
+    try {
+      const { data, error } = await supabase
+        .from('squadre')
+        .select('*')
+        .eq('stagione_id', stagioneCorrente.id)
+        .order('nome', { ascending: true })
+
+      if (error) throw error
+      setSquadre(data || [])
+    } catch (error) {
+      console.error('Error fetching squadre:', error)
+    }
+  }
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,11 +89,30 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
 
         if (error) throw error
       } else {
-        const { error } = await supabase
+        // Crea il tesserato
+        const { data: newTesserato, error: tesseratoError } = await supabase
           .from('tesserati')
           .insert(dataToSubmit)
+          .select()
+          .single()
 
-        if (error) throw error
+        if (tesseratoError) throw tesseratoError
+
+        // Se è stata selezionata una squadra e c'è una stagione corrente, assegna il tesserato
+        if (selectedSquadra && stagioneCorrente?.id && newTesserato) {
+          const { error: assignmentError } = await supabase
+            .from('tesserati_squadre_stagioni')
+            .insert({
+              tesserato_id: newTesserato.id,
+              squadra_id: selectedSquadra,
+              stagione_id: stagioneCorrente.id
+            })
+
+          if (assignmentError) {
+            console.error('Error assigning to squadra:', assignmentError)
+            // Non blocchiamo l'operazione se l'assegnazione fallisce
+          }
+        }
       }
 
       onSuccess()
@@ -255,6 +303,29 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {!isEditMode && stagioneCorrente && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assegna a Squadra (opzionale)
+                  </label>
+                  <select
+                    value={selectedSquadra}
+                    onChange={(e) => setSelectedSquadra(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Nessuna squadra (solo tesseramento)</option>
+                    {squadre.map(squadra => (
+                      <option key={squadra.id} value={squadra.id}>
+                        {squadra.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Stagione: {stagioneCorrente.nome}
+                  </p>
+                </div>
+              )}
 
             </div>
 
