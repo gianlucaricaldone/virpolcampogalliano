@@ -666,6 +666,94 @@ export type Database = {
           updated_at?: string
         }
       }
+      movimenti_economici: {
+        Row: {
+          id: string
+          tipo: 'entrata' | 'uscita'
+          categoria: string
+          sottocategoria: string | null
+          importo: number
+          descrizione: string
+          data_movimento: string
+          metodo_pagamento: string
+          riferimento: string | null
+          note: string | null
+          tesserato_id: string | null
+          evento_id: string | null
+          stagione_id: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tipo: 'entrata' | 'uscita'
+          categoria: string
+          sottocategoria?: string | null
+          importo: number
+          descrizione: string
+          data_movimento: string
+          metodo_pagamento?: string
+          riferimento?: string | null
+          note?: string | null
+          tesserato_id?: string | null
+          evento_id?: string | null
+          stagione_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tipo?: 'entrata' | 'uscita'
+          categoria?: string
+          sottocategoria?: string | null
+          importo?: number
+          descrizione?: string
+          data_movimento?: string
+          metodo_pagamento?: string
+          riferimento?: string | null
+          note?: string | null
+          tesserato_id?: string | null
+          evento_id?: string | null
+          stagione_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      categorie_economiche: {
+        Row: {
+          id: string
+          nome: string
+          tipo: 'entrata' | 'uscita' | 'entrambi'
+          descrizione: string | null
+          colore: string
+          attiva: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          tipo: 'entrata' | 'uscita' | 'entrambi'
+          descrizione?: string | null
+          colore?: string
+          attiva?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          tipo?: 'entrata' | 'uscita' | 'entrambi'
+          descrizione?: string | null
+          colore?: string
+          attiva?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       statistiche_presenze: {
@@ -680,6 +768,18 @@ export type Database = {
           presenze: number
           totale: number
           percentuale: number
+        }
+      }
+      v_economia_stats: {
+        Row: {
+          stagione_id: string | null
+          tipo: 'entrata' | 'uscita'
+          categoria: string
+          totale: number
+          numero_movimenti: number
+          importo_medio: number
+          data_primo_movimento: string
+          data_ultimo_movimento: string
         }
       }
     }
