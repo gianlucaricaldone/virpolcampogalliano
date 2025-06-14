@@ -79,6 +79,7 @@ export default function MagazzinoPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [filterRettifiche, setFilterRettifiche] = useState(true) // Nascondi rettifiche automatiche per default
   
   const [formData, setFormData] = useState<FormData>({
     tipo_materiale: '',
@@ -1259,27 +1260,58 @@ export default function MagazzinoPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {movimenti.map((movimento) => (
-                    <div key={movimento.id} className="border rounded-lg p-4">
+                  {/* Filtri cronologia */}
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-4 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!filterRettifiche}
+                          onChange={(e) => setFilterRettifiche(!e.target.checked)}
+                          className="rounded"
+                        />
+                        <span>Mostra rettifiche automatiche</span>
+                      </label>
+                      <span className="text-gray-500">
+                        ({movimenti.filter(m => !filterRettifiche || !isRettificaAutomatica(m)).length} movimenti)
+                      </span>
+                    </div>
+                  </div>
+
+                  {movimenti
+                    .filter(movimento => !filterRettifiche || !isRettificaAutomatica(movimento))
+                    .map((movimento) => (
+                    <div key={movimento.id} className={`border rounded-lg p-4 ${isRettificaAutomatica(movimento) ? 'bg-gray-50 border-gray-200' : 'bg-white'}`}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           {getTipoMovimentoIcon(movimento.tipo_movimento)}
                           <div>
                             {getTipoMovimentoBadge(movimento.tipo_movimento)}
+                            {isRettificaAutomatica(movimento) && (
+                              <Badge className="bg-gray-100 text-gray-600 ml-2 text-xs">Auto</Badge>
+                            )}
                             <p className="text-sm text-gray-500 mt-1">
-                              {new Date(movimento.data_movimento).toLocaleString('it-IT')}
+                              {new Date(movimento.data_movimento).toLocaleDateString('it-IT')} {' '}
+                              {new Date(movimento.data_movimento).toLocaleTimeString('it-IT', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-semibold">
                             {movimento.tipo_movimento === 'rettifica' ? (
-                              <span>{movimento.quantita_prima} → {movimento.quantita_dopo}</span>
+                              <span className="text-gray-700">{movimento.quantita_prima} → {movimento.quantita_dopo}</span>
                             ) : movimento.tipo_movimento === 'assegnazione' ? (
-                              <span className="text-blue-600">↓ {movimento.quantita}</span>
+                              <span className="text-blue-600">→ {movimento.quantita}</span>
+                            ) : movimento.tipo_movimento === 'restituzione' ? (
+                              <span className="text-purple-600">← {movimento.quantita}</span>
+                            ) : movimento.tipo_movimento === 'inventario_iniziale' ? (
+                              <span className="text-yellow-600">▣ {movimento.quantita}</span>
                             ) : (
-                              <span className={movimento.tipo_movimento === 'carico' || movimento.tipo_movimento === 'restituzione' ? 'text-green-600' : 'text-red-600'}>
-                                {movimento.tipo_movimento === 'carico' || movimento.tipo_movimento === 'restituzione' ? '+' : '-'}
+                              <span className={movimento.tipo_movimento === 'carico' ? 'text-green-600' : 'text-red-600'}>
+                                {movimento.tipo_movimento === 'carico' ? '+' : '-'}
                                 {movimento.quantita}
                               </span>
                             )}
@@ -1291,12 +1323,14 @@ export default function MagazzinoPage() {
                       </div>
 
                       <div className="border-t pt-3">
-                        <p className="font-medium mb-2">{movimento.causale}</p>
+                        <p className="font-medium mb-2 text-gray-800">
+                          {getDescrizioneTipoMovimento(movimento)}
+                        </p>
                         
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            <span>{movimento.utente_nome}</span>
+                            <span>{movimento.utente_nome || 'Sistema'}</span>
                           </div>
                           {movimento.squadra_nome && (
                             <div className="flex items-center gap-1">
@@ -1454,5 +1488,40 @@ const getTipoMovimentoBadge = (tipo: string) => {
       return <Badge className="bg-yellow-100 text-yellow-800">▣ Inventario</Badge>
     default:
       return <Badge>{tipo}</Badge>
+  }
+}
+
+const isRettificaAutomatica = (movimento: any) => {
+  // Considera una rettifica come automatica se:
+  // 1. È di tipo 'rettifica' 
+  // 2. La causale contiene parole chiave tipiche del sistema
+  return movimento.tipo_movimento === 'rettifica' && (
+    !movimento.causale || 
+    movimento.causale.toLowerCase().includes('automatica') ||
+    movimento.causale.toLowerCase().includes('sistema') ||
+    movimento.causale.toLowerCase().includes('aggiornamento') ||
+    movimento.utente_nome === 'Sistema' ||
+    !movimento.utente_nome
+  )
+}
+
+const getDescrizioneTipoMovimento = (movimento: any) => {
+  switch (movimento.tipo_movimento) {
+    case 'carico':
+      return movimento.causale || 'Aggiunta materiale'
+    case 'scarico': 
+      return movimento.causale || 'Rimozione materiale'
+    case 'assegnazione':
+      return `Assegnato a ${movimento.squadra_nome || 'squadra'}`
+    case 'restituzione':
+      return `Restituito da ${movimento.squadra_nome || 'squadra'}`
+    case 'rettifica':
+      return isRettificaAutomatica(movimento) 
+        ? 'Correzione automatica inventario' 
+        : (movimento.causale || 'Correzione manuale inventario')
+    case 'inventario_iniziale':
+      return 'Inventario iniziale'
+    default:
+      return movimento.causale || 'Movimento generico'
   }
 }
