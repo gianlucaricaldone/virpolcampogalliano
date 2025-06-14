@@ -6,7 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Package, Search, Filter, History, AlertCircle, Users, User, Calendar, Minus } from 'lucide-react'
+import { Plus, Package, Search, Filter, History, AlertCircle, Users, User, Calendar, Minus, Upload, Image, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 
@@ -26,6 +26,7 @@ interface ArticoloMagazzino {
   stato_giacenza: 'disponibile' | 'sotto_scorta' | 'esaurito'
   ubicazione: string | null
   codice_tracking: string | null
+  foto_url: string | null
   assegnazioni_attive: any[] | null
 }
 
@@ -75,6 +76,8 @@ export default function MagazzinoPage() {
   const [showModal, setShowModal] = useState(false)
   const [modalLoading, setModalLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   
   const [formData, setFormData] = useState<FormData>({
     tipo_materiale: '',
@@ -158,7 +161,35 @@ export default function MagazzinoPage() {
     setError(null)
 
     try {
-      // Crea l'articolo
+      let foto_url = null
+
+      // Upload foto se presente
+      if (selectedFile) {
+        const fileExt = selectedFile.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+        const filePath = `articoli/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('magazzino')
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) {
+          console.error('Errore upload immagine:', uploadError)
+          throw new Error('Errore nel caricamento dell\'immagine')
+        }
+
+        // Ottieni URL pubblico
+        const { data: { publicUrl } } = supabase.storage
+          .from('magazzino')
+          .getPublicUrl(filePath)
+
+        foto_url = publicUrl
+      }
+
+      // Crea l'articolo con l'URL della foto
       const { data: articolo, error: insertError } = await supabase
         .from('magazzino')
         .insert({
@@ -172,6 +203,7 @@ export default function MagazzinoPage() {
           colore: formData.colore || null,
           ubicazione: formData.ubicazione || null,
           codice_tracking: formData.codice_tracking || null,
+          foto_url: foto_url,
           stato: 'disponibile'
         })
         .select()
@@ -224,6 +256,8 @@ export default function MagazzinoPage() {
         note_assegnazione: ''
       })
       setShowModal(false)
+      setSelectedFile(null)
+      setImagePreview(null)
       fetchArticoli()
     } catch (error: any) {
       console.error('Errore nel salvataggio:', error)
@@ -239,6 +273,33 @@ export default function MagazzinoPage() {
       ...prev,
       [name]: name.includes('quantita') ? (value ? parseInt(value) : 0) : value
     }))
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Verifica tipo file
+      if (!file.type.startsWith('image/')) {
+        setError('Per favore seleziona un file immagine')
+        return
+      }
+      
+      // Verifica dimensione (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('L\'immagine deve essere inferiore a 5MB')
+        return
+      }
+
+      setSelectedFile(file)
+      setError(null)
+
+      // Crea preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   const articoliFiltrati = articoli.filter(articolo => {
@@ -532,6 +593,50 @@ export default function MagazzinoPage() {
                   />
                 </div>
 
+                {/* Campo upload foto */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">
+                    Foto Articolo
+                  </label>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center w-full">
+                      <label htmlFor="foto-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                        {imagePreview ? (
+                          <div className="relative w-full h-full">
+                            <img src={imagePreview} alt="Preview" className="w-full h-full object-contain rounded-lg" />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setSelectedFile(null)
+                                setImagePreview(null)
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                            <p className="mb-2 text-sm text-gray-500">
+                              <span className="font-semibold">Clicca per caricare</span> o trascina qui
+                            </p>
+                            <p className="text-xs text-gray-500">PNG, JPG o WEBP (MAX. 5MB)</p>
+                          </div>
+                        )}
+                        <input
+                          id="foto-upload"
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Sezione assegnazione squadra */}
                 <div className="md:col-span-2 border-t pt-4 mt-4">
                   <div className="flex items-center mb-4">
@@ -731,6 +836,20 @@ export default function MagazzinoPage() {
         {articoliFiltrati.map(articolo => (
           <Card key={articolo.id} className="hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
+              {/* Immagine articolo */}
+              {articolo.foto_url && (
+                <div className="mb-4 w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                  <img 
+                    src={articolo.foto_url} 
+                    alt={articolo.nome_articolo}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                </div>
+              )}
+              
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold">{articolo.nome_articolo}</h3>
