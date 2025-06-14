@@ -37,6 +37,8 @@ export default function PresenzePage() {
   useEffect(() => {
     if (stagioneCorrente?.id) {
       fetchSquadre()
+    } else {
+      setLoading(false)
     }
   }, [stagioneCorrente?.id, profile?.squadra_id])
 
@@ -55,7 +57,10 @@ export default function PresenzePage() {
   }, [selectedSquadra])
 
   const fetchSquadre = async () => {
-    if (!stagioneCorrente?.id) return
+    if (!stagioneCorrente?.id) {
+      setLoading(false)
+      return
+    }
     
     try {
       let query = supabase
@@ -75,6 +80,8 @@ export default function PresenzePage() {
       setSquadre(data || [])
     } catch (error) {
       console.error('Error fetching squadre:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -121,7 +128,10 @@ export default function PresenzePage() {
   }
 
   const fetchPresenze = async () => {
-    if (!stagioneCorrente?.id) return
+    if (!stagioneCorrente?.id) {
+      setLoading(false)
+      return
+    }
     
     try {
       let query = supabase
