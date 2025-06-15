@@ -1,6 +1,103 @@
 export type Database = {
   public: {
     Tables: {
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          logo_url: string | null
+          primary_color: string
+          secondary_color: string
+          subscription_plan: 'base' | 'plus' | 'enterprise' | 'trial'
+          subscription_status: 'active' | 'inactive' | 'suspended' | 'cancelled'
+          subscription_started_at: string | null
+          subscription_expires_at: string | null
+          trial_ends_at: string | null
+          max_tesserati: number
+          max_squadre: number
+          max_storage_gb: number
+          features: Record<string, any>
+          settings: Record<string, any>
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          deleted_at: string | null
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          subscription_plan?: 'base' | 'plus' | 'enterprise' | 'trial'
+          subscription_status?: 'active' | 'inactive' | 'suspended' | 'cancelled'
+          subscription_started_at?: string | null
+          subscription_expires_at?: string | null
+          trial_ends_at?: string | null
+          max_tesserati?: number
+          max_squadre?: number
+          max_storage_gb?: number
+          features?: Record<string, any>
+          settings?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          subscription_plan?: 'base' | 'plus' | 'enterprise' | 'trial'
+          subscription_status?: 'active' | 'inactive' | 'suspended' | 'cancelled'
+          subscription_started_at?: string | null
+          subscription_expires_at?: string | null
+          trial_ends_at?: string | null
+          max_tesserati?: number
+          max_squadre?: number
+          max_storage_gb?: number
+          features?: Record<string, any>
+          settings?: Record<string, any>
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          is_active?: boolean
+        }
+      }
+      organization_members: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          role: 'owner' | 'admin' | 'member' | 'viewer'
+          invited_by: string | null
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          role?: 'owner' | 'admin' | 'member' | 'viewer'
+          invited_by?: string | null
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          role?: 'owner' | 'admin' | 'member' | 'viewer'
+          invited_by?: string | null
+          joined_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
@@ -12,6 +109,8 @@ export type Database = {
           cognome: string | null
           telefono: string | null
           has_logged_in: boolean | null
+          organization_id: string | null
+          migrated_at: string | null
           created_at: string
           updated_at: string
         }
@@ -25,6 +124,8 @@ export type Database = {
           cognome?: string | null
           telefono?: string | null
           has_logged_in?: boolean | null
+          organization_id?: string | null
+          migrated_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -38,6 +139,8 @@ export type Database = {
           cognome?: string | null
           telefono?: string | null
           has_logged_in?: boolean | null
+          organization_id?: string | null
+          migrated_at?: string | null
           created_at?: string
           updated_at?: string
         }
