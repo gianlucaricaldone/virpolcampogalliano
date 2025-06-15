@@ -89,7 +89,7 @@ export default function ModernHomePage() {
       <main>
         {/* Hero Section */}
         <ParallaxSection
-          backgroundImage="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
+          backgroundImage="/images/home/hero-background.jpg"
           className="relative h-screen flex items-center justify-center"
           overlay={true}
           overlayOpacity={0.5}
@@ -101,21 +101,18 @@ export default function ModernHomePage() {
             >
               {/* Logo animato */}
               <div className="mb-8">
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-r from-green-600 to-blue-600 shadow-2xl transform hover:scale-110 transition-transform duration-300">
-                  {/* Sostituisci con logo quando disponibile:
+                <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-r from-yellow-400 to-blue-600 shadow-2xl transform hover:scale-110 transition-transform duration-300">
                   <Image 
                     src="/images/home/virpol-logo.png"
                     alt="Logo Virpol Campogalliano"
-                    width={60}
-                    height={60}
+                    width={100}
+                    height={100}
                     className="object-contain"
                   />
-                  */}
-                  <span className="text-white font-bold text-3xl">VC</span>
                 </div>
               </div>
               
-              <h1 className="text-6xl md:text-8xl font-bold mb-6 bg-gradient-to-r from-white via-green-200 to-blue-200 bg-clip-text text-transparent animate-pulse">
+              <h1 className="text-6xl md:text-8xl font-bold mb-6 bg-gradient-to-r from-white via-yellow-200 to-blue-200 bg-clip-text text-transparent animate-pulse">
                 Virpol
               </h1>
               <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white">
@@ -123,13 +120,13 @@ export default function ModernHomePage() {
               </h2>
               
               <p className="text-xl md:text-2xl mb-12 text-gray-200 max-w-3xl mx-auto leading-relaxed">
-                Dove la passione per il calcio diventa <span className="text-green-400 font-semibold">famiglia</span>. 
+                Dove la passione per il calcio diventa <span className="text-yellow-400 font-semibold">famiglia</span>. 
                 Formazione, crescita e successi dal 2009.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
                 <Link href="/iscrizioni">
-                  <Button size="lg" className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-lg px-10 py-4 rounded-full shadow-2xl hover:shadow-green-500/25 transform hover:scale-105 transition-all duration-300 border-0">
+                  <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700 text-lg px-10 py-4 rounded-full shadow-2xl hover:shadow-yellow-500/25 transform hover:scale-105 transition-all duration-300 border-0">
                     <Sparkles className="mr-2 h-6 w-6" />
                     Iscriviti Ora
                   </Button>
@@ -164,7 +161,7 @@ export default function ModernHomePage() {
         </ParallaxSection>
 
         {/* Stats Section */}
-        <section id="stats" className="py-20 bg-gradient-to-r from-green-600 to-blue-600 text-white relative overflow-hidden">
+        <section id="stats" className="py-20 bg-gradient-to-r from-yellow-400 to-blue-600 text-white relative overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{
@@ -175,7 +172,7 @@ export default function ModernHomePage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection animation="fade-in" className="text-center mb-12">
               <h2 className="text-4xl font-bold mb-4">I Nostri Numeri</h2>
-              <p className="text-xl text-green-100">Una storia di successi e crescita costante</p>
+              <p className="text-xl text-yellow-100">Una storia di successi e crescita costante</p>
             </AnimatedSection>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -189,7 +186,7 @@ export default function ModernHomePage() {
                       <AnimatedCounter end={stats.anni_storia} suffix="+" />
                     )}
                   </div>
-                  <div className="text-green-100">Anni di Storia</div>
+                  <div className="text-yellow-100">Anni di Storia</div>
                 </div>
               </AnimatedSection>
 
@@ -245,7 +242,7 @@ export default function ModernHomePage() {
               <AnimatedSection animation="slide-in-left">
                 <div>
                   <h2 className="text-5xl font-bold text-gray-900 mb-6">
-                    La Nostra <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Storia</span>
+                    La Nostra <span className="bg-gradient-to-r from-yellow-400 to-blue-600 bg-clip-text text-transparent">Storia</span>
                   </h2>
                   <p className="text-xl text-gray-600 mb-6 leading-relaxed">
                     Dal 2009, la <strong>Virpol Campogalliano</strong> rappresenta un punto di riferimento 
@@ -274,7 +271,7 @@ export default function ModernHomePage() {
                   </div>
                   
                   <Link href="/storia">
-                    <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-lg px-8 py-3 rounded-full">
+                    <Button className="bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700 text-lg px-8 py-3 rounded-full">
                       Scopri di più
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
@@ -332,7 +329,7 @@ export default function ModernHomePage() {
                   </div>
                   
                   {/* Elemento decorativo */}
-                  <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-r from-green-400 to-blue-400 rounded-full opacity-20 animate-pulse"></div>
+                  <div className="absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-r from-yellow-400 to-blue-400 rounded-full opacity-20 animate-pulse"></div>
                   <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-20 animate-pulse delay-1000"></div>
                 </div>
               </AnimatedSection>
@@ -345,7 +342,7 @@ export default function ModernHomePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection animation="fade-in" className="text-center mb-16">
               <h2 className="text-5xl font-bold text-gray-900 mb-6">
-                Le Nostre <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Squadre</span>
+                Le Nostre <span className="bg-gradient-to-r from-yellow-400 to-blue-600 bg-clip-text text-transparent">Squadre</span>
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                 Dalla Scuola Calcio alla Prima Squadra, offriamo percorsi formativi 
@@ -400,7 +397,7 @@ export default function ModernHomePage() {
                         </p>
                         
                         <Link href={`/squadre/${squadra.id}`}>
-                          <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-xl group-hover:shadow-lg transition-all">
+                          <Button className="w-full bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700 rounded-xl group-hover:shadow-lg transition-all">
                             Scopri di più
                             <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                           </Button>
@@ -414,7 +411,7 @@ export default function ModernHomePage() {
 
             <AnimatedSection animation="fade-in" delay={800} className="text-center mt-12">
               <Link href="/squadre">
-                <Button size="lg" className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-lg px-12 py-4 rounded-full shadow-xl">
+                <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700 text-lg px-12 py-4 rounded-full shadow-xl">
                   Vedi Tutte le Squadre
                   <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>
@@ -428,7 +425,7 @@ export default function ModernHomePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection animation="fade-in" className="text-center mb-16">
               <h2 className="text-5xl font-bold text-gray-900 mb-6">
-                I Nostri <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Tornei</span>
+                I Nostri <span className="bg-gradient-to-r from-yellow-400 to-blue-600 bg-clip-text text-transparent">Tornei</span>
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                 Organizziamo tornei di calcio per tutte le categorie. Scopri gli eventi in programma e le iscrizioni aperte.
@@ -461,7 +458,7 @@ export default function ModernHomePage() {
                         {/* Badge iscrizioni */}
                         <div className="absolute top-4 right-4">
                           {torneo.iscrizioni_aperte ? (
-                            <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
+                            <span className="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
                               <UserCheck className="h-3 w-3 mr-1" />
                               Iscrizioni Aperte
                             </span>
@@ -513,8 +510,8 @@ export default function ModernHomePage() {
                             )}
                             
                             {torneo.costo_iscrizione && (
-                              <div className="text-center p-3 bg-green-50 rounded-lg">
-                                <div className="font-semibold text-green-600 mb-1">
+                              <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                                <div className="font-semibold text-yellow-600 mb-1">
                                   €{torneo.costo_iscrizione}
                                 </div>
                                 <div className="text-xs text-gray-600">Iscrizione</div>
@@ -547,7 +544,7 @@ export default function ModernHomePage() {
                         
                         <div className="mt-6">
                           {torneo.iscrizioni_aperte ? (
-                            <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-xl">
+                            <Button className="w-full bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700 rounded-xl">
                               <Trophy className="mr-2 h-4 w-4" />
                               Iscriviti al Torneo
                             </Button>
@@ -574,7 +571,7 @@ export default function ModernHomePage() {
             {tornei.length > 0 && (
               <AnimatedSection animation="fade-in" delay={600} className="text-center mt-12">
                 <Link href="/tornei">
-                  <Button size="lg" variant="outline" className="text-lg px-12 py-4 rounded-full border-2 hover:bg-gradient-to-r hover:from-green-600 hover:to-blue-600 hover:text-white hover:border-transparent transition-all">
+                  <Button size="lg" variant="outline" className="text-lg px-12 py-4 rounded-full border-2 hover:bg-gradient-to-r hover:from-yellow-400 hover:to-blue-600 hover:text-white hover:border-transparent transition-all">
                     Vedi Tutti i Tornei
                     <ArrowRight className="ml-2 h-6 w-6" />
                   </Button>
@@ -589,7 +586,7 @@ export default function ModernHomePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection animation="fade-in" className="text-center mb-16">
               <h2 className="text-5xl font-bold text-gray-900 mb-6">
-                News & <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Eventi</span>
+                News & <span className="bg-gradient-to-r from-yellow-400 to-blue-600 bg-clip-text text-transparent">Eventi</span>
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 Rimani sempre aggiornato sulle ultime novità e gli eventi della nostra società
@@ -680,7 +677,7 @@ export default function ModernHomePage() {
 
             <AnimatedSection animation="fade-in" delay={600} className="text-center mt-12">
               <Link href="/news">
-                <Button size="lg" variant="outline" className="text-lg px-12 py-4 rounded-full border-2 hover:bg-gradient-to-r hover:from-green-600 hover:to-blue-600 hover:text-white hover:border-transparent transition-all">
+                <Button size="lg" variant="outline" className="text-lg px-12 py-4 rounded-full border-2 hover:bg-gradient-to-r hover:from-yellow-400 hover:to-blue-600 hover:text-white hover:border-transparent transition-all">
                   Vedi Tutte le News
                   <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>
@@ -700,7 +697,7 @@ export default function ModernHomePage() {
               <AnimatedSection animation="slide-in-left">
                 <div>
                   <h2 className="text-5xl font-bold mb-6">
-                    Le Nostre <span className="text-green-400">Strutture</span>
+                    Le Nostre <span className="text-yellow-400">Strutture</span>
                   </h2>
                   <p className="text-xl mb-8 text-gray-200 leading-relaxed">
                     Il nostro centro sportivo offre impianti moderni e attrezzature 
@@ -724,7 +721,7 @@ export default function ModernHomePage() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-3 p-4 bg-white/10 backdrop-blur-sm rounded-xl">
-                      <Users className="h-8 w-8 text-green-400 flex-shrink-0" />
+                      <Users className="h-8 w-8 text-yellow-400 flex-shrink-0" />
                       <div>
                         <div className="font-semibold">8 Spogliatoi</div>
                         <div className="text-sm text-gray-300">Moderni e attrezzati</div>
@@ -752,7 +749,7 @@ export default function ModernHomePage() {
         </ParallaxSection>
 
         {/* CTA Section */}
-        <section className="py-24 bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 text-white relative overflow-hidden">
+        <section className="py-24 bg-gradient-to-r from-yellow-400 via-blue-600 to-blue-700 text-white relative overflow-hidden">
           {/* Animated Background */}
           <div className="absolute inset-0">
             <div className="absolute inset-0 bg-black/20"></div>

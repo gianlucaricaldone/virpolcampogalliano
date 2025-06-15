@@ -71,8 +71,14 @@ export default function ModernHeader() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-3 group">
                 <div className="relative h-10 w-10 transition-transform group-hover:scale-110">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-600 to-blue-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">VC</span>
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 to-blue-600 flex items-center justify-center p-1.5">
+                    <Image 
+                      src="/images/home/virpol-logo.png"
+                      alt="Logo Virpol Campogalliano"
+                      width={32}
+                      height={32}
+                      className="object-contain"
+                    />
                   </div>
                 </div>
                 <div className="hidden sm:block">
@@ -100,7 +106,7 @@ export default function ModernHeader() {
                       onMouseEnter={() => setDropdownOpen(item.name)}
                       onMouseLeave={() => setDropdownOpen(null)}
                     >
-                      <button className={`flex items-center text-sm font-medium transition-colors hover:text-green-500 ${
+                      <button className={`flex items-center text-sm font-medium transition-colors hover:text-yellow-500 ${
                         scrolled ? 'text-gray-700' : 'text-white'
                       }`}>
                         {item.name}
@@ -115,7 +121,7 @@ export default function ModernHeader() {
                               <Link
                                 key={subItem.name}
                                 href={subItem.href}
-                                className="block px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors rounded-lg mx-2"
+                                className="block px-4 py-3 text-sm text-gray-700 hover:bg-yellow-50 hover:text-yellow-600 transition-colors rounded-lg mx-2"
                               >
                                 {subItem.name}
                               </Link>
@@ -127,7 +133,7 @@ export default function ModernHeader() {
                   ) : (
                     <Link
                       href={item.href}
-                      className={`text-sm font-medium transition-colors hover:text-green-500 ${
+                      className={`text-sm font-medium transition-colors hover:text-yellow-500 ${
                         scrolled ? 'text-gray-700' : 'text-white'
                       }`}
                     >
@@ -141,7 +147,7 @@ export default function ModernHeader() {
             {/* CTA Button */}
             <div className="hidden lg:flex lg:items-center lg:space-x-4">
               <Link href="/iscrizioni">
-                <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all">
+                <Button className="bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all">
                   Iscriviti Ora
                 </Button>
               </Link>
@@ -211,7 +217,7 @@ export default function ModernHeader() {
                     ) : (
                       <Link
                         href={item.href}
-                        className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
+                        className="block px-3 py-2 text-base font-medium text-gray-700 hover:bg-yellow-50 hover:text-yellow-600 rounded-lg transition-colors"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         {item.name}
@@ -221,7 +227,7 @@ export default function ModernHeader() {
                 ))}
                 <div className="pt-4 space-y-2">
                   <Link href="/iscrizioni" className="block">
-                    <Button className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
+                    <Button className="w-full bg-gradient-to-r from-yellow-400 to-blue-600 hover:from-yellow-500 hover:to-blue-700">
                       Iscriviti Ora
                     </Button>
                   </Link>
@@ -241,7 +247,7 @@ export default function ModernHeader() {
       {showBackToTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-8 right-8 z-50 p-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 animate-in fade-in slide-in-from-bottom-4"
+          className="fixed bottom-8 right-8 z-50 p-3 bg-gradient-to-r from-yellow-400 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 animate-in fade-in slide-in-from-bottom-4"
         >
           <ArrowUp className="h-5 w-5" />
         </button>
