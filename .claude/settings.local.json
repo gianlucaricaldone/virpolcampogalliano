@@ -32,7 +32,8 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(brew list:*)",
-      "Bash(supabase:*)"
+      "Bash(supabase:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

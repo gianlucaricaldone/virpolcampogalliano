@@ -89,7 +89,8 @@ export default function ModernHomePage() {
       <main>
         {/* Hero Section */}
         <ParallaxSection
-          backgroundImage="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
+          backgroundImage="/images/home/hero-background.jpg"
+          fallbackImage="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
           className="relative h-screen flex items-center justify-center"
           overlay={true}
           overlayOpacity={0.5}
@@ -102,6 +103,15 @@ export default function ModernHomePage() {
               {/* Logo animato */}
               <div className="mb-8">
                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-r from-green-600 to-blue-600 shadow-2xl transform hover:scale-110 transition-transform duration-300">
+                  {/* Sostituisci con logo quando disponibile:
+                  <Image 
+                    src="/images/home/virpol-logo.png"
+                    alt="Logo Virpol Campogalliano"
+                    width={60}
+                    height={60}
+                    className="object-contain"
+                  />
+                  */}
                   <span className="text-white font-bold text-3xl">VC</span>
                 </div>
               </div>
