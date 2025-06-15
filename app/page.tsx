@@ -89,8 +89,7 @@ export default function ModernHomePage() {
       <main>
         {/* Hero Section */}
         <ParallaxSection
-          backgroundImage="/images/home/hero-background.jpg"
-          fallbackImage="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
+          backgroundImage="https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
           className="relative h-screen flex items-center justify-center"
           overlay={true}
           overlayOpacity={0.5}

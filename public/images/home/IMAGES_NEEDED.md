@@ -61,9 +61,9 @@
 ## 🔄 **Stato Attuale**
 
 - ✅ Struttura cartelle creata
-- ✅ Codice preparato con fallback
+- ✅ Codice usa immagini Unsplash temporanee
 - ⏳ Immagini da aggiungere
-- ⏳ Codice da decommentare dopo upload
+- ⏳ Codice da aggiornare dopo upload
 
 ## 📝 **Note Tecniche**
 
@@ -74,15 +74,12 @@
 
 ## 🚀 **Dopo l'Upload**
 
-Decommenta le sezioni nel codice:
+Aggiorna il backgroundImage in app/page.tsx:
 
 ```tsx
-// Da decommentare in app/page.tsx:
-<Image 
-  src="/images/home/hero-background.jpg"
-  alt="Campo Virpol Campogalliano"
-  fill
-  className="object-cover"
-  priority
-/>
+// Cambia da:
+backgroundImage="https://images.unsplash.com/photo-..."
+
+// A:
+backgroundImage="/images/home/hero-background.jpg"
 ```
