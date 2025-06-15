@@ -1,165 +1,235 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { User } from '@supabase/supabase-js'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { getSupabaseClient, getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
 import { Database } from '@/types/database'
 import { useTestRole } from '@/contexts/TestRoleContext'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
+type UserRole = Database['public']['Enums']['user_role']
 
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [mounted, setMounted] = useState(false)
-  const [sessionChecked, setSessionChecked] = useState(false)
+interface AuthState {
+  user: User | null
+  profile: UserProfile | null
+  loading: boolean
+  error: Error | null
+}
+
+interface UseAuthReturn extends AuthState {
+  signOut: () => Promise<void>
+  hasRole: (role: string) => boolean
+  hasAnyRole: (roles: string[]) => boolean
+  roles: UserRole[]
+  isAdmin: boolean
+  isDirigente: boolean
+  isAllenatore: boolean
+  isTesserato: boolean
+  isGenitore: boolean
+}
+
+const PROFILE_CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
+
+/**
+ * Custom hook for authentication and user profile management
+ * Handles auth state, profile fetching, role checking, and caching
+ */
+export function useAuth(): UseAuthReturn {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    profile: null,
+    loading: true,
+    error: null
+  })
+  
+  const sessionCheckedRef = useRef(false)
+  const mountedRef = useRef(false)
   const supabase = getSupabaseClient()
   
-  // Try to get test role context, but don't fail if not available
-  let testRole: string | null = null
-  try {
-    const testRoleContext = useTestRole()
-    testRole = testRoleContext.testRole
-  } catch {
-    // Context not available (outside provider), use normal auth
-  }
+  // Get test role context if available
+  const testRole = useTestRoleContext()
 
-  useEffect(() => {
-    setMounted(true)
+  /**
+   * Fetches user profile from database with caching
+   */
+  const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
+    const cacheKey = `profile_${userId}`
     
-    if (sessionChecked) {
-      console.log('Session already checked, skipping...')
+    // Check cache first
+    const cachedProfile = getCachedQuery<UserProfile>(cacheKey)
+    if (cachedProfile) {
+      console.log('[useAuth] Using cached profile')
+      return cachedProfile
+    }
+    
+    console.log('[useAuth] Fetching profile from DB...')
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      if (error) {
+        console.error('[useAuth] Profile fetch error:', error)
+        throw error
+      }
+      
+      if (data) {
+        // Cache the profile
+        setCachedQuery(cacheKey, data, PROFILE_CACHE_DURATION)
+      }
+      
+      return data
+    } catch (error) {
+      console.error('[useAuth] Error fetching profile:', error)
+      return null
+    }
+  }, [supabase])
+
+  /**
+   * Handles auth state changes
+   */
+  const handleAuthStateChange = useCallback(async (event: AuthChangeEvent, session: Session | null) => {
+    console.log('[useAuth] Auth state changed:', event, session?.user?.id)
+    
+    if (!mountedRef.current) return
+    
+    const user = session?.user ?? null
+    
+    setAuthState(prev => ({ ...prev, user, loading: true }))
+    
+    if (user) {
+      try {
+        const profile = await fetchUserProfile(user.id)
+        setAuthState(prev => ({ 
+          ...prev, 
+          profile, 
+          loading: false,
+          error: null 
+        }))
+      } catch (error) {
+        setAuthState(prev => ({ 
+          ...prev, 
+          profile: null, 
+          loading: false,
+          error: error instanceof Error ? error : new Error('Failed to fetch profile')
+        }))
+      }
+    } else {
+      setAuthState(prev => ({ 
+        ...prev, 
+        profile: null, 
+        loading: false,
+        error: null 
+      }))
+    }
+  }, [fetchUserProfile])
+
+  /**
+   * Initializes auth state on mount
+   */
+  useEffect(() => {
+    mountedRef.current = true
+    
+    if (sessionCheckedRef.current) {
+      console.log('[useAuth] Session already checked, skipping...')
       return
     }
     
-    // Get initial session
-    const getSession = async () => {
+    const initAuth = async () => {
       try {
-        console.log('[useAuth] Starting getSession...')
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        console.log('[useAuth] Session result:', { session: !!session, error: sessionError })
+        console.log('[useAuth] Initializing auth...')
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        if (sessionError) {
-          console.error('[useAuth] Session error:', sessionError)
-          setLoading(false)
-          return
+        if (error) {
+          throw error
         }
         
-        setUser(session?.user ?? null)
+        sessionCheckedRef.current = true
         
-        if (session?.user) {
-          console.log('[useAuth] User found, ID:', session.user.id)
-          
-          // Try to get cached profile first
-          const cacheKey = `profile_${session.user.id}`
-          const cachedProfile = getCachedQuery<UserProfile>(cacheKey)
-          
-          if (cachedProfile) {
-            console.log('[useAuth] Using cached profile')
-            setProfile(cachedProfile)
-          } else {
-            console.log('[useAuth] Fetching profile from DB...')
-            
-            // Get user profile from database
-            const { data: profile, error: profileError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single()
-            
-            console.log('[useAuth] Profile result:', { data: profile, error: profileError })
-            
-            if (profileError) {
-              console.error('[useAuth] Profile error:', profileError)
-            }
-            
-            if (profile) {
-              // Cache the profile for 10 minutes
-              setCachedQuery(cacheKey, profile, 10 * 60 * 1000)
-            }
-            
-            setProfile(profile)
-          }
-        } else {
-          console.log('[useAuth] No user in session')
-        }
+        // Handle initial session
+        await handleAuthStateChange('SIGNED_IN', session)
+        
       } catch (error) {
-        console.error('[useAuth] Unexpected error:', error)
-      } finally {
-        console.log('[useAuth] Completing, setting loading to false')
-        setLoading(false)
-        setSessionChecked(true)
+        console.error('[useAuth] Init error:', error)
+        setAuthState(prev => ({ 
+          ...prev, 
+          loading: false,
+          error: error instanceof Error ? error : new Error('Failed to initialize auth')
+        }))
       }
     }
-
-    getSession()
-
-    // Listen for auth changes (temporarily disabled for debugging)
-    // const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    //   async (event: any, session: any) => {
-    //     setUser(session?.user ?? null)
-        
-    //     if (session?.user) {
-    //       const { data: profile } = await supabase
-    //         .from('users')
-    //         .select('*')
-    //         .eq('id', session.user.id)
-    //         .single()
-          
-    //       setProfile(profile)
-    //     } else {
-    //       setProfile(null)
-    //     }
-        
-    //     setLoading(false)
-    //   }
-    // )
-
-    // return () => subscription.unsubscribe()
-  }, [sessionChecked])
-
-
-  // console.log('useAuth return values:', { user, profile, loading })
-  
-  // Helper functions for role checking with fallback
-  const hasRole = useCallback((role: string): boolean => {
-    // Se esiste il campo roles (dopo migrazione), usalo
-    if (profile?.roles && profile.roles.length > 0) {
-      return profile.roles.includes(role as any)
+    
+    initAuth()
+    
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+    
+    return () => {
+      mountedRef.current = false
+      subscription.unsubscribe()
     }
-    // Altrimenti fallback al campo role singolo
-    return profile?.role === role
-  }, [profile?.roles, profile?.role])
-  
-  const hasAnyRole = useCallback((roles: string[]): boolean => {
-    // Se esiste il campo roles (dopo migrazione), usalo
-    if (profile?.roles && profile.roles.length > 0) {
-      return roles.some(role => profile.roles!.includes(role as any))
-    }
-    // Altrimenti fallback al campo role singolo
-    return roles.includes(profile?.role as any)
-  }, [profile?.roles, profile?.role])
-  
+  }, [supabase.auth, handleAuthStateChange])
+
+  /**
+   * Signs out the current user
+   */
   const signOut = useCallback(async () => {
-    // Clear cached profile on sign out
-    if (user?.id) {
-      const cacheKey = `profile_${user.id}`
-      setCachedQuery(cacheKey, null, 0) // Expire immediately
+    if (authState.user?.id) {
+      const cacheKey = `profile_${authState.user.id}`
+      setCachedQuery(cacheKey, null, 0)
     }
     await supabase.auth.signOut()
-  }, [supabase.auth, user?.id])
-  
-  // Use test role if admin is testing, otherwise use actual roles
-  const currentRole = profile?.roles?.[0] === 'admin' && testRole ? testRole : profile?.role
-  const currentRoles = profile?.roles || []
-  
-  // Memoize the profile object to prevent unnecessary re-renders
-  const memoizedProfile = useMemo(() => {
-    return profile ? { ...profile, role: currentRole } : null
-  }, [profile, currentRole])
-  
-  // Memoize role checking functions to prevent re-creation
+  }, [supabase.auth, authState.user?.id])
+
+  /**
+   * Checks if user has a specific role
+   */
+  const hasRole = useCallback((role: string): boolean => {
+    const { profile } = authState
+    if (!profile) return false
+    
+    // Support both 'roles' array and legacy 'role' field
+    if (profile.roles && profile.roles.length > 0) {
+      return profile.roles.includes(role as UserRole)
+    }
+    return profile.role === role
+  }, [authState.profile])
+
+  /**
+   * Checks if user has any of the specified roles
+   */
+  const hasAnyRole = useCallback((roles: string[]): boolean => {
+    const { profile } = authState
+    if (!profile) return false
+    
+    if (profile.roles && profile.roles.length > 0) {
+      return roles.some(role => profile.roles!.includes(role as UserRole))
+    }
+    return roles.includes(profile.role!)
+  }, [authState.profile])
+
+  // Get current role(s) considering test role for admins
+  const effectiveRole = useMemo(() => {
+    const { profile } = authState
+    if (!profile) return null
+    
+    // If admin is testing a role, use that
+    if (profile.roles?.[0] === 'admin' && testRole) {
+      return testRole
+    }
+    
+    return profile.role
+  }, [authState.profile, testRole])
+
+  const effectiveRoles = useMemo(() => {
+    const { profile } = authState
+    return profile?.roles || []
+  }, [authState.profile])
+
+  // Memoize role checks
   const roleChecks = useMemo(() => ({
     isAdmin: hasRole('admin'),
     isDirigente: hasRole('dirigente'),
@@ -167,15 +237,36 @@ export function useAuth() {
     isTesserato: hasRole('tesserato'),
     isGenitore: hasRole('genitore'),
   }), [hasRole])
-  
+
+  // Prepare final profile with effective role
+  const profileWithEffectiveRole = useMemo(() => {
+    if (!authState.profile) return null
+    return { 
+      ...authState.profile, 
+      role: (effectiveRole as UserRole) || authState.profile.role 
+    }
+  }, [authState.profile, effectiveRole])
+
   return {
-    user,
-    profile: memoizedProfile,
-    loading,
+    ...authState,
+    profile: profileWithEffectiveRole,
     signOut,
     hasRole,
     hasAnyRole,
-    roles: currentRoles,
+    roles: effectiveRoles,
     ...roleChecks,
+  }
+}
+
+/**
+ * Helper hook to safely get test role context
+ */
+function useTestRoleContext(): string | null {
+  try {
+    const { testRole } = useTestRole()
+    return testRole
+  } catch {
+    // Context not available, return null
+    return null
   }
 }
