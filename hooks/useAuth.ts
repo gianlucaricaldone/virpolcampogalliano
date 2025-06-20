@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
-import { getSupabaseClient, getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { getSupabaseClient, getCachedQuery, setCachedQuery, getCachedAuthState, setCachedAuthState, clearCachedAuthState } from '@/lib/supabase/singleton'
 import { Database } from '@/types/database'
 import { useTestRole } from '@/contexts/TestRoleContext'
 
@@ -35,10 +35,13 @@ const PROFILE_CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
  * Handles auth state, profile fetching, role checking, and caching
  */
 export function useAuth(): UseAuthReturn {
+  // Check for cached auth state first
+  const cachedAuth = getCachedAuthState()
+  
   const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    loading: true,
+    user: cachedAuth?.user || null,
+    profile: cachedAuth?.profile || null,
+    loading: !cachedAuth, // Only loading if no cache
     error: null
   })
   
@@ -103,21 +106,31 @@ export function useAuth(): UseAuthReturn {
     if (user) {
       try {
         const profile = await fetchUserProfile(user.id)
-        setAuthState(prev => ({ 
-          ...prev, 
-          profile, 
-          loading: false,
-          error: null 
-        }))
+        if (mountedRef.current) {
+          // Cache the auth state
+          setCachedAuthState(user, profile)
+          
+          setAuthState(prev => ({ 
+            ...prev, 
+            profile, 
+            loading: false,
+            error: null 
+          }))
+        }
       } catch (error) {
-        setAuthState(prev => ({ 
-          ...prev, 
-          profile: null, 
-          loading: false,
-          error: error instanceof Error ? error : new Error('Failed to fetch profile')
-        }))
+        if (mountedRef.current) {
+          setAuthState(prev => ({ 
+            ...prev, 
+            profile: null, 
+            loading: false,
+            error: error instanceof Error ? error : new Error('Failed to fetch profile')
+          }))
+        }
       }
     } else {
+      // Clear cache when no user
+      clearCachedAuthState()
+      
       setAuthState(prev => ({ 
         ...prev, 
         profile: null, 
@@ -133,21 +146,14 @@ export function useAuth(): UseAuthReturn {
   useEffect(() => {
     mountedRef.current = true
     
-    if (sessionCheckedRef.current) {
-      console.log('[useAuth] Session already checked, skipping...')
-      return
-    }
-    
     const initAuth = async () => {
       try {
-        console.log('[useAuth] Initializing auth...')
+        console.log('[useAuth] Getting session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
           throw error
         }
-        
-        sessionCheckedRef.current = true
         
         // Handle initial session
         await handleAuthStateChange('SIGNED_IN', session)
@@ -162,7 +168,10 @@ export function useAuth(): UseAuthReturn {
       }
     }
     
-    initAuth()
+    // Only initialize auth if we haven't loaded user data yet
+    if (authState.loading && !authState.user && !authState.profile) {
+      initAuth()
+    }
     
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
@@ -171,7 +180,7 @@ export function useAuth(): UseAuthReturn {
       mountedRef.current = false
       subscription.unsubscribe()
     }
-  }, [supabase.auth, handleAuthStateChange])
+  }, []) // Remove dependencies to prevent re-running
 
   /**
    * Signs out the current user
@@ -181,6 +190,7 @@ export function useAuth(): UseAuthReturn {
       const cacheKey = `profile_${authState.user.id}`
       setCachedQuery(cacheKey, null, 0)
     }
+    clearCachedAuthState()
     await supabase.auth.signOut()
   }, [supabase.auth, authState.user?.id])
 

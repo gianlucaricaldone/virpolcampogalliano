@@ -13,6 +13,34 @@ export function getSupabaseClient() {
 // Cache per query frequenti
 const queryCache = new Map<string, { data: any; timestamp: number; ttl: number }>()
 
+// Auth state cache
+let authStateCache: { user: any; profile: any; timestamp: number } | null = null
+const AUTH_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+export function getCachedAuthState() {
+  if (!authStateCache) return null
+  
+  const now = Date.now()
+  if (now > authStateCache.timestamp + AUTH_CACHE_TTL) {
+    authStateCache = null
+    return null
+  }
+  
+  return authStateCache
+}
+
+export function setCachedAuthState(user: any, profile: any) {
+  authStateCache = {
+    user,
+    profile,
+    timestamp: Date.now()
+  }
+}
+
+export function clearCachedAuthState() {
+  authStateCache = null
+}
+
 export function getCachedQuery<T>(key: string): T | null {
   const cached = queryCache.get(key)
   if (!cached) return null

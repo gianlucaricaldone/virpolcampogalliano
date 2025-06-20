@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { TestRoleProvider, useTestRole } from '@/contexts/TestRoleContext'
@@ -50,8 +51,8 @@ function DashboardContent({
     }
   }, [user, loading, router])
 
-  // Always render the loading state on initial mount to prevent hydration errors
-  if (loading || !user || !profile) {
+  // Show loading only when auth is actually loading
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -60,6 +61,11 @@ function DashboardContent({
         </div>
       </div>
     )
+  }
+  
+  // Redirect if not authenticated
+  if (!user || !profile) {
+    return null // The useEffect will handle the redirect
   }
 
   const navigation = [
@@ -192,7 +198,7 @@ function DashboardContent({
             {filteredNavigation.map((item) => {
               const Icon = item.icon
               return (
-                <a
+                <Link
                   key={item.name}
                   href={item.href}
                   onClick={() => setIsSidebarOpen(false)}
@@ -200,7 +206,7 @@ function DashboardContent({
                 >
                   <Icon className="mr-3 h-5 w-5" />
                   {item.name}
-                </a>
+                </Link>
               )
             })}
           </nav>

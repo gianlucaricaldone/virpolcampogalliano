@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTestRole } from '@/contexts/TestRoleContext'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { 
   Users, 
   Calendar, 
@@ -524,7 +525,7 @@ export default function DashboardPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {roleContent.quickActions.map((action) => (
-              <a
+              <Link
                 key={action.name}
                 href={action.href}
                 className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -532,7 +533,7 @@ export default function DashboardPage() {
                 <div className="font-medium text-gray-900">
                   {action.name}
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </CardContent>
