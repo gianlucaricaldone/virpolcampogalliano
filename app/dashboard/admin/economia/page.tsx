@@ -52,6 +52,7 @@ export default function EconomiaPage() {
   const [modalLoading, setModalLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
   
   const [movimenti, setMovimenti] = useState<MovimentoEconomico[]>([])
   const [categorie, setCategorie] = useState<CategoriaEconomica[]>([])
@@ -148,7 +149,7 @@ export default function EconomiaPage() {
     
     try {
       setModalLoading(true)
-      setError(null)
+      setModalError(null)
       
       const importoNumerico = parseFloat(formData.importo)
       if (isNaN(importoNumerico) || importoNumerico <= 0) {
@@ -194,7 +195,7 @@ export default function EconomiaPage() {
       
     } catch (error) {
       console.error('Error creating movimento:', error)
-      setError(error instanceof Error ? error.message : 'Errore nel salvare il movimento')
+      setModalError(error instanceof Error ? error.message : 'Errore nel salvare il movimento')
     } finally {
       setModalLoading(false)
     }
@@ -291,7 +292,12 @@ export default function EconomiaPage() {
           </p>
         </div>
         
-        <Dialog open={showModal} onOpenChange={setShowModal}>
+        <Dialog open={showModal} onOpenChange={(open) => {
+          setShowModal(open)
+          if (open) {
+            setModalError(null)
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="mr-2 h-4 w-4" />
@@ -305,9 +311,9 @@ export default function EconomiaPage() {
             </DialogHeader>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
+              {modalError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
+                  {modalError}
                 </div>
               )}
               
