@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeason } from '@/contexts/SeasonContext'
 import { createClient } from '@/lib/supabase/client'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Users, Edit, Trash2 } from 'lucide-react'
@@ -14,6 +15,8 @@ type Squadra = Database['public']['Tables']['squadre']['Row'] & {
   tesserati_count?: number
 }
 
+const SQUADRE_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 export default function SquadrePage() {
   const { profile, hasAnyRole } = useAuth()
   const { stagioneCorrente } = useSeason()
@@ -21,30 +24,40 @@ export default function SquadrePage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingSquadra, setEditingSquadra] = useState<Squadra | null>(null)
+  const fetchingRef = useRef(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    let isMounted = true
-
-    const loadData = async () => {
-      if (isMounted) {
-        await fetchSquadre()
+  const fetchSquadre = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = `squadre_${stagioneCorrente?.id || 'all'}`
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = getCachedQuery<Squadra[]>(cacheKey)
+      if (cachedData) {
+        console.log('[Squadre] Using cached squadre data')
+        setSquadre(cachedData)
+        setLoading(false)
+        return
       }
     }
 
-    loadData()
-
-    return () => {
-      isMounted = false
+    // Check if there's already an ongoing fetch
+    if (fetchingRef.current) {
+      console.log('[Squadre] Fetch already in progress, skipping duplicate request')
+      return
     }
-  }, [stagioneCorrente?.id])
 
-  const fetchSquadre = async () => {
-    // Previeni chiamate multiple durante il caricamento
-    if (loading && squadre.length > 0) return
+    // Prevent duplicate calls
+    if (!forceRefresh && loading && squadre.length > 0) {
+      console.log('[Squadre] Already loading with data, skipping')
+      return
+    }
     
     try {
+      fetchingRef.current = true
       setLoading(true)
+      
+      console.log('[Squadre] Fetching squadre data from database')
       
       // Otteniamo squadre filtrate per stagione corrente
       let squadreQuery = supabase
@@ -82,13 +95,34 @@ export default function SquadrePage() {
         tesserati_count: tesseratiCount[squadra.id] || 0
       }))
 
+      // Cache the result
+      setCachedQuery(cacheKey, squadreWithCount, SQUADRE_CACHE_DURATION)
+      console.log('[Squadre] Data cached for', SQUADRE_CACHE_DURATION / 1000, 'seconds')
+
       setSquadre(squadreWithCount)
     } catch (error) {
-      console.error('Error fetching squadre:', error)
+      console.error('[Squadre] Error fetching squadre:', error)
     } finally {
       setLoading(false)
+      fetchingRef.current = false
     }
-  }
+  }, [stagioneCorrente?.id, supabase, loading, squadre.length])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadData = async () => {
+      if (isMounted) {
+        await fetchSquadre()
+      }
+    }
+
+    loadData()
+
+    return () => {
+      isMounted = false
+    }
+  }, [fetchSquadre])
 
   const handleDeleteSquadra = async (squadraId: string, squadraNome: string) => {
     if (!confirm(`Sei sicuro di voler eliminare la squadra "${squadraNome}"?`)) {
@@ -104,7 +138,7 @@ export default function SquadrePage() {
       if (error) throw error
 
       alert('Squadra eliminata con successo')
-      fetchSquadre()
+      fetchSquadre(true) // Force refresh after delete
     } catch (error) {
       console.error('Error deleting squadra:', error)
       alert('Errore durante l\'eliminazione della squadra')
@@ -242,7 +276,7 @@ export default function SquadrePage() {
         <SquadraForm
           onClose={() => setShowForm(false)}
           onSuccess={() => {
-            fetchSquadre()
+            fetchSquadre(true) // Force refresh after create
             setShowForm(false)
           }}
         />
@@ -253,7 +287,7 @@ export default function SquadrePage() {
           squadra={editingSquadra}
           onClose={() => setEditingSquadra(null)}
           onSuccess={() => {
-            fetchSquadre()
+            fetchSquadre(true) // Force refresh after edit
             setEditingSquadra(null)
           }}
         />
