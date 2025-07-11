@@ -210,7 +210,7 @@ export function useAuth(): UseAuthReturn {
     }
     
     // Subscribe to auth changes (only for future changes, not initial)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       // Only handle changes after initial load
       if (sessionCheckedRef.current) {
         handleAuthStateChange(event, session)
