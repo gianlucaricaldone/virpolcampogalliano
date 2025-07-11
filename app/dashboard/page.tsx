@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeason } from '@/contexts/SeasonContext'
-import { createClient } from '@/lib/supabase/client'
+import { dashboardApi } from '@/lib/api/dashboard'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTestRole } from '@/contexts/TestRoleContext'
 import { useRouter } from 'next/navigation'
@@ -33,6 +33,16 @@ interface RecentActivity {
   href?: string
 }
 
+interface RecentActivity {
+  type: 'presenza' | 'tesserato' | 'partita' | 'report'
+  title: string
+  description: string
+  timestamp: string
+  icon: string
+  color: string
+  href?: string
+}
+
 export default function DashboardPage() {
   const { profile, loading, hasAnyRole } = useAuth()
   const { stagioneCorrente } = useSeason()
@@ -49,213 +59,39 @@ export default function DashboardPage() {
   const [loadingStats, setLoadingStats] = useState(true)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [loadingActivities, setLoadingActivities] = useState(true)
-  const supabase = createClient()
 
   const loadStats = useCallback(async () => {
     try {
-      // Esegui tutte le query in parallelo per migliori performance
-      const [
-        squadreResult,
-        tesseratiResult,
-        partiteResult,
-        presenzeResult,
-        magazzinoResult,
-        scadenzeResult
-      ] = await Promise.all([
-        // Conta squadre attive per stagione corrente
-        (() => {
-          let query = supabase
-            .from('squadre')
-            .select('*', { count: 'exact', head: true })
-          
-          if (stagioneCorrente?.id) {
-            query = query.eq('stagione_id', stagioneCorrente.id)
-          }
-          
-          return query
-        })(),
-
-        // Conta tesserati attivi
-        supabase
-          .from('tesserati')
-          .select('*', { count: 'exact', head: true }),
-
-        // Conta partite della settimana corrente
-        (() => {
-          const today = new Date()
-          const weekStart = new Date(today)
-          weekStart.setDate(today.getDate() - today.getDay()) // Domenica
-          const weekEnd = new Date(weekStart)
-          weekEnd.setDate(weekStart.getDate() + 6) // Sabato
-          
-          let query = supabase
-            .from('partite')
-            .select('*', { count: 'exact', head: true })
-            .gte('data', weekStart.toISOString().split('T')[0])
-            .lte('data', weekEnd.toISOString().split('T')[0])
-            
-          if (stagioneCorrente?.id) {
-            query = query.eq('stagione_id', stagioneCorrente.id)
-          }
-          
-          return query
-        })(),
-
-        // Conta presenze di oggi
-        (() => {
-          const today = new Date().toISOString().split('T')[0]
-          return supabase
-            .from('presenze')
-            .select('*', { count: 'exact', head: true })
-            .eq('data', today)
-            .eq('presente', true)
-        })(),
-
-        // Conta articoli in magazzino
-        supabase
-          .from('magazzino')
-          .select('quantita'),
-
-        // Conta certificati in scadenza (prossimi 30 giorni)
-        (() => {
-          const today = new Date()
-          const in30Days = new Date(today)
-          in30Days.setDate(today.getDate() + 30)
-          
-          return supabase
-            .from('tesserati')
-            .select('scadenza_certificato', { count: 'exact', head: true })
-            .not('scadenza_certificato', 'is', null)
-            .gte('scadenza_certificato', today.toISOString().split('T')[0])
-            .lte('scadenza_certificato', in30Days.toISOString().split('T')[0])
-        })()
-      ])
-
-      // Calcola totale articoli magazzino
-      const magazzinoTotal = magazzinoResult.data?.reduce((sum, item) => sum + (item.quantita || 0), 0) || 0
-
-      setStats({
-        squadre: squadreResult.count || 0,
-        tesserati: tesseratiResult.count || 0,
-        partite: partiteResult.count || 0,
-        presenze: presenzeResult.count || 0,
-        magazzino: magazzinoTotal,
-        scadenze: scadenzeResult.count || 0
-      })
+      setLoadingStats(true)
+      // Usa l'API ottimizzata ma senza React Query per ora
+      const data = await dashboardApi.getStats(stagioneCorrente?.id)
+      setStats(data)
     } catch (error) {
       console.error('Error loading stats:', error)
     } finally {
       setLoadingStats(false)
     }
-  }, [supabase, stagioneCorrente?.id])
+  }, [stagioneCorrente?.id])
 
   const loadRecentActivities = useCallback(async () => {
     try {
-      const activities: RecentActivity[] = []
-
-      // Ultime 5 presenze registrate
-      const { data: presenze } = await supabase
-        .from('presenze')
-        .select(`
-          *,
-          tesserati:tesserato_id (nome, cognome)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(3)
-
-      presenze?.forEach(presenza => {
-        activities.push({
-          type: 'presenza',
-          title: `Presenza registrata`,
-          description: `${presenza.tesserati?.nome} ${presenza.tesserati?.cognome} - ${presenza.tipo}`,
-          timestamp: presenza.created_at,
-          icon: presenza.presente ? 'check' : 'x',
-          color: presenza.presente ? 'text-green-600' : 'text-red-600',
-          href: '/dashboard/presenze'
-        })
-      })
-
-      // Ultimi 3 tesserati registrati
-      const { data: tesserati } = await supabase
-        .from('tesserati')
-        .select('*')
-        .eq('stato', true) // Solo tesserati attivi
-        .order('created_at', { ascending: false })
-        .limit(2)
-
-      tesserati?.forEach(tesserato => {
-        activities.push({
-          type: 'tesserato',
-          title: 'Nuovo tesserato',
-          description: `${tesserato.nome} ${tesserato.cognome} registrato`,
-          timestamp: tesserato.created_at,
-          icon: 'user-plus',
-          color: 'text-blue-600',
-          href: '/dashboard/tesserati'
-        })
-      })
-
-      // Ultime 3 partite programmate
-      const { data: partite } = await supabase
-        .from('partite')
-        .select(`
-          *,
-          squadre:squadra_id (nome)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(2)
-
-      partite?.forEach(partita => {
-        activities.push({
-          type: 'partita',
-          title: 'Partita programmata',
-          description: `${partita.squadre?.nome} vs ${partita.avversario}`,
-          timestamp: partita.created_at,
-          icon: 'trophy',
-          color: 'text-purple-600',
-          href: '/dashboard/partite'
-        })
-      })
-
-      // Ultimi report allenatori (se esistono)
-      const { data: reports } = await supabase
-        .from('report_allenatori')
-        .select(`
-          *,
-          users:allenatore_id (nome, cognome)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(2)
-
-      reports?.forEach(report => {
-        activities.push({
-          type: 'report',
-          title: 'Nuovo report',
-          description: `Report di ${report.users?.nome} ${report.users?.cognome}`,
-          timestamp: report.created_at,
-          icon: 'file-text',
-          color: 'text-orange-600',
-          href: '/dashboard/presenze'
-        })
-      })
-
-      // Ordina tutte le attività per timestamp
-      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
-      setRecentActivities(activities.slice(0, 10)) // Prendi le prime 10
+      setLoadingActivities(true)
+      // Usa l'API ottimizzata
+      const data = await dashboardApi.getRecentActivities(10)
+      setRecentActivities(data || [])
     } catch (error) {
       console.error('Error loading recent activities:', error)
     } finally {
       setLoadingActivities(false)
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     if (profile?.id) {
       loadStats()
       loadRecentActivities()
     }
-  }, [profile?.id, loadStats, loadRecentActivities]) // Dipendi solo dall'ID invece dell'intero oggetto profile
+  }, [profile?.id, loadStats, loadRecentActivities])
 
   if (loading || !profile) {
     return (
@@ -321,7 +157,7 @@ export default function DashboardPage() {
       icon: AlertCircle,
       color: 'text-red-600',
       roles: ['admin', 'dirigente'],
-      href: '/dashboard/tesserati' // Vai ai tesserati per gestire le scadenze
+      href: '/dashboard/tesserati'
     }
   ]
 
@@ -474,8 +310,6 @@ export default function DashboardPage() {
         </div>
         <button
           onClick={() => {
-            setLoadingStats(true)
-            setLoadingActivities(true)
             loadStats()
             loadRecentActivities()
           }}
