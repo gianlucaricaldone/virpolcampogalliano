@@ -121,7 +121,7 @@ export default function TesseratiPage() {
 
   const filteredTesserati = tesserati.filter(tesserato => {
     const matchesSearch = searchTerm === '' || 
-      `${tesserato.nome} ${tesserato.cognome}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${tesserato.cognome} ${tesserato.nome}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tesserato.codice_fiscale?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tesserato.codice_cartellino?.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -250,7 +250,7 @@ export default function TesseratiPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg">
-                    {tesserato.nome} {tesserato.cognome}
+                    {tesserato.cognome} {tesserato.nome}
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {tesserato.squadra_stagione ? (

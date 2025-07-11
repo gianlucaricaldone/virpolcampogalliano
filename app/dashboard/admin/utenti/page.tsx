@@ -293,7 +293,7 @@ export default function UtentiPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg">
-                    {user.nome || 'Nome'} {user.cognome || 'Cognome'}
+                    {user.cognome || 'Cognome'} {user.nome || 'Nome'}
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {user.email}

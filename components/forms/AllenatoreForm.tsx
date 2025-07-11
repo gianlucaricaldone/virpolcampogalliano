@@ -74,7 +74,7 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
 
         // 3. Update squadre with new allenatore if selected
         if (formData.squadra_id.length > 0) {
-          const allenatoreNome = `${formData.nome} ${formData.cognome}`
+          const allenatoreNome = `${formData.cognome} ${formData.nome}`
           
           for (const squadraId of formData.squadra_id) {
             const { error: squadraError } = await supabase

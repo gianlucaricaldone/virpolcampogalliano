@@ -495,7 +495,7 @@ export default function ReportPage() {
                       {tesseratiData.map((tesserato) => (
                         <tr key={tesserato.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {tesserato.nome} {tesserato.cognome}
+                            {tesserato.cognome} {tesserato.nome}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                             <span className="flex items-center justify-center">

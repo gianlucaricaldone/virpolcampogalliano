@@ -118,28 +118,28 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
     
     // Per le select di utenti, salva sia nome che ID
     if (name === 'allenatore' && value) {
-      const selectedUser = allenatori.find(u => `${u.nome} ${u.cognome}` === value)
+      const selectedUser = allenatori.find(u => `${u.cognome} ${u.nome}` === value)
       setFormData(prev => ({
         ...prev,
         allenatore: value,
         allenatore_id: selectedUser?.id || ''
       }))
     } else if (name === 'vice_allenatore_1' && value) {
-      const selectedUser = viceAllenatori.find(u => `${u.nome} ${u.cognome}` === value)
+      const selectedUser = viceAllenatori.find(u => `${u.cognome} ${u.nome}` === value)
       setFormData(prev => ({
         ...prev,
         vice_allenatore_1: value,
         vice_allenatore_1_id: selectedUser?.id || ''
       }))
     } else if (name === 'vice_allenatore_2' && value) {
-      const selectedUser = viceAllenatori.find(u => `${u.nome} ${u.cognome}` === value)
+      const selectedUser = viceAllenatori.find(u => `${u.cognome} ${u.nome}` === value)
       setFormData(prev => ({
         ...prev,
         vice_allenatore_2: value,
         vice_allenatore_2_id: selectedUser?.id || ''
       }))
     } else if (name === 'dirigente' && value) {
-      const selectedUser = dirigenti.find(u => `${u.nome} ${u.cognome}` === value)
+      const selectedUser = dirigenti.find(u => `${u.cognome} ${u.nome}` === value)
       setFormData(prev => ({
         ...prev,
         dirigente: value,
@@ -277,8 +277,8 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
               >
                 <option value="">Seleziona allenatore...</option>
                 {allenatori.map(user => (
-                  <option key={user.id} value={`${user.nome} ${user.cognome}`}>
-                    {user.nome} {user.cognome}
+                  <option key={user.id} value={`${user.cognome} ${user.nome}`}>
+                    {user.cognome} {user.nome}
                   </option>
                 ))}
               </select>
@@ -296,8 +296,8 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
               >
                 <option value="">Seleziona primo vice allenatore...</option>
                 {viceAllenatori.map(user => (
-                  <option key={user.id} value={`${user.nome} ${user.cognome}`}>
-                    {user.nome} {user.cognome}
+                  <option key={user.id} value={`${user.cognome} ${user.nome}`}>
+                    {user.cognome} {user.nome}
                     {hasRole(user, 'allenatore') && hasRole(user, 'vice_allenatore') 
                       ? ' (Allenatore/Vice)' 
                       : hasRole(user, 'allenatore') 
@@ -321,10 +321,10 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
               >
                 <option value="">Seleziona secondo vice allenatore...</option>
                 {viceAllenatori
-                  .filter(user => `${user.nome} ${user.cognome}` !== formData.vice_allenatore_1)
+                  .filter(user => `${user.cognome} ${user.nome}` !== formData.vice_allenatore_1)
                   .map(user => (
-                    <option key={user.id} value={`${user.nome} ${user.cognome}`}>
-                      {user.nome} {user.cognome}
+                    <option key={user.id} value={`${user.cognome} ${user.nome}`}>
+                      {user.cognome} {user.nome}
                       {hasRole(user, 'allenatore') && hasRole(user, 'vice_allenatore') 
                         ? ' (Allenatore/Vice)' 
                         : hasRole(user, 'allenatore') 
@@ -348,8 +348,8 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
               >
                 <option value="">Seleziona dirigente...</option>
                 {dirigenti.map(user => (
-                  <option key={user.id} value={`${user.nome} ${user.cognome}`}>
-                    {user.nome} {user.cognome}
+                  <option key={user.id} value={`${user.cognome} ${user.nome}`}>
+                    {user.cognome} {user.nome}
                   </option>
                 ))}
               </select>

@@ -132,7 +132,7 @@ function DashboardContent({
           {/* User info */}
           <div className="p-4 border-b">
             <div className="text-sm font-medium text-gray-900">
-              {profile.nome || 'Utente'} {profile.cognome || ''}
+              {profile.cognome || ''} {profile.nome || 'Utente'}
             </div>
             <div className="text-xs space-y-1">
               {testRole && profile.role === 'admin' ? (
