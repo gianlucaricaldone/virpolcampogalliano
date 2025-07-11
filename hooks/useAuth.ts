@@ -28,7 +28,7 @@ interface UseAuthReturn extends AuthState {
   isGenitore: boolean
 }
 
-const PROFILE_CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
+const PROFILE_CACHE_DURATION = 30 * 60 * 1000 // 30 minutes - extended for dashboard
 
 /**
  * Custom hook for authentication and user profile management
@@ -53,7 +53,7 @@ export function useAuth(): UseAuthReturn {
   const testRole = useTestRoleContext()
 
   /**
-   * Fetches user profile from database with caching
+   * Fetches user profile from database with caching and deduplication
    */
   const fetchUserProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     const cacheKey = `profile_${userId}`
@@ -61,34 +61,54 @@ export function useAuth(): UseAuthReturn {
     // Check cache first
     const cachedProfile = getCachedQuery<UserProfile>(cacheKey)
     if (cachedProfile) {
-      console.log('[useAuth] Using cached profile')
+      console.log('[useAuth] Using cached profile for user:', userId.substring(0, 8))
       return cachedProfile
     }
     
-    console.log('[useAuth] Fetching profile from DB...')
-    
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      
-      if (error) {
-        console.error('[useAuth] Profile fetch error:', error)
-        throw error
-      }
-      
-      if (data) {
-        // Cache the profile
-        setCachedQuery(cacheKey, data, PROFILE_CACHE_DURATION)
-      }
-      
-      return data
-    } catch (error) {
-      console.error('[useAuth] Error fetching profile:', error)
-      return null
+    // Check if there's already an ongoing fetch for this user
+    const fetchKey = `fetching_${userId}`
+    const ongoingFetch = getCachedQuery<Promise<UserProfile | null>>(fetchKey)
+    if (ongoingFetch) {
+      console.log('[useAuth] Waiting for ongoing fetch for user:', userId.substring(0, 8))
+      return ongoingFetch
     }
+    
+    console.log('[useAuth] Fetching profile from DB for user:', userId.substring(0, 8))
+    
+    // Create and cache the fetch promise to prevent duplicates
+    const fetchPromise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single()
+        
+        if (error) {
+          console.error('[useAuth] Profile fetch error:', error)
+          throw error
+        }
+        
+        if (data) {
+          // Cache the profile
+          setCachedQuery(cacheKey, data, PROFILE_CACHE_DURATION)
+          console.log('[useAuth] Profile cached for user:', userId.substring(0, 8))
+        }
+        
+        return data
+      } catch (error) {
+        console.error('[useAuth] Error fetching profile:', error)
+        return null
+      } finally {
+        // Clear the ongoing fetch marker
+        setCachedQuery(fetchKey, null, 0)
+      }
+    })()
+    
+    // Cache the promise briefly to prevent duplicate requests
+    setCachedQuery(fetchKey, fetchPromise, 5000) // 5 seconds
+    
+    return fetchPromise
   }, [supabase])
 
   /**
@@ -211,8 +231,9 @@ export function useAuth(): UseAuthReturn {
     
     // Subscribe to auth changes (only for future changes, not initial)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      // Only handle changes after initial load
-      if (sessionCheckedRef.current) {
+      // Only handle changes after initial load and avoid duplicate processing
+      if (sessionCheckedRef.current && event !== 'INITIAL_SESSION') {
+        console.log('[useAuth] Auth change event:', event, 'for user:', session?.user?.id?.substring(0, 8) || 'none')
         handleAuthStateChange(event, session)
       }
     })
