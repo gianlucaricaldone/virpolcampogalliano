@@ -168,8 +168,9 @@ export function useAuth(): UseAuthReturn {
       }
     }
     
-    // Only initialize auth if we haven't loaded user data yet
-    if (authState.loading && !authState.user && !authState.profile) {
+    // Always initialize auth to validate current session
+    if (!sessionCheckedRef.current) {
+      sessionCheckedRef.current = true
       initAuth()
     }
     
