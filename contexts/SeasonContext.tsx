@@ -1,20 +1,13 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { parametriApi } from '@/lib/api/parametri'
+import { CACHE_DURATIONS } from '@/lib/constants'
 import { useAuth } from '@/hooks/useAuth'
+import { Database } from '@/types/database'
 
-export interface StagioneSportiva {
-  id: string
-  nome: string
-  data_inizio: string
-  data_fine: string
-  attiva: boolean
-  archiviata: boolean
-  descrizione?: string | null
-  created_at: string
-  updated_at: string
-}
+export type StagioneSportiva = Database['public']['Tables']['stagioni_sportive']['Row']
 
 interface SeasonContextType {
   stagioneCorrente: StagioneSportiva | null
@@ -33,72 +26,61 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   const [stagioni, setStagioni] = useState<StagioneSportiva[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
+  const fetchingRef = useRef(false)
 
-  const fetchStagioni = async () => {
+  const fetchStagioni = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = 'stagioni_and_stagione_corrente'
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = getCachedQuery<{stagioni: StagioneSportiva[], stagioneCorrente: StagioneSportiva | null}>(cacheKey)
+      if (cachedData) {
+        console.log('[SeasonContext] Using cached stagioni and stagione corrente data')
+        setStagioni(cachedData.stagioni)
+        setStagioneCorrenteState(cachedData.stagioneCorrente)
+        setLoading(false)
+        return
+      }
+    }
+
+    // Check if there's already an ongoing fetch
+    if (fetchingRef.current) {
+      console.log('[SeasonContext] Fetch already in progress, skipping duplicate request')
+      return
+    }
+    
     try {
+      fetchingRef.current = true
+      setLoading(true)
       setError(null)
       
-      // Carica tutte le stagioni
-      const { data: stagioniData, error: stagioniError } = await supabase
-        .from('stagioni_sportive')
-        .select('*')
-        .order('data_inizio', { ascending: false })
+      console.log('[SeasonContext] Fetching stagioni and stagione corrente from API')
+      
+      // Use centralized API
+      const { stagioni: stagioniData, stagioneCorrente } = await parametriApi.getStagioniAndParametri()
 
-      if (stagioniError) throw stagioniError
+      // Cache the result
+      setCachedQuery(cacheKey, { stagioni: stagioniData, stagioneCorrente }, CACHE_DURATIONS.SQUADRE) // 5 minutes
+      console.log('[SeasonContext] Data cached for', CACHE_DURATIONS.SQUADRE / 1000, 'seconds')
 
-      setStagioni(stagioniData || [])
-
-      // Carica la stagione corrente dai parametri sistema
-      const { data: parametriData, error: parametriError } = await supabase
-        .from('parametri_sistema')
-        .select('valore')
-        .eq('chiave', 'stagione_corrente_id')
-        .single()
-
-      if (parametriError && parametriError.code !== 'PGRST116') { // PGRST116 = no rows
-        throw parametriError
-      }
-
-      const stagioneCorrenteId = parametriData?.valore
-
-      if (stagioneCorrenteId && stagioniData) {
-        const stagione = stagioniData.find(s => s.id === stagioneCorrenteId)
-        setStagioneCorrenteState(stagione || null)
-      } else {
-        setStagioneCorrenteState(null)
-      }
-
+      setStagioni(stagioniData)
+      setStagioneCorrenteState(stagioneCorrente)
     } catch (err) {
-      console.error('Error fetching stagioni:', err)
+      console.error('[SeasonContext] Error fetching stagioni:', err)
       setError(err instanceof Error ? err.message : 'Errore nel caricamento delle stagioni')
     } finally {
       setLoading(false)
+      fetchingRef.current = false
     }
-  }
+  }, [])
 
   const setStagioneCorrente = async (stagioneId: string) => {
     try {
-      // Prima disattiva tutte le stagioni
-      await supabase
-        .from('stagioni_sportive')
-        .update({ attiva: false })
-        .neq('id', '00000000-0000-0000-0000-000000000000') // dummy condition
-
-      // Attiva la stagione selezionata
-      await supabase
-        .from('stagioni_sportive')
-        .update({ attiva: true })
-        .eq('id', stagioneId)
-
-      // Aggiorna il parametro sistema
-      await supabase
-        .from('parametri_sistema')
-        .update({ valore: stagioneId })
-        .eq('chiave', 'stagione_corrente_id')
-
-      // Ricarica i dati
-      await fetchStagioni()
+      // Use centralized API
+      await parametriApi.setStagioneCorrente(stagioneId)
+      
+      // Force refresh to get updated data
+      await fetchStagioni(true)
     } catch (err) {
       console.error('Error setting stagione corrente:', err)
       throw err
@@ -106,7 +88,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   }
 
   const refreshStagioni = async () => {
-    await fetchStagioni()
+    await fetchStagioni(true) // Force refresh
   }
 
   useEffect(() => {
@@ -114,7 +96,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
     if (profile) {
       fetchStagioni()
     }
-  }, [profile])
+  }, [profile, fetchStagioni])
 
   const value: SeasonContextType = {
     stagioneCorrente,

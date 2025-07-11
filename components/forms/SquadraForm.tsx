@@ -249,9 +249,7 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleziona stagione...</option>
-                {stagioni
-                  .filter(stagione => !stagione.archiviata) // Solo stagioni non archiviate
-                  .map(stagione => (
+                {stagioni.map(stagione => (
                   <option key={stagione.id} value={stagione.id}>
                     {stagione.nome}
                     {stagione.id === stagioneCorrente?.id && ' (Corrente)'}
