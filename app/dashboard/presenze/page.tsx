@@ -8,14 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Plus, Calendar, Check, X, Filter, Search, Users, BarChart3, FileText, Clock, UserCheck, Trash2 } from 'lucide-react'
 import { Database } from '@/types/database'
+import { DEFAULT_ORGANIZATION_ID, ATTENDANCE_TYPES, STATISTICS_PERIODS } from '@/lib/constants'
 
 type Presenza = Database['public']['Tables']['presenze']['Row'] & {
   tesserati?: { nome: string; cognome: string; squadra_id: string }
 }
 
-type TipoAttivita = 'allenamento' | 'partita' | 'torneo' | 'evento'
+type TipoAttivita = keyof typeof ATTENDANCE_TYPES
 
-type StatistichePeriodo = 'settimanale' | 'mensile'
+type StatistichePeriodo = keyof typeof STATISTICS_PERIODS
 
 export default function PresenzePage() {
   const { profile, hasAnyRole } = useAuth()
@@ -23,15 +24,16 @@ export default function PresenzePage() {
   const [presenze, setPresenze] = useState<Presenza[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-  const [selectedType, setSelectedType] = useState<TipoAttivita>('allenamento')
+  const [selectedType, setSelectedType] = useState<TipoAttivita>('ALLENAMENTO')
   const [activeTab, setActiveTab] = useState<'presenze' | 'statistiche' | 'report'>('presenze')
   const [squadre, setSquadre] = useState<any[]>([])
   const [selectedSquadra, setSelectedSquadra] = useState<string>('all')
+  const [defaultSquadraSet, setDefaultSquadraSet] = useState(false)
   const [tesserati, setTesserati] = useState<any[]>([])
   const [bulkMode, setBulkMode] = useState(false)
   const [selectedTesserati, setSelectedTesserati] = useState<Set<string>>(new Set())
   const [report, setReport] = useState('')
-  const [statistichePeriodo, setStatistichePeriodo] = useState<StatistichePeriodo>('settimanale')
+  const [statistichePeriodo, setStatistichePeriodo] = useState<StatistichePeriodo>('SETTIMANALE')
   const supabase = createClient()
 
   useEffect(() => {
@@ -49,6 +51,13 @@ export default function PresenzePage() {
       fetchTodayReport()
     }
   }, [selectedDate, selectedType, selectedSquadra, activeTab])
+  
+  // Chiudi bulk mode se ci sono già presenze quando cambiano i filtri
+  useEffect(() => {
+    if (presenze.length > 0 && bulkMode) {
+      setBulkMode(false)
+    }
+  }, [presenze.length])
 
   useEffect(() => {
     if (selectedSquadra !== 'all') {
@@ -77,7 +86,15 @@ export default function PresenzePage() {
       const { data, error } = await query
 
       if (error) throw error
-      setSquadre(data || [])
+      
+      const squadreData = data || []
+      setSquadre(squadreData)
+      
+      // Se l'utente è un allenatore e non è stata ancora impostata una squadra di default
+      if (hasAnyRole(['allenatore', 'vice_allenatore']) && !defaultSquadraSet && squadreData.length > 0) {
+        setSelectedSquadra(squadreData[0].id)
+        setDefaultSquadraSet(true)
+      }
     } catch (error) {
       console.error('Error fetching squadre:', error)
     } finally {
@@ -143,7 +160,7 @@ export default function PresenzePage() {
         `)
         .eq('data', selectedDate)
         .eq('stagione_id', stagioneCorrente.id)
-        .eq('tipo', selectedType)
+        .eq('tipo', ATTENDANCE_TYPES[selectedType])
         .order('created_at', { ascending: false })
 
       // Se è selezionata una squadra specifica, filtra per squadra_id nella tabella presenze
@@ -201,36 +218,41 @@ export default function PresenzePage() {
     }
   }
 
-  const handleBulkPresence = async (isPresent: boolean) => {
-    if (selectedTesserati.size === 0) return
+  const handleBulkPresence = async () => {
+    if (tesserati.length === 0) return
 
     try {
-      const promises = Array.from(selectedTesserati).map(async (tesseratoId) => {
-        // Controlla se esiste già una presenza per oggi
+      // Gestisci TUTTI i tesserati: presenti (selezionati) e assenti (non selezionati)
+      const promises = tesserati.map(async (tesserato) => {
+        const isPresent = selectedTesserati.has(tesserato.id)
+        
+        // Controlla se esiste già una presenza per oggi - usa .maybeSingle() invece di .single()
         const { data: existing } = await supabase
           .from('presenze')
           .select('id')
-          .eq('tesserato_id', tesseratoId)
+          .eq('tesserato_id', tesserato.id)
           .eq('data', selectedDate)
-          .single()
+          .eq('tipo', ATTENDANCE_TYPES[selectedType])
+          .maybeSingle()
 
         if (existing) {
           // Aggiorna presenza esistente
           return supabase
             .from('presenze')
-            .update({ presente: isPresent, tipo: selectedType })
+            .update({ presente: isPresent })
             .eq('id', existing.id)
         } else {
-          // Crea nuova presenza
+          // Crea nuova presenza con organization_id
           return supabase
             .from('presenze')
             .insert({
-              tesserato_id: tesseratoId,
+              tesserato_id: tesserato.id,
               data: selectedDate,
-              tipo: selectedType,
+              tipo: ATTENDANCE_TYPES[selectedType],
               presente: isPresent,
               squadra_id: selectedSquadra !== 'all' ? selectedSquadra : null,
-              stagione_id: stagioneCorrente?.id
+              stagione_id: stagioneCorrente?.id,
+              organization_id: DEFAULT_ORGANIZATION_ID
             })
         }
       })
@@ -239,8 +261,10 @@ export default function PresenzePage() {
       setSelectedTesserati(new Set())
       setBulkMode(false)
       fetchPresenze()
+      alert(`✅ Presenze registrate con successo!\n${selectedTesserati.size} presenti, ${tesserati.length - selectedTesserati.size} assenti`)
     } catch (error) {
       console.error('Error updating bulk presences:', error)
+      alert('Errore durante l\'aggiornamento delle presenze: ' + (error instanceof Error ? error.message : 'Errore sconosciuto'))
     }
   }
 
@@ -287,7 +311,7 @@ export default function PresenzePage() {
         .from('presenze')
         .select('*')
         .eq('data', selectedDate)
-        .eq('tipo', selectedType)
+        .eq('tipo', ATTENDANCE_TYPES[selectedType])
         .eq('squadra_id', selectedSquadra)
         .eq('stagione_id', stagioneCorrente.id)
       
@@ -314,7 +338,7 @@ export default function PresenzePage() {
           .from('presenze')
           .select('*')
           .eq('data', selectedDate)
-          .eq('tipo', selectedType)
+          .eq('tipo', ATTENDANCE_TYPES[selectedType])
           .eq('squadra_id', selectedSquadra)
         
         console.log('Presenze senza filtro stagione_id:', testSenzaStagione?.length || 0)
@@ -324,7 +348,7 @@ export default function PresenzePage() {
           .from('presenze')
           .select('*')
           .eq('data', selectedDate)
-          .eq('tipo', selectedType)
+          .eq('tipo', ATTENDANCE_TYPES[selectedType])
           .eq('stagione_id', stagioneCorrente.id)
         
         console.log('Presenze senza filtro squadra_id:', testSenzaSquadra?.length || 0)
@@ -371,8 +395,9 @@ export default function PresenzePage() {
         allenatore_id: profile.id,
         squadra_id: selectedSquadra !== 'all' ? selectedSquadra : null,
         data: selectedDate,
-        tipo_attivita: selectedType,
-        report: report.trim()
+        tipo_attivita: ATTENDANCE_TYPES[selectedType],
+        report: report.trim(),
+        organization_id: DEFAULT_ORGANIZATION_ID
       }
 
       const { data: existing } = await supabase
@@ -492,10 +517,10 @@ export default function PresenzePage() {
                   onChange={(e) => setSelectedType(e.target.value as TipoAttivita)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="allenamento">Allenamento</option>
-                  <option value="partita">Partita</option>
-                  <option value="torneo">Torneo</option>
-                  <option value="evento">Evento</option>
+                  <option value="ALLENAMENTO">Allenamento</option>
+                  <option value="PARTITA">Partita</option>
+                  <option value="TORNEO">Torneo</option>
+                  <option value="EVENTO">Evento</option>
                 </select>
               </div>
               <div>
@@ -521,6 +546,8 @@ export default function PresenzePage() {
                     onClick={() => setBulkMode(!bulkMode)}
                     variant={bulkMode ? 'default' : 'outline'}
                     className="w-full"
+                    disabled={presenze.length > 0}
+                    title={presenze.length > 0 ? 'Presenze già registrate per questa data e tipo' : ''}
                   >
                     <UserCheck className="mr-2 h-4 w-4" />
                     {bulkMode ? 'Annulla Selezione' : 'Inserimento Rapido'}
@@ -581,12 +608,27 @@ export default function PresenzePage() {
       {/* Presences List */}
       {activeTab === 'presenze' && (
         <>
+          {/* Messaggio informativo se presenze già registrate */}
+          {selectedSquadra !== 'all' && presenze.length > 0 && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="pt-6">
+                <div className="flex items-center text-blue-800">
+                  <UserCheck className="h-5 w-5 mr-2" />
+                  <span className="font-medium">
+                    Presenze già registrate per {ATTENDANCE_TYPES[selectedType].toLowerCase()} del {new Date(selectedDate).toLocaleDateString('it-IT')}.
+                    Usa i pulsanti nelle singole presenze per modifiche.
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           {bulkMode && selectedSquadra !== 'all' && (
             <Card>
               <CardHeader>
                 <CardTitle>Inserimento Rapido Presenze</CardTitle>
                 <CardDescription>
-                  Seleziona gli atleti e poi clicca su "Tutti Presenti" o "Tutti Assenti"
+                  Seleziona gli atleti presenti. Chi non viene selezionato sarà automaticamente segnato come assente.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -633,20 +675,12 @@ export default function PresenzePage() {
                   </Button>
                   <div className="flex-1" />
                   <Button
-                    onClick={() => handleBulkPresence(true)}
+                    onClick={() => handleBulkPresence()}
                     className="bg-green-600 hover:bg-green-700"
-                    disabled={selectedTesserati.size === 0}
+                    disabled={tesserati.length === 0}
                   >
                     <Check className="mr-2 h-4 w-4" />
-                    Tutti Presenti ({selectedTesserati.size})
-                  </Button>
-                  <Button
-                    onClick={() => handleBulkPresence(false)}
-                    className="bg-red-600 hover:bg-red-700"
-                    disabled={selectedTesserati.size === 0}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Tutti Assenti ({selectedTesserati.size})
+                    Registra Presenze
                   </Button>
                 </div>
               </CardContent>
@@ -659,7 +693,7 @@ export default function PresenzePage() {
                 <div>
                   <CardTitle>Lista Presenze - {new Date(selectedDate).toLocaleDateString('it-IT')}</CardTitle>
                   <CardDescription>
-                    Attività: {selectedType}
+                    Attività: {ATTENDANCE_TYPES[selectedType]}
                     {selectedSquadra !== 'all' && (
                       <span className="ml-2">
                         • Squadra: {squadre.find(s => s.id === selectedSquadra)?.nome}
@@ -783,10 +817,10 @@ export default function PresenzePage() {
                     onChange={(e) => setSelectedType(e.target.value as TipoAttivita)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="allenamento">Allenamento</option>
-                    <option value="partita">Partita</option>
-                    <option value="torneo">Torneo</option>
-                    <option value="evento">Evento</option>
+                    <option value="ALLENAMENTO">Allenamento</option>
+                    <option value="PARTITA">Partita</option>
+                    <option value="TORNEO">Torneo</option>
+                    <option value="EVENTO">Evento</option>
                   </select>
                 </div>
                 <div>
@@ -868,7 +902,7 @@ function StatistichePresenze({ squadraId, periodo, onPeriodoChange }: {
 
       // Filtra per periodo (ultima settimana o ultimo mese)
       const now = new Date()
-      if (periodo === 'settimanale') {
+      if (periodo === 'SETTIMANALE') {
         const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         filtered = filtered.filter(s => new Date(s.settimana) >= lastWeek)
       } else {
@@ -904,16 +938,16 @@ function StatistichePresenze({ squadraId, periodo, onPeriodoChange }: {
             <div className="flex space-x-2">
               <Button
                 size="sm"
-                variant={periodo === 'settimanale' ? 'default' : 'outline'}
-                onClick={() => onPeriodoChange('settimanale')}
+                variant={periodo === 'SETTIMANALE' ? 'default' : 'outline'}
+                onClick={() => onPeriodoChange('SETTIMANALE')}
               >
                 <Clock className="mr-2 h-4 w-4" />
                 Settimanale
               </Button>
               <Button
                 size="sm"
-                variant={periodo === 'mensile' ? 'default' : 'outline'}
-                onClick={() => onPeriodoChange('mensile')}
+                variant={periodo === 'MENSILE' ? 'default' : 'outline'}
+                onClick={() => onPeriodoChange('MENSILE')}
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 Mensile

@@ -36,7 +36,8 @@
       "Bash(touch:*)",
       "Bash(npm cache clean:*)",
       "Bash(npm uninstall:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npx supabase:*)"
     ],
     "deny": []
   }
