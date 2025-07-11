@@ -156,7 +156,7 @@ export function useAuth(): UseAuthReturn {
         }
         
         // Handle initial session
-        await handleAuthStateChange('SIGNED_IN', session)
+        await handleAuthStateChange(session ? 'SIGNED_IN' : 'SIGNED_OUT', session)
         
       } catch (error) {
         console.error('[useAuth] Init error:', error)
