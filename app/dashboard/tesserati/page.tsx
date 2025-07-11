@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeason } from '@/contexts/SeasonContext'
-import { createClient } from '@/lib/supabase/client'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { tesseratiApi } from '@/lib/api/tesserati'
+import { CACHE_DURATIONS } from '@/lib/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Users, Search, Filter, Edit, Trash2, FileText, AlertCircle, UserPlus } from 'lucide-react'
@@ -43,121 +45,63 @@ export default function TesseratiPage() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [showAssignForm, setShowAssignForm] = useState(false)
   const [tesseratoToAssign, setTesseratoToAssign] = useState<TesseratoConSquadra | null>(null)
-  const supabase = createClient()
+  const fetchingRef = useRef(false)
 
-  useEffect(() => {
-    fetchTesserati()
-    fetchSquadre()
-  }, [stagioneCorrente?.id])
-
-  const fetchTesserati = async () => {
-    try {
-      // Prima otteniamo tutti i tesserati
-      const { data: tesseratiData, error: tesseratiError } = await supabase
-        .from('tesserati')
-        .select('*')
-        .order('cognome', { ascending: true })
-
-      if (tesseratiError) throw tesseratiError
-
-      // Poi otteniamo le associazioni squadra-stagione e i dati stagionali per la stagione corrente
-      let tesseratiConSquadra: TesseratoConSquadra[] = []
-      
-      if (stagioneCorrente?.id && tesseratiData) {
-        // Otteniamo associazioni squadra-stagione
-        const { data: associazioni, error: associazioniError } = await supabase
-          .from('tesserati_squadre_stagioni')
-          .select(`
-            tesserato_id,
-            ruolo_squadra,
-            numero_maglia,
-            squadre:squadra_id (
-              id,
-              nome
-            )
-          `)
-          .eq('stagione_id', stagioneCorrente.id)
-
-        if (associazioniError) throw associazioniError
-
-        // Otteniamo dati stagionali (pagamenti, visite mediche, ecc.)
-        const { data: datiStagionali, error: datiStagionaliError } = await supabase
-          .from('tesserati_dati_stagionali')
-          .select('*')
-          .eq('stagione_id', stagioneCorrente.id)
-
-        if (datiStagionaliError) throw datiStagionaliError
-
-        // Combiniamo i dati
-        tesseratiConSquadra = tesseratiData.map(tesserato => {
-          const associazione = associazioni?.find(ass => ass.tesserato_id === tesserato.id)
-          const datiStagione = datiStagionali?.find(ds => ds.tesserato_id === tesserato.id)
-          
-          return {
-            ...tesserato,
-            squadra_stagione: associazione ? {
-              squadra: associazione.squadre!,
-              ruolo_squadra: associazione.ruolo_squadra,
-              numero_maglia: associazione.numero_maglia
-            } : null,
-            dati_stagionali: datiStagione ? {
-              stato_pagamento: datiStagione.stato_pagamento,
-              note_pagamento: datiStagione.note_pagamento,
-              visita_sportiva: datiStagione.visita_sportiva,
-              scadenza_certificato: datiStagione.scadenza_certificato,
-              certificato_medico: datiStagione.certificato_medico
-            } : null
-          }
-        })
-      } else {
-        // Se non c'è stagione corrente, tutti i tesserati sono senza squadra e senza dati stagionali
-        tesseratiConSquadra = tesseratiData?.map(tesserato => ({
-          ...tesserato,
-          squadra_stagione: null,
-          dati_stagionali: null
-        })) || []
+  const fetchTesseratiAndSquadre = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = `tesserati_squadre_${stagioneCorrente?.id || 'all'}`
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = getCachedQuery<{tesserati: TesseratoConSquadra[], squadre: Squadra[]}>(cacheKey)
+      if (cachedData) {
+        console.log('[Tesserati] Using cached tesserati and squadre data')
+        setTesserati(cachedData.tesserati)
+        setSquadre(cachedData.squadre)
+        setLoading(false)
+        return
       }
+    }
 
-      setTesserati(tesseratiConSquadra)
+    // Check if there's already an ongoing fetch
+    if (fetchingRef.current) {
+      console.log('[Tesserati] Fetch already in progress, skipping duplicate request')
+      return
+    }
+    
+    try {
+      fetchingRef.current = true
+      setLoading(true)
+      
+      console.log('[Tesserati] Fetching tesserati and squadre data from API')
+      
+      // Use centralized API
+      const { tesserati, squadre } = await tesseratiApi.getTesseratiAndSquadre(stagioneCorrente?.id)
+
+      // Cache the result
+      setCachedQuery(cacheKey, { tesserati, squadre }, CACHE_DURATIONS.TESSERATI)
+      console.log('[Tesserati] Data cached for', CACHE_DURATIONS.TESSERATI / 1000, 'seconds')
+
+      setTesserati(tesserati)
+      setSquadre(squadre)
     } catch (error) {
-      console.error('Error fetching tesserati:', error)
+      console.error('[Tesserati] Error fetching tesserati and squadre:', error)
     } finally {
       setLoading(false)
+      fetchingRef.current = false
     }
-  }
+  }, [stagioneCorrente?.id])
 
-  const fetchSquadre = async () => {
-    try {
-      let query = supabase
-        .from('squadre')
-        .select('*')
-        .order('nome', { ascending: true })
+  useEffect(() => {
+    fetchTesseratiAndSquadre()
+  }, [fetchTesseratiAndSquadre])
 
-      // Filtra per stagione corrente se disponibile
-      if (stagioneCorrente?.id) {
-        query = query.eq('stagione_id', stagioneCorrente.id)
-      }
-
-      const { data, error } = await query
-      if (error) throw error
-      setSquadre(data || [])
-    } catch (error) {
-      console.error('Error fetching squadre:', error)
-    }
-  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Sei sicuro di voler eliminare questo tesserato?')) return
     
     try {
-      const { error } = await supabase
-        .from('tesserati')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-      
-      fetchTesserati()
+      await tesseratiApi.deleteTesserato(id)
+      fetchTesseratiAndSquadre(true) // Force refresh after delete
     } catch (error) {
       console.error('Error deleting tesserato:', error)
       alert('Errore durante l\'eliminazione del tesserato')
@@ -177,7 +121,7 @@ export default function TesseratiPage() {
 
   const filteredTesserati = tesserati.filter(tesserato => {
     const matchesSearch = searchTerm === '' || 
-      `${tesserato.nome} ${tesserato.cognome}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${tesserato.cognome} ${tesserato.nome}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tesserato.codice_fiscale?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tesserato.codice_cartellino?.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -195,33 +139,10 @@ export default function TesseratiPage() {
     return matchesSearch && matchesSquadra && matchesStatoPagamento && matchesVisitaSportiva
   })
 
-  const getStatusColor = (stato: string) => {
-    switch (stato) {
-      case 'pagato':
-        return 'bg-green-100 text-green-800'
-      case 'in_sospeso':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'non_pagato':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const isCertificateExpiring = (scadenza: string | null | undefined) => {
-    if (!scadenza) return false
-    const today = new Date()
-    const expiry = new Date(scadenza)
-    const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24))
-    return daysUntilExpiry <= 30 && daysUntilExpiry > 0
-  }
-
-  const isCertificateExpired = (scadenza: string | null | undefined) => {
-    if (!scadenza) return false
-    const today = new Date()
-    const expiry = new Date(scadenza)
-    return expiry < today
-  }
+  // Use API utility functions
+  const getStatusColor = (stato: string) => tesseratiApi.getStatusColor(stato)
+  const isCertificateExpiring = (scadenza: string | null | undefined) => tesseratiApi.isCertificateExpiring(scadenza)
+  const isCertificateExpired = (scadenza: string | null | undefined) => tesseratiApi.isCertificateExpired(scadenza)
 
   if (loading) {
     return (
@@ -329,7 +250,7 @@ export default function TesseratiPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg">
-                    {tesserato.nome} {tesserato.cognome}
+                    {tesserato.cognome} {tesserato.nome}
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {tesserato.squadra_stagione ? (
@@ -511,7 +432,7 @@ export default function TesseratiPage() {
             setIsEditMode(false)
           }}
           onSuccess={() => {
-            fetchTesserati()
+            fetchTesseratiAndSquadre(true) // Force refresh after create/edit
             setShowForm(false)
             setSelectedTesserato(null)
             setIsEditMode(false)
@@ -527,7 +448,7 @@ export default function TesseratiPage() {
             setTesseratoToAssign(null)
           }}
           onSuccess={() => {
-            fetchTesserati()
+            fetchTesseratiAndSquadre(true) // Force refresh after assign
             setShowAssignForm(false)
             setTesseratoToAssign(null)
           }}

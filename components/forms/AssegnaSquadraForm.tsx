@@ -256,7 +256,7 @@ export default function AssegnaSquadraForm({ tesserato, onClose, onSuccess }: As
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <h3 className="font-semibold">{tesserato.nome} {tesserato.cognome}</h3>
+            <h3 className="font-semibold">{tesserato.cognome} {tesserato.nome}</h3>
             <p className="text-sm text-gray-600">Stagione: {stagioneCorrente.nome}</p>
             {currentAssignment && (
               <p className="text-sm text-blue-600 mt-1">

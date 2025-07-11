@@ -303,7 +303,7 @@ export default function PresenzePage() {
         tipo: p.tipo,
         squadra_id: p.squadra_id,
         stagione_id: p.stagione_id,
-        tesserato: p.tesserati?.nome + ' ' + p.tesserati?.cognome
+        tesserato: p.tesserati?.cognome + ' ' + p.tesserati?.nome
       })))
       
       // Prima ottieni TUTTE le presenze con questi filtri per debug
@@ -653,7 +653,7 @@ export default function PresenzePage() {
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <span className="font-medium">
-                        {tesserato.nome} {tesserato.cognome}
+                        {tesserato.cognome} {tesserato.nome}
                       </span>
                     </label>
                   ))}
@@ -738,7 +738,7 @@ export default function PresenzePage() {
                         }`}></div>
                         <div>
                           <h4 className="font-medium">
-                            {presenza.tesserati?.nome} {presenza.tesserati?.cognome}
+                            {presenza.tesserati?.cognome} {presenza.tesserati?.nome}
                           </h4>
                           <p className="text-sm text-gray-500 capitalize">
                             {presenza.tipo}

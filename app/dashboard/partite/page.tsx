@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { createClient } from '@/lib/supabase/client'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { partiteApi } from '@/lib/api/partite'
+import { CACHE_DURATIONS } from '@/lib/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Trophy, Calendar, Clock, MapPin, Edit, Trash2 } from 'lucide-react'
@@ -27,60 +29,60 @@ export default function PartitePage() {
   const [showForm, setShowForm] = useState(false)
   const [selectedPartita, setSelectedPartita] = useState<Partita | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
-  const supabase = createClient()
+  const fetchingRef = useRef(false)
+
+  const fetchPartite = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = `partite_${filter}`
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = getCachedQuery<Partita[]>(cacheKey)
+      if (cachedData) {
+        console.log('[Partite] Using cached partite data for filter:', filter)
+        setPartite(cachedData)
+        setLoading(false)
+        return
+      }
+    }
+
+    // Check if there's already an ongoing fetch
+    if (fetchingRef.current) {
+      console.log('[Partite] Fetch already in progress, skipping duplicate request')
+      return
+    }
+    
+    try {
+      fetchingRef.current = true
+      setLoading(true)
+      
+      console.log('[Partite] Fetching partite data from API with filter:', filter)
+      
+      // Use centralized API
+      const partiteData = await partiteApi.getPartite(filter)
+
+      // Cache the result
+      setCachedQuery(cacheKey, partiteData, CACHE_DURATIONS.SQUADRE) // Reuse squadre duration (5 min)
+      console.log('[Partite] Data cached for', CACHE_DURATIONS.SQUADRE / 1000, 'seconds')
+
+      setPartite(partiteData)
+    } catch (error) {
+      console.error('[Partite] Error fetching partite:', error)
+    } finally {
+      setLoading(false)
+      fetchingRef.current = false
+    }
+  }, [filter])
 
   useEffect(() => {
     fetchPartite()
-  }, [filter])
-
-  const fetchPartite = async () => {
-    try {
-      let query = supabase
-        .from('partite')
-        .select(`
-          *,
-          squadre:squadra_id (nome),
-          categorie_avversari:categoria_avversario_id (
-            nome_categoria,
-            avversari:avversario_id (
-              nome_societa
-            )
-          )
-        `)
-
-      const today = new Date().toISOString().split('T')[0]
-      
-      if (filter === 'upcoming') {
-        query = query.gte('data', today)
-      } else if (filter === 'past') {
-        query = query.lt('data', today)
-      }
-
-      query = query.order('data', { ascending: filter === 'past' ? false : true })
-
-      const { data, error } = await query
-
-      if (error) throw error
-      setPartite(data || [])
-    } catch (error) {
-      console.error('Error fetching partite:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [fetchPartite])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Sei sicuro di voler eliminare questa partita?')) return
     
     try {
-      const { error } = await supabase
-        .from('partite')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-      
-      fetchPartite()
+      await partiteApi.deletePartita(id)
+      fetchPartite(true) // Force refresh after delete
     } catch (error) {
       console.error('Error deleting partita:', error)
       alert('Errore durante l\'eliminazione della partita')
@@ -93,35 +95,13 @@ export default function PartitePage() {
     setShowForm(true)
   }
 
-  const getCompetitionColor = (tipo: string) => {
-    switch (tipo.toLowerCase()) {
-      case 'campionato':
-        return 'bg-blue-100 text-blue-800'
-      case 'coppa':
-        return 'bg-purple-100 text-purple-800'
-      case 'torneo':
-        return 'bg-green-100 text-green-800'
-      case 'amichevole':
-        return 'bg-gray-100 text-gray-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const isUpcoming = (data: string) => {
-    const today = new Date()
-    const matchDate = new Date(data)
-    return matchDate >= today
-  }
-
-  const getAvversarioDisplay = (partita: Partita) => {
-    // Se abbiamo i dati della nuova struttura, usali
-    if (partita.categorie_avversari?.avversari?.nome_societa) {
-      return `${partita.categorie_avversari.avversari.nome_societa} ${partita.categorie_avversari.nome_categoria}`
-    }
-    // Altrimenti usa il campo vecchio per compatibilità
-    return partita.avversario || 'Avversario non specificato'
-  }
+  // Use API utility functions
+  const getCompetitionColor = (tipo: string) => partiteApi.getCompetitionColor(tipo)
+  const isUpcoming = (data: string) => partiteApi.isUpcoming(data)
+  const getAvversarioDisplay = (partita: Partita) => partiteApi.getAvversarioDisplay(partita)
+  
+  // Calculate stats using API
+  const stats = partiteApi.calculateStats(partite)
 
   if (loading) {
     return (
@@ -305,22 +285,19 @@ export default function PartitePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {partite.filter(p => {
-                    const days = Math.ceil((new Date(p.data).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
-                    return days <= 7
-                  }).length}
+                  {stats.prossimi7Giorni}
                 </div>
                 <div className="text-sm text-gray-600">Prossimi 7 giorni</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {partite.filter(p => p.tipo_competizione.toLowerCase() === 'campionato').length}
+                  {stats.campionato}
                 </div>
                 <div className="text-sm text-gray-600">Partite di campionato</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">
-                  {partite.filter(p => p.tipo_competizione.toLowerCase() === 'coppa').length}
+                  {stats.coppa}
                 </div>
                 <div className="text-sm text-gray-600">Partite di coppa</div>
               </div>
@@ -339,7 +316,7 @@ export default function PartitePage() {
             setIsEditMode(false)
           }}
           onSuccess={() => {
-            fetchPartite()
+            fetchPartite(true) // Force refresh after create/edit
             setShowForm(false)
             setSelectedPartita(null)
             setIsEditMode(false)

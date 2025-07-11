@@ -324,5 +324,55 @@ export const tesseratiApi = {
       default:
         return 'bg-gray-100 text-gray-800'
     }
+  },
+
+  /**
+   * Ottimizzazione: singola funzione che recupera tesserati e squadre insieme
+   * Riduce da 2 chiamate separate a 1 chiamata coordinata
+   */
+  async getTesseratiAndSquadre(stagioneId?: string): Promise<{
+    tesserati: TesseratoConSquadra[]
+    squadre: Database['public']['Tables']['squadre']['Row'][]
+  }> {
+    const supabase = createClient()
+    
+    try {
+      console.log('[TesseratiAPI] Fetching tesserati and squadre for season:', stagioneId || 'all')
+      
+      // Parallel queries per massimizzare performance
+      const [tesseratiResult, squadreResult] = await Promise.all([
+        // Usa la funzione esistente ottimizzata per tesserati
+        this.getTesseratiCompleti(stagioneId),
+        
+        // Query squadre filtrata per stagione
+        (() => {
+          let squadreQuery = supabase
+            .from('squadre')
+            .select('*')
+            .order('nome', { ascending: true })
+
+          if (stagioneId) {
+            squadreQuery = squadreQuery.eq('stagione_id', stagioneId)
+          }
+
+          return squadreQuery
+        })()
+      ])
+
+      if (squadreResult.error) throw squadreResult.error
+
+      const result = {
+        tesserati: tesseratiResult,
+        squadre: squadreResult.data || []
+      }
+
+      console.log('[TesseratiAPI] Successfully fetched', result.tesserati.length, 'tesserati and', result.squadre.length, 'squadre')
+      
+      return result
+      
+    } catch (error) {
+      console.error('[TesseratiAPI] Error fetching tesserati and squadre:', error)
+      throw error
+    }
   }
 }

@@ -251,7 +251,7 @@ WHERE email = '${selectedUser.email}';
               <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center space-x-4">
                   <div>
-                    <div className="font-medium">{user.nome} {user.cognome}</div>
+                    <div className="font-medium">{user.cognome} {user.nome}</div>
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </div>
                   <div className="flex space-x-2">
@@ -295,7 +295,7 @@ WHERE email = '${selectedUser.email}';
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-600">Utente:</p>
-                <p className="font-medium">{selectedUser.nome} {selectedUser.cognome}</p>
+                <p className="font-medium">{selectedUser.cognome} {selectedUser.nome}</p>
                 <p className="text-sm text-gray-500">{selectedUser.email}</p>
               </div>
 
