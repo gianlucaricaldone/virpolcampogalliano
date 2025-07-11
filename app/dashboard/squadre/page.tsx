@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeason } from '@/contexts/SeasonContext'
-import { createClient } from '@/lib/supabase/client'
 import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { squadreApi } from '@/lib/api/squadre'
+import { CACHE_DURATIONS } from '@/lib/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Users, Edit, Trash2 } from 'lucide-react'
@@ -15,8 +16,6 @@ type Squadra = Database['public']['Tables']['squadre']['Row'] & {
   tesserati_count?: number
 }
 
-const SQUADRE_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-
 export default function SquadrePage() {
   const { profile, hasAnyRole } = useAuth()
   const { stagioneCorrente } = useSeason()
@@ -25,7 +24,6 @@ export default function SquadrePage() {
   const [showForm, setShowForm] = useState(false)
   const [editingSquadra, setEditingSquadra] = useState<Squadra | null>(null)
   const fetchingRef = useRef(false)
-  const supabase = createClient()
 
   const fetchSquadre = useCallback(async (forceRefresh: boolean = false) => {
     const cacheKey = `squadre_${stagioneCorrente?.id || 'all'}`
@@ -46,58 +44,19 @@ export default function SquadrePage() {
       console.log('[Squadre] Fetch already in progress, skipping duplicate request')
       return
     }
-
-    // Prevent duplicate calls
-    if (!forceRefresh && loading && squadre.length > 0) {
-      console.log('[Squadre] Already loading with data, skipping')
-      return
-    }
     
     try {
       fetchingRef.current = true
       setLoading(true)
       
-      console.log('[Squadre] Fetching squadre data from database')
+      console.log('[Squadre] Fetching squadre data from API')
       
-      // Otteniamo squadre filtrate per stagione corrente
-      let squadreQuery = supabase
-        .from('squadre')
-        .select('*')
-        .order('categoria', { ascending: true })
-
-      // Filtra per stagione corrente se impostata
-      if (stagioneCorrente?.id) {
-        squadreQuery = squadreQuery.eq('stagione_id', stagioneCorrente.id)
-      }
-
-      const { data: squadreData, error: squadreError } = await squadreQuery
-
-      if (squadreError) throw squadreError
-
-      // Otteniamo tutti i tesserati in una singola query
-      const { data: tesseratiData, error: tesseratiError } = await supabase
-        .from('tesserati')
-        .select('squadra_id')
-
-      if (tesseratiError) throw tesseratiError
-
-      // Contiamo i tesserati per ogni squadra
-      const tesseratiCount: Record<string, number> = {}
-      tesseratiData?.forEach(tesserato => {
-        if (tesserato.squadra_id) {
-          tesseratiCount[tesserato.squadra_id] = (tesseratiCount[tesserato.squadra_id] || 0) + 1
-        }
-      })
-
-      // Combiniamo i dati
-      const squadreWithCount = (squadreData || []).map(squadra => ({
-        ...squadra,
-        tesserati_count: tesseratiCount[squadra.id] || 0
-      }))
+      // Use centralized API
+      const squadreWithCount = await squadreApi.getSquadreWithCounts(stagioneCorrente?.id)
 
       // Cache the result
-      setCachedQuery(cacheKey, squadreWithCount, SQUADRE_CACHE_DURATION)
-      console.log('[Squadre] Data cached for', SQUADRE_CACHE_DURATION / 1000, 'seconds')
+      setCachedQuery(cacheKey, squadreWithCount, CACHE_DURATIONS.SQUADRE)
+      console.log('[Squadre] Data cached for', CACHE_DURATIONS.SQUADRE / 1000, 'seconds')
 
       setSquadre(squadreWithCount)
     } catch (error) {
@@ -106,7 +65,7 @@ export default function SquadrePage() {
       setLoading(false)
       fetchingRef.current = false
     }
-  }, [stagioneCorrente?.id, supabase, loading, squadre.length])
+  }, [stagioneCorrente?.id])
 
   useEffect(() => {
     let isMounted = true
@@ -130,13 +89,7 @@ export default function SquadrePage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('squadre')
-        .delete()
-        .eq('id', squadraId)
-
-      if (error) throw error
-
+      await squadreApi.deleteSquadra(squadraId)
       alert('Squadra eliminata con successo')
       fetchSquadre(true) // Force refresh after delete
     } catch (error) {

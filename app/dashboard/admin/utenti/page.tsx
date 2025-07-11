@@ -1,20 +1,40 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Users, Search, Edit, Trash2, Shield, UserPlus, Mail, AlertCircle } from 'lucide-react'
 import { Database } from '@/types/database'
+import { adminApi } from '@/lib/api/admin'
 import AllenatoreForm from '@/components/forms/AllenatoreForm'
 import UserEditForm from '@/components/forms/UserEditForm'
 
 type User = Database['public']['Tables']['users']['Row']
 
+interface UserStats {
+  admin: number
+  dirigente: number
+  allenatore: number
+  vice_allenatore: number
+  tesserato: number
+  genitore: number
+  withEmail: number
+  withoutEmail: number
+  total: number
+}
+
+const USERS_CACHE_DURATION = 3 * 60 * 1000 // 3 minutes
+
 export default function UtentiPage() {
   const { profile, hasRole } = useAuth()
   const [users, setUsers] = useState<User[]>([])
+  const [userStats, setUserStats] = useState<UserStats>({
+    admin: 0, dirigente: 0, allenatore: 0, vice_allenatore: 0,
+    tesserato: 0, genitore: 0, withEmail: 0, withoutEmail: 0, total: 0
+  })
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showAllenatoreForm, setShowAllenatoreForm] = useState(false)
@@ -22,75 +42,68 @@ export default function UtentiPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [showNewUserForm, setShowNewUserForm] = useState(false)
   const [selectedRole, setSelectedRole] = useState<string | null>(null)
+  const fetchingRef = useRef(false)
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setUsers((data as any) || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    } finally {
-      setLoading(false)
+  const fetchUsers = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = 'admin_users_and_stats'
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = getCachedQuery<{users: User[], stats: UserStats}>(cacheKey)
+      if (cachedData) {
+        console.log('[AdminUsers] Using cached users and stats data')
+        setUsers(cachedData.users)
+        setUserStats(cachedData.stats)
+        setLoading(false)
+        return
+      }
     }
-  }
 
-  const sendInviteEmail = async (user: User) => {
-    if (!user.email) {
-      alert('Questo utente non ha un indirizzo email configurato. Modificalo prima di inviare l\'invito.')
+    // Check if already fetching
+    if (fetchingRef.current) {
+      console.log('[AdminUsers] Already fetching users, skipping duplicate request')
       return
     }
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: user.email,
-        options: {
-          shouldCreateUser: true,
-          data: {
-            nome: user.nome,
-            cognome: user.cognome,
-            role: user.role,
-            // Passiamo l'ID del profilo esistente per collegarlo successivamente
-            profile_link_id: user.id
-          }
-        }
-      })
+      fetchingRef.current = true
+      setLoading(true)
+      console.log('[AdminUsers] Fetching users and stats from API')
+      
+      // Use optimized API that calculates stats in single pass
+      const { users: usersData, stats } = await adminApi.getUsers()
+      
+      // Cache both users and stats together
+      setCachedQuery(cacheKey, { users: usersData, stats }, USERS_CACHE_DURATION)
+      console.log('[AdminUsers] Users and stats cached for', USERS_CACHE_DURATION / 1000, 'seconds')
+      
+      setUsers(usersData)
+      setUserStats(stats)
+    } catch (error) {
+      console.error('[AdminUsers] Error fetching users:', error)
+    } finally {
+      setLoading(false)
+      fetchingRef.current = false
+    }
+  }, [])
 
-      if (error) throw error
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
+  const sendInviteEmail = async (user: User) => {
+    try {
+      await adminApi.sendInviteEmail(user)
       alert(`Email di invito inviata con successo a ${user.email}`)
     } catch (error) {
       console.error('Error sending invite:', error)
-      alert('Errore nell\'invio dell\'email di invito')
+      alert(error instanceof Error ? error.message : 'Errore nell\'invio dell\'email di invito')
     }
   }
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.cognome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesTab = activeTab === 'all' || 
-      (activeTab === 'allenatori' && (
-        user.roles?.includes('allenatore') || user.role === 'allenatore' ||
-        user.roles?.includes('vice_allenatore') || user.role === 'vice_allenatore'
-      ))
-    
-    const matchesRole = !selectedRole || 
-      user.roles?.includes(selectedRole as any) || 
-      user.role === selectedRole
-    
-    return matchesSearch && matchesTab && matchesRole
-  })
+  // Use optimized filtering function
+  const filteredUsers = adminApi.filterUsers(users, searchTerm, selectedRole, activeTab)
 
   const allenatori = users.filter(u => 
     u.roles?.includes('allenatore') || u.role === 'allenatore' ||
@@ -204,7 +217,7 @@ export default function UtentiPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Tutti gli Utenti ({users.length})
+                Tutti gli Utenti ({userStats.total})
               </button>
               <button
                 onClick={() => setActiveTab('allenatori')}
@@ -214,7 +227,7 @@ export default function UtentiPage() {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Allenatori e Vice ({allenatori.length})
+                Allenatori e Vice ({userStats.allenatore + userStats.vice_allenatore})
               </button>
             </div>
           </div>
@@ -234,7 +247,7 @@ export default function UtentiPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-2xl font-bold">
-                  {users.filter(u => u.roles?.includes(role as any) || u.role === role).length}
+                  {userStats[role as keyof UserStats] || 0}
                 </div>
                 <div className={`text-xs px-2 py-1 rounded-full capitalize mt-2 ${getRoleColor(role)}`}>
                   {role.replace('_', ' ')}
@@ -249,7 +262,7 @@ export default function UtentiPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {users.filter(u => u.email).length}
+                {userStats.withEmail}
               </div>
               <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 mt-2">
                 Con Email
@@ -262,7 +275,7 @@ export default function UtentiPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
-                {users.filter(u => !u.email).length}
+                {userStats.withoutEmail}
               </div>
               <div className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 mt-2">
                 Senza Email
@@ -388,7 +401,7 @@ export default function UtentiPage() {
         <AllenatoreForm
           onClose={() => setShowAllenatoreForm(false)}
           onSuccess={() => {
-            fetchUsers()
+            fetchUsers(true) // Force refresh after create
             setShowAllenatoreForm(false)
           }}
         />
@@ -399,7 +412,7 @@ export default function UtentiPage() {
           user={null}
           onClose={() => setShowNewUserForm(false)}
           onSuccess={() => {
-            fetchUsers()
+            fetchUsers(true) // Force refresh after create
             setShowNewUserForm(false)
           }}
         />
@@ -410,7 +423,7 @@ export default function UtentiPage() {
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSuccess={() => {
-            fetchUsers()
+            fetchUsers(true) // Force refresh after edit
             setEditingUser(null)
           }}
         />
