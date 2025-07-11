@@ -21,6 +21,7 @@ export default function UtentiPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'allenatori'>('all')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [showNewUserForm, setShowNewUserForm] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -84,7 +85,11 @@ export default function UtentiPage() {
         user.roles?.includes('vice_allenatore') || user.role === 'vice_allenatore'
       ))
     
-    return matchesSearch && matchesTab
+    const matchesRole = !selectedRole || 
+      user.roles?.includes(selectedRole as any) || 
+      user.role === selectedRole
+    
+    return matchesSearch && matchesTab && matchesRole
   })
 
   const allenatori = users.filter(u => 
@@ -109,6 +114,16 @@ export default function UtentiPage() {
       default:
         return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  const handleRoleClick = (role: string) => {
+    if (selectedRole === role) {
+      setSelectedRole(null) // Deselect if clicking the same role
+    } else {
+      setSelectedRole(role)
+    }
+    // Reset tab to 'all' when filtering by role
+    setActiveTab('all')
   }
 
   // Check authorization after all hooks
@@ -209,14 +224,20 @@ export default function UtentiPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-8 gap-4">
         {['admin', 'dirigente', 'allenatore', 'vice_allenatore', 'tesserato', 'genitore'].map(role => (
-          <Card key={role}>
+          <Card 
+            key={role} 
+            className={`cursor-pointer transition-all hover:shadow-md ${
+              selectedRole === role ? 'ring-2 ring-blue-500 shadow-lg' : ''
+            }`}
+            onClick={() => handleRoleClick(role)}
+          >
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-2xl font-bold">
                   {users.filter(u => u.roles?.includes(role as any) || u.role === role).length}
                 </div>
                 <div className={`text-xs px-2 py-1 rounded-full capitalize mt-2 ${getRoleColor(role)}`}>
-                  {role}
+                  {role.replace('_', ' ')}
                 </div>
               </div>
             </CardContent>
