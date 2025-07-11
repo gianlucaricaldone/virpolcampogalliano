@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeason } from '@/contexts/SeasonContext'
 import { dashboardApi } from '@/lib/api/dashboard'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { CACHE_DURATIONS } from '@/lib/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTestRole } from '@/contexts/TestRoleContext'
 import { useRouter } from 'next/navigation'
@@ -45,7 +47,7 @@ interface RecentActivity {
 
 export default function DashboardPage() {
   const { profile, loading, hasAnyRole } = useAuth()
-  const { stagioneCorrente } = useSeason()
+  const { stagioneCorrente, loading: seasonLoading } = useSeason()
   const { testRole, isInTestMode } = useTestRole()
   const router = useRouter()
   const [stats, setStats] = useState({
@@ -59,39 +61,122 @@ export default function DashboardPage() {
   const [loadingStats, setLoadingStats] = useState(true)
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [loadingActivities, setLoadingActivities] = useState(true)
+  const statsLoadingRef = useRef(false)
+  const activitiesLoadingRef = useRef(false)
+  const lastStatsSeasonId = useRef<string | undefined>()
+  const initialLoadDone = useRef(false)
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = `dashboard_stats_${stagioneCorrente?.id || 'all'}`
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedStats = getCachedQuery<typeof stats>(cacheKey)
+      if (cachedStats) {
+        console.log('[Dashboard] Using cached stats')
+        setStats(cachedStats)
+        setLoadingStats(false)
+        return
+      }
+    }
+
+    // Check if already loading
+    if (statsLoadingRef.current) {
+      console.log('[Dashboard] Stats already loading, skipping duplicate request')
+      return
+    }
+
     try {
+      statsLoadingRef.current = true
       setLoadingStats(true)
-      // Usa l'API ottimizzata ma senza React Query per ora
+      console.log('[Dashboard] Fetching fresh stats from API')
+      
       const data = await dashboardApi.getStats(stagioneCorrente?.id)
+      
+      // Cache the result
+      setCachedQuery(cacheKey, data, CACHE_DURATIONS.DASHBOARD_STATS)
+      console.log('[Dashboard] Stats cached for', CACHE_DURATIONS.DASHBOARD_STATS / 1000, 'seconds')
+      
       setStats(data)
     } catch (error) {
       console.error('Error loading stats:', error)
     } finally {
       setLoadingStats(false)
+      statsLoadingRef.current = false
     }
   }, [stagioneCorrente?.id])
 
-  const loadRecentActivities = useCallback(async () => {
+  const loadRecentActivities = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = 'dashboard_recent_activities'
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedActivities = getCachedQuery<RecentActivity[]>(cacheKey)
+      if (cachedActivities) {
+        console.log('[Dashboard] Using cached activities')
+        setRecentActivities(cachedActivities)
+        setLoadingActivities(false)
+        return
+      }
+    }
+
+    // Check if already loading
+    if (activitiesLoadingRef.current) {
+      console.log('[Dashboard] Activities already loading, skipping duplicate request')
+      return
+    }
+
     try {
+      activitiesLoadingRef.current = true
       setLoadingActivities(true)
-      // Usa l'API ottimizzata
+      console.log('[Dashboard] Fetching fresh activities from API')
+      
       const data = await dashboardApi.getRecentActivities(10)
+      
+      // Cache the result
+      setCachedQuery(cacheKey, data || [], CACHE_DURATIONS.DASHBOARD_STATS)
+      console.log('[Dashboard] Activities cached for', CACHE_DURATIONS.DASHBOARD_STATS / 1000, 'seconds')
+      
       setRecentActivities(data || [])
     } catch (error) {
       console.error('Error loading recent activities:', error)
     } finally {
       setLoadingActivities(false)
+      activitiesLoadingRef.current = false
     }
   }, [])
 
+  // Separate effect for initial load based on profile
   useEffect(() => {
     if (profile?.id) {
-      loadStats()
       loadRecentActivities()
     }
-  }, [profile?.id, loadStats, loadRecentActivities])
+  }, [profile?.id])
+  
+  // Separate effect for stats that depend on stagione
+  useEffect(() => {
+    // Skip if still loading season data
+    if (seasonLoading) {
+      console.log('[Dashboard] Season still loading, waiting...')
+      return
+    }
+    
+    // Only load stats if profile exists
+    if (profile?.id) {
+      const currentSeasonId = stagioneCorrente?.id
+      
+      // Skip if season ID hasn't actually changed
+      if (initialLoadDone.current && lastStatsSeasonId.current === currentSeasonId) {
+        console.log('[Dashboard] Season ID unchanged, skipping stats reload')
+        return
+      }
+      
+      console.log('[Dashboard] Loading stats for season:', currentSeasonId || 'no season')
+      lastStatsSeasonId.current = currentSeasonId
+      initialLoadDone.current = true
+      loadStats()
+    }
+  }, [profile?.id, stagioneCorrente?.id, seasonLoading, loadStats])
 
   if (loading || !profile) {
     return (
@@ -310,8 +395,8 @@ export default function DashboardPage() {
         </div>
         <button
           onClick={() => {
-            loadStats()
-            loadRecentActivities()
+            loadStats(true)
+            loadRecentActivities(true)
           }}
           disabled={loadingStats || loadingActivities}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
