@@ -155,8 +155,43 @@ export function useAuth(): UseAuthReturn {
           throw error
         }
         
-        // Handle initial session
-        await handleAuthStateChange(session ? 'SIGNED_IN' : 'SIGNED_OUT', session)
+        console.log('[useAuth] Initial session:', session?.user?.id ? 'found' : 'none')
+        
+        // Handle session directly without triggering auth change handler
+        const user = session?.user ?? null
+        setAuthState(prev => ({ ...prev, user, loading: user ? true : false }))
+        
+        if (user) {
+          try {
+            const profile = await fetchUserProfile(user.id)
+            if (mountedRef.current) {
+              setCachedAuthState(user, profile)
+              setAuthState(prev => ({ 
+                ...prev, 
+                profile, 
+                loading: false,
+                error: null 
+              }))
+            }
+          } catch (error) {
+            if (mountedRef.current) {
+              setAuthState(prev => ({ 
+                ...prev, 
+                profile: null, 
+                loading: false,
+                error: error instanceof Error ? error : new Error('Failed to fetch profile')
+              }))
+            }
+          }
+        } else {
+          clearCachedAuthState()
+          setAuthState(prev => ({ 
+            ...prev, 
+            profile: null, 
+            loading: false,
+            error: null 
+          }))
+        }
         
       } catch (error) {
         console.error('[useAuth] Init error:', error)
@@ -174,8 +209,13 @@ export function useAuth(): UseAuthReturn {
       initAuth()
     }
     
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+    // Subscribe to auth changes (only for future changes, not initial)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only handle changes after initial load
+      if (sessionCheckedRef.current) {
+        handleAuthStateChange(event, session)
+      }
+    })
     
     return () => {
       mountedRef.current = false
