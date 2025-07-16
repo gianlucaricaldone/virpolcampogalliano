@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSeason } from '@/contexts/SeasonContext'
-import { createClient } from '@/lib/supabase/client'
+import { getCachedQuery, setCachedQuery } from '@/lib/supabase/singleton'
+import { parametriApi } from '@/lib/api/parametri'
+import { CACHE_DURATIONS } from '@/lib/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Settings, Calendar, Edit, Trash2, Archive, RotateCcw, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Plus, Settings, Calendar, Edit, Trash2, Archive, RotateCcw, CheckCircle, AlertTriangle, Euro } from 'lucide-react'
 import { Database } from '@/types/database'
 
 type StagioneSportiva = Database['public']['Tables']['stagioni_sportive']['Row']
@@ -19,6 +21,7 @@ export default function ParametriPage() {
   const [loading, setLoading] = useState(true)
   const [showStagioneForm, setShowStagioneForm] = useState(false)
   const [selectedStagione, setSelectedStagione] = useState<StagioneSportiva | null>(null)
+  const fetchingRef = useRef(false)
   
   const [nuovaStagione, setNuovaStagione] = useState({
     nome: '',
@@ -27,8 +30,6 @@ export default function ParametriPage() {
     descrizione: ''
   })
 
-  const supabase = createClient()
-
   // Redirect se non admin (solo dopo che il profilo è caricato)
   useEffect(() => {
     if (profile && profile.role !== 'admin') {
@@ -36,30 +37,54 @@ export default function ParametriPage() {
     }
   }, [profile])
 
+  const fetchParametri = useCallback(async (forceRefresh: boolean = false) => {
+    const cacheKey = 'admin_parametri'
+    
+    // Check cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = getCachedQuery<ParametroSistema[]>(cacheKey)
+      if (cachedData) {
+        console.log('[ParametriPage] Using cached parametri data')
+        setParametri(cachedData)
+        setLoading(false)
+        return
+      }
+    }
+
+    // Check if there's already an ongoing fetch
+    if (fetchingRef.current) {
+      console.log('[ParametriPage] Fetch already in progress, skipping duplicate request')
+      return
+    }
+    
+    try {
+      fetchingRef.current = true
+      setLoading(true)
+      
+      console.log('[ParametriPage] Fetching parametri from API')
+      
+      // Use centralized API and ensure quota_stagionale exists
+      await parametriApi.ensureQuotaStagionaleExists()
+      const { parametri: parametriData } = await parametriApi.getStagioniAndParametri()
+
+      // Cache the result
+      setCachedQuery(cacheKey, parametriData, CACHE_DURATIONS.SQUADRE) // 5 minutes
+      console.log('[ParametriPage] Parametri cached for', CACHE_DURATIONS.SQUADRE / 1000, 'seconds')
+
+      setParametri(parametriData)
+    } catch (error) {
+      console.error('[ParametriPage] Error fetching parametri:', error)
+    } finally {
+      setLoading(false)
+      fetchingRef.current = false
+    }
+  }, [])
+
   useEffect(() => {
     if (profile?.role === 'admin') {
       fetchParametri()
     }
-  }, [profile])
-
-  const fetchParametri = async () => {
-    try {
-      // Carica solo parametri
-      const { data: parametriData, error: parametriError } = await supabase
-        .from('parametri_sistema')
-        .select('*')
-        .order('chiave', { ascending: true })
-
-      if (parametriError) throw parametriError
-
-      setParametri((parametriData as unknown as ParametroSistema[]) || [])
-
-    } catch (error) {
-      console.error('Error fetching parametri:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [profile, fetchParametri])
 
   const handleCreateStagione = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,17 +95,13 @@ export default function ParametriPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('stagioni_sportive')
-        .insert({
-          nome: nuovaStagione.nome,
-          data_inizio: nuovaStagione.data_inizio,
-          data_fine: nuovaStagione.data_fine,
-          descrizione: nuovaStagione.descrizione || null,
-          attiva: false
-        } as any)
-
-      if (error) throw error
+      await parametriApi.createStagione({
+        nome: nuovaStagione.nome,
+        data_inizio: nuovaStagione.data_inizio,
+        data_fine: nuovaStagione.data_fine,
+        descrizione: nuovaStagione.descrizione || null,
+        attiva: false
+      })
 
       setNuovaStagione({ nome: '', data_inizio: '', data_fine: '', descrizione: '' })
       setShowStagioneForm(false)
@@ -106,21 +127,7 @@ export default function ParametriPage() {
     }
 
     try {
-      await supabase
-        .from('stagioni_sportive')
-        .update({ 
-          attiva: false 
-        } as any)
-        .eq('id', stagioneId as any)
-
-      // Se era la stagione corrente, azzera il parametro
-      if (stagioneCorrente?.id === stagioneId) {
-        await supabase
-          .from('parametri_sistema')
-          .update({ valore: null })
-          .eq('chiave', 'stagione_corrente_id')
-      }
-
+      await parametriApi.archiveStagione(stagioneId)
       refreshStagioni()
     } catch (error) {
       console.error('Error archiving stagione:', error)
@@ -130,11 +137,7 @@ export default function ParametriPage() {
 
   const ripristinaStagione = async (stagioneId: string) => {
     try {
-      await supabase
-        .from('stagioni_sportive')
-        .update({ attiva: true } as any)
-        .eq('id', stagioneId as any)
-
+      await parametriApi.ripristinaStagione(stagioneId)
       refreshStagioni()
     } catch (error) {
       console.error('Error restoring stagione:', error)
@@ -144,12 +147,8 @@ export default function ParametriPage() {
 
   const updateParametro = async (id: string, nuovoValore: string) => {
     try {
-      await supabase
-        .from('parametri_sistema')
-        .update({ valore: nuovoValore } as any)
-        .eq('id', id as any)
-
-      fetchParametri()
+      await parametriApi.updateParametro(id, nuovoValore)
+      fetchParametri(true) // Force refresh after update
     } catch (error) {
       console.error('Error updating parametro:', error)
       alert('Errore durante l\'aggiornamento del parametro')
@@ -293,7 +292,7 @@ export default function ParametriPage() {
           {/* Lista Stagioni */}
           <div className="space-y-4">
             {stagioni.map((stagione) => (
-              <div key={stagione.id} className={`p-4 border rounded-lg ${stagione.attiva ? 'border-green-500 bg-green-50' : stagione.archiviata ? 'border-gray-300 bg-gray-50' : 'border-gray-200'}`}>
+              <div key={stagione.id} className={`p-4 border rounded-lg ${stagione.attiva ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="flex items-center space-x-2">
@@ -301,11 +300,6 @@ export default function ParametriPage() {
                       {stagione.attiva && (
                         <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                           Corrente
-                        </span>
-                      )}
-                      {stagione.archiviata && (
-                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                          Archiviata
                         </span>
                       )}
                     </div>
@@ -317,7 +311,7 @@ export default function ParametriPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {!stagione.archiviata && !stagione.attiva && (
+                    {!stagione.attiva && (
                       <Button 
                         size="sm" 
                         onClick={() => handleSetStagioneCorrente(stagione.id)}
@@ -327,25 +321,14 @@ export default function ParametriPage() {
                         Imposta Corrente
                       </Button>
                     )}
-                    {!stagione.archiviata ? (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => archiveStagione(stagione.id)}
-                      >
-                        <Archive className="h-4 w-4 mr-1" />
-                        Archivia
-                      </Button>
-                    ) : (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => ripristinaStagione(stagione.id)}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Ripristina
-                      </Button>
-                    )}
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => archiveStagione(stagione.id)}
+                    >
+                      <Archive className="h-4 w-4 mr-1" />
+                      Disattiva
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -354,12 +337,50 @@ export default function ParametriPage() {
         </CardContent>
       </Card>
 
+      {/* Quota Stagionale */}
+      {(() => {
+        const quotaStagionale = parametri.find(p => p.chiave === 'quota_stagionale')
+        return quotaStagionale ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Euro className="h-5 w-5 mr-2" />
+                Quota Stagionale
+              </CardTitle>
+              <CardDescription>
+                Imposta la quota stagionale in euro per ogni tesserato
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="flex-1">
+                  <h4 className="font-medium">Quota per tesserato</h4>
+                  <p className="text-sm text-gray-600">Importo richiesto per ogni iscrizione annuale</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700">€</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={quotaStagionale.valore || '0'}
+                    onChange={(e) => updateParametro(quotaStagionale.id, e.target.value)}
+                    className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null
+      })()}
+
       {/* Parametri Sistema */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <Settings className="h-5 w-5 mr-2" />
-            Parametri Sistema
+            Altri Parametri Sistema
           </CardTitle>
           <CardDescription>
             Configura i parametri globali della società
@@ -367,7 +388,7 @@ export default function ParametriPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {parametri.filter(p => p.chiave !== 'stagione_corrente_id').map((parametro) => (
+            {parametri.filter(p => p.chiave !== 'stagione_corrente_id' && p.chiave !== 'quota_stagionale').map((parametro) => (
               <div key={parametro.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex-1">
                   <h4 className="font-medium">{parametro.descrizione || parametro.chiave}</h4>

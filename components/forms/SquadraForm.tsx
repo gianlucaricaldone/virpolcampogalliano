@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { useSeason } from '@/contexts/SeasonContext'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ interface SquadraFormProps {
 
 export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraFormProps) {
   const { stagioneCorrente, stagioni } = useSeason()
+  const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [formData, setFormData] = useState({
@@ -85,7 +87,8 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
         vice_allenatore_2: formData.vice_allenatore_2 || null,
         vice_allenatore_2_id: formData.vice_allenatore_2_id || null,
         dirigente: formData.dirigente || null,
-        dirigente_id: formData.dirigente_id || null
+        dirigente_id: formData.dirigente_id || null,
+        organization_id: profile?.organization_id
       }
 
       if (isEditing) {
@@ -212,13 +215,12 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Categoria *
+                Categoria
               </label>
               <select
                 name="categoria"
                 value={formData.categoria}
                 onChange={handleChange}
-                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleziona categoria...</option>
@@ -249,9 +251,7 @@ export default function SquadraForm({ squadra, onClose, onSuccess }: SquadraForm
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Seleziona stagione...</option>
-                {stagioni
-                  .filter(stagione => !stagione.archiviata) // Solo stagioni non archiviate
-                  .map(stagione => (
+                {stagioni.map(stagione => (
                   <option key={stagione.id} value={stagione.id}>
                     {stagione.nome}
                     {stagione.id === stagioneCorrente?.id && ' (Corrente)'}

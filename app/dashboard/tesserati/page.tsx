@@ -359,7 +359,7 @@ export default function TesseratiPage() {
                       onClick={() => handleEdit(tesserato)}
                     >
                       <Edit className="h-4 w-4 mr-1" />
-                      Modifica
+                      Modifica Anagrafica
                     </Button>
                     <Button 
                       variant="outline" 
@@ -385,7 +385,7 @@ export default function TesseratiPage() {
                       onClick={() => handleAssignToSquadra(tesserato)}
                     >
                       <UserPlus className="h-4 w-4 mr-1" />
-                      {tesserato.squadra_stagione ? 'Modifica Squadra' : 'Assegna a Squadra'}
+                      {tesserato.squadra_stagione ? 'Modifica Pagamenti/Visita' : 'Assegna a Squadra'}
                     </Button>
                   )}
                 </div>

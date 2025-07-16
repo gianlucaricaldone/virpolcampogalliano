@@ -24,7 +24,7 @@ export const squadreApi = {
       let squadreQuery = supabase
         .from('squadre')
         .select('*')
-        .order('categoria', { ascending: true })
+        .order('nome', { ascending: true })
 
       // Filtra per stagione corrente se impostata
       if (stagioneId) {
