@@ -37,7 +37,8 @@
       "Bash(npm cache clean:*)",
       "Bash(npm uninstall:*)",
       "Bash(chmod:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

@@ -7,9 +7,16 @@ import { partiteApi } from '@/lib/api/partite'
 import { CACHE_DURATIONS } from '@/lib/constants'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Trophy, Calendar, Clock, MapPin, Edit, Trash2 } from 'lucide-react'
+import { Plus, Trophy, Calendar, Clock, MapPin, Edit, Trash2, Printer } from 'lucide-react'
 import { Database } from '@/types/database'
 import PartitaForm from '@/components/forms/PartitaForm'
+import dynamic from 'next/dynamic'
+
+// Import dinamico per evitare errori SSR con react-pdf
+const LocandinaPartita = dynamic(() => import('@/components/pdf/LocandinaPartita'), {
+  ssr: false,
+  loading: () => <span>Caricamento...</span>
+})
 
 type Partita = Database['public']['Tables']['partite']['Row'] & {
   squadre?: { nome: string }
@@ -218,32 +225,44 @@ export default function PartitePage() {
                 </div>
 
                 {/* Actions */}
-                {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
-                  <div className="flex space-x-2 justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleEdit(partita)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Modifica
-                    </Button>
-                    {isUpcoming(partita.data) && (
-                      <Button variant="outline" size="sm">
-                        <Trophy className="h-4 w-4 mr-1" />
-                        Convoca
+                <div className="flex space-x-2 justify-end">
+                  <LocandinaPartita 
+                    partita={partita}
+                    buttonText={
+                      <>
+                        <Printer className="h-4 w-4 mr-1" />
+                        Locandina
+                      </>
+                    }
+                    buttonClassName="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  />
+                  {(profile?.role === 'admin' || profile?.role === 'dirigente' || profile?.role === 'allenatore') && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEdit(partita)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Modifica
                       </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDelete(partita.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                      {isUpcoming(partita.data) && (
+                        <Button variant="outline" size="sm">
+                          <Trophy className="h-4 w-4 mr-1" />
+                          Convoca
+                        </Button>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDelete(partita.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
