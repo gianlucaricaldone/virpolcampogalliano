@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { useSeason } from '@/contexts/SeasonContext'
+// import { useOrganization } from '@/contexts/OrganizationContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { X } from 'lucide-react'
@@ -19,6 +21,7 @@ type Squadra = Database['public']['Tables']['squadre']['Row']
 
 export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMode = false }: TesseratoFormProps) {
   const { stagioneCorrente } = useSeason()
+  const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [selectedSquadra, setSelectedSquadra] = useState<string>('')
@@ -34,6 +37,13 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
     citta: tesserato?.citta || '',
     cap: tesserato?.cap || '',
     documento_identita: tesserato?.documento_identita || ''
+  })
+  
+  const [datiStagionali, setDatiStagionali] = useState({
+    stato_pagamento: 'non_pagato' as const,
+    visita_sportiva: false,
+    scadenza_certificato: '',
+    note_pagamento: ''
   })
 
   const supabase = createClient()
@@ -78,7 +88,8 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
         indirizzo: formData.indirizzo || null,
         citta: formData.citta || null,
         cap: formData.cap || null,
-        documento_identita: formData.documento_identita || null
+        documento_identita: formData.documento_identita || null,
+        organization_id: profile?.organization_id
       }
 
       if (isEditMode && tesserato) {
@@ -113,6 +124,25 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
             // Non blocchiamo l'operazione se l'assegnazione fallisce
           }
         }
+
+        // Crea i dati stagionali se c'è una stagione corrente
+        if (stagioneCorrente?.id && newTesserato) {
+          const { error: datiStagionaliError } = await supabase
+            .from('tesserati_dati_stagionali')
+            .insert({
+              tesserato_id: newTesserato.id,
+              stagione_id: stagioneCorrente.id,
+              stato_pagamento: datiStagionali.stato_pagamento,
+              visita_sportiva: datiStagionali.visita_sportiva,
+              scadenza_certificato: datiStagionali.scadenza_certificato || null,
+              note_pagamento: datiStagionali.note_pagamento || null
+            })
+
+          if (datiStagionaliError) {
+            console.error('Error creating dati stagionali:', datiStagionaliError)
+            // Non blocchiamo l'operazione se la creazione fallisce
+          }
+        }
       }
 
       onSuccess()
@@ -128,6 +158,14 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }))
+  }
+
+  const handleDatiStagionaliChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target
+    setDatiStagionali(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
@@ -325,6 +363,90 @@ export default function TesseratoForm({ onClose, onSuccess, tesserato, isEditMod
                     Stagione: {stagioneCorrente.nome}
                   </p>
                 </div>
+              )}
+
+              {!isEditMode && stagioneCorrente && (
+                <>
+                  <div className="md:col-span-2">
+                    <h3 className="text-lg font-medium text-gray-900 mb-3 mt-6 border-t pt-6">
+                      Dati Stagionali
+                    </h3>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Stato Pagamento
+                    </label>
+                    <select
+                      name="stato_pagamento"
+                      value={datiStagionali.stato_pagamento}
+                      onChange={handleDatiStagionaliChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="non_pagato">Non Pagato</option>
+                      <option value="pagato">Pagato</option>
+                      <option value="parziale">Parziale</option>
+                      <option value="in_sospeso">In Sospeso</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Visita Medica
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="visita_sportiva"
+                          value="true"
+                          checked={datiStagionali.visita_sportiva === true}
+                          onChange={(e) => setDatiStagionali(prev => ({ ...prev, visita_sportiva: true }))}
+                          className="mr-2"
+                        />
+                        Effettuata
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="visita_sportiva"
+                          value="false"
+                          checked={datiStagionali.visita_sportiva === false}
+                          onChange={(e) => setDatiStagionali(prev => ({ ...prev, visita_sportiva: false }))}
+                          className="mr-2"
+                        />
+                        Non Effettuata
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Scadenza Certificato (opzionale)
+                    </label>
+                    <input
+                      type="date"
+                      name="scadenza_certificato"
+                      value={datiStagionali.scadenza_certificato}
+                      onChange={handleDatiStagionaliChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Note Pagamento (opzionale)
+                    </label>
+                    <input
+                      type="text"
+                      name="note_pagamento"
+                      value={datiStagionali.note_pagamento}
+                      onChange={handleDatiStagionaliChange}
+                      placeholder="Note sul pagamento..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
               )}
 
             </div>
