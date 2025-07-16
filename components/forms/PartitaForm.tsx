@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +21,7 @@ interface PartitaFormProps {
 }
 
 export default function PartitaForm({ onClose, onSuccess, partita, isEditMode = false }: PartitaFormProps) {
+  const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [squadre, setSquadre] = useState<Squadra[]>([])
   const [categorieAvversari, setCategorieAvversari] = useState<CategoriaAvversario[]>([])
@@ -88,34 +90,67 @@ export default function PartitaForm({ onClose, onSuccess, partita, isEditMode = 
     }
 
     try {
-      // Prima creiamo l'avversario
-      const { data: avversarioData, error: avversarioError } = await supabase
+      // Prima cerchiamo se esiste già un avversario con lo stesso nome
+      const { data: existingAvversario, error: searchError } = await supabase
         .from('avversari')
-        .insert({
-          nome_societa: newAvversarioData.nome_societa,
-          citta: newAvversarioData.citta || null
-        })
-        .select()
+        .select('id')
+        .eq('nome_societa', newAvversarioData.nome_societa)
         .single()
 
-      if (avversarioError) throw avversarioError
+      let avversarioId: string
 
-      // Poi creiamo la categoria
-      const { data: categoriaData, error: categoriaError } = await supabase
+      if (searchError && searchError.code === 'PGRST116') {
+        // Avversario non trovato, lo creiamo
+        const { data: avversarioData, error: avversarioError } = await supabase
+          .from('avversari')
+          .insert({
+            nome_societa: newAvversarioData.nome_societa,
+            citta: newAvversarioData.citta || null
+          })
+          .select()
+          .single()
+
+        if (avversarioError) throw avversarioError
+        avversarioId = avversarioData.id
+      } else if (searchError) {
+        throw searchError
+      } else {
+        // Avversario già esistente, usiamo quello
+        avversarioId = existingAvversario.id
+      }
+
+      // Controlliamo se esiste già questa categoria per questo avversario
+      const { data: existingCategoria, error: categoriaSearchError } = await supabase
         .from('categorie_avversari')
-        .insert({
-          avversario_id: avversarioData.id,
-          nome_categoria: newAvversarioData.categoria
-        })
-        .select()
+        .select('id')
+        .eq('avversario_id', avversarioId)
+        .eq('nome_categoria', newAvversarioData.categoria)
         .single()
 
-      if (categoriaError) throw categoriaError
+      if (categoriaSearchError && categoriaSearchError.code === 'PGRST116') {
+        // Categoria non trovata, la creiamo
+        const { data: categoriaData, error: categoriaError } = await supabase
+          .from('categorie_avversari')
+          .insert({
+            avversario_id: avversarioId,
+            nome_categoria: newAvversarioData.categoria
+          })
+          .select()
+          .single()
 
-      // Aggiorniamo la lista
-      await fetchCategorieAvversari()
-      
-      return categoriaData.id
+        if (categoriaError) throw categoriaError
+
+        // Aggiorniamo la lista
+        await fetchCategorieAvversari()
+        
+        return categoriaData.id
+      } else if (categoriaSearchError) {
+        throw categoriaSearchError
+      } else {
+        // Categoria già esistente
+        alert('Questo avversario con questa categoria esiste già')
+        return null
+      }
     } catch (error) {
       console.error('Error creating new avversario:', error)
       alert('Errore durante la creazione dell\'avversario')
