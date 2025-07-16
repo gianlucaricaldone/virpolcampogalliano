@@ -22,7 +22,6 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
     nome: '',
     cognome: '',
     telefono: '',
-    data_nascita: '',
     squadra_id: [] as string[],
     note: ''
   })
@@ -60,9 +59,7 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
           nome: formData.nome,
           cognome: formData.cognome,
           telefono: formData.telefono || null,
-          data_nascita: formData.data_nascita || null,
           squadra_id: formData.squadra_id.length > 0 ? formData.squadra_id : null,
-          note: formData.note || null,
           role: 'allenatore',
           roles: ['allenatore'],
           has_logged_in: false,
@@ -143,14 +140,13 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email * <span className="text-xs text-gray-500">(per login)</span>
+                  Email <span className="text-xs text-gray-500">(per login)</span>
                 </label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -160,14 +156,13 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome *
+                  Nome
                 </label>
                 <input
                   type="text"
                   name="nome"
                   value={formData.nome}
                   onChange={handleChange}
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -199,18 +194,6 @@ export default function AllenatoreForm({ onClose, onSuccess }: AllenatoreFormPro
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Data di Nascita
-                </label>
-                <input
-                  type="date"
-                  name="data_nascita"
-                  value={formData.data_nascita}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
             </div>
 
             <div>
