@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { X, Trophy, Calendar, Users, MapPin, Mail, Phone, Image as ImageIcon } from 'lucide-react'
@@ -17,6 +18,7 @@ interface TorneoFormProps {
 }
 
 export default function TorneoForm({ onClose, onSuccess, torneo, isEditMode = false }: TorneoFormProps) {
+  const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -81,7 +83,8 @@ export default function TorneoForm({ onClose, onSuccess, torneo, isEditMode = fa
         contatto_email: formData.contatto_email || null,
         contatto_telefono: formData.contatto_telefono || null,
         immagine_copertina: formData.immagine_copertina || null,
-        regolamento: formData.regolamento ? JSON.parse(formData.regolamento) : null
+        regolamento: formData.regolamento ? JSON.parse(formData.regolamento) : null,
+        organization_id: profile?.organization_id || undefined
       }
 
       if (isEditMode && torneo) {
