@@ -83,27 +83,22 @@ export default function PresenzePage() {
       const squadreData = data || []
       setSquadre(squadreData)
       
-      // Se l'utente è un allenatore (NON admin/dirigente) e non è stata ancora impostata una squadra di default
-      if (hasAnyRole(['allenatore', 'vice_allenatore']) && !hasAnyRole(['admin', 'dirigente']) && !defaultSquadraSet && squadreData.length > 0) {
+      // Se l'utente ha almeno una squadra assegnata e non è stata ancora impostata una squadra di default
+      if (profile?.squadra_id && profile.squadra_id.length > 0 && !defaultSquadraSet && squadreData.length > 0) {
         console.log('=== DEBUG SELEZIONE SQUADRA ===')
         console.log('Profile squadra_id:', profile?.squadra_id)
         console.log('Squadre disponibili:', squadreData.map(s => ({ id: s.id, nome: s.nome })))
         
-        // Cerca la squadra specifica dell'allenatore se ha una squadra assegnata
-        if (profile?.squadra_id && profile.squadra_id.length > 0) {
-          const squadraAllenatore = squadreData.find(s => profile.squadra_id?.includes(s.id))
-          console.log('Squadra allenatore trovata:', squadraAllenatore?.nome || 'Nessuna')
-          
-          if (squadraAllenatore) {
-            setSelectedSquadra(squadraAllenatore.id)
-            console.log('Selezionata squadra allenatore:', squadraAllenatore.nome)
-          } else {
-            setSelectedSquadra(squadreData[0].id)
-            console.log('Squadra allenatore non trovata, selezionata prima disponibile:', squadreData[0].nome)
-          }
+        // Cerca la squadra specifica dell'utente tra quelle disponibili
+        const squadraUtente = squadreData.find(s => profile.squadra_id?.includes(s.id))
+        console.log('Squadra utente trovata:', squadraUtente?.nome || 'Nessuna')
+        
+        if (squadraUtente) {
+          setSelectedSquadra(squadraUtente.id)
+          console.log('Selezionata squadra utente:', squadraUtente.nome)
         } else {
           setSelectedSquadra(squadreData[0].id)
-          console.log('Nessuna squadra assegnata, selezionata prima disponibile:', squadreData[0].nome)
+          console.log('Squadra utente non trovata, selezionata prima disponibile:', squadreData[0].nome)
         }
         setDefaultSquadraSet(true)
       }
