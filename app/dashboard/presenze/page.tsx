@@ -559,52 +559,6 @@ export default function PresenzePage() {
         </Card>
       )}
 
-      {/* Statistics for Presenze Tab */}
-      {activeTab === 'presenze' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Presenti Oggi</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                {presentiCount}
-              </div>
-              <p className="text-sm text-gray-600">su {presenze.length} tesserati</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Percentuale Presenza</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">
-                {percentualePresenza}%
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all"
-                  style={{ width: `${percentualePresenza}%` }}
-                ></div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Assenti</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-600">
-                {presenze.length - presentiCount}
-              </div>
-              <p className="text-sm text-gray-600">tesserati assenti</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* Presences List */}
       {activeTab === 'presenze' && (
         <>
@@ -773,6 +727,50 @@ export default function PresenzePage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Statistics for Presenze Tab */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Presenti Oggi</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600">
+                  {presentiCount}
+                </div>
+                <p className="text-sm text-gray-600">su {presenze.length} tesserati</p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Percentuale Presenza</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-blue-600">
+                  {percentualePresenza}%
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all"
+                    style={{ width: `${percentualePresenza}%` }}
+                  ></div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Assenti</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">
+                  {presenze.length - presentiCount}
+                </div>
+                <p className="text-sm text-gray-600">tesserati assenti</p>
+              </CardContent>
+            </Card>
+          </div>
         </>
       )}
 

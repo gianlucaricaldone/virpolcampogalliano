@@ -219,7 +219,8 @@ export default function MagazzinoPage() {
           ubicazione: formData.ubicazione || null,
           codice_tracking: formData.codice_tracking || null,
           foto_url: foto_url,
-          stato: 'disponibile'
+          stato: 'disponibile',
+          organization_id: profile?.organization_id || undefined
         })
         .select()
         .single()

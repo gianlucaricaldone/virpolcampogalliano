@@ -103,25 +103,62 @@ export default function PasswordSetupPage() {
     setMessage('')
 
     try {
-      // Nota: Questa operazione richiede privilegi admin a livello database
-      // Per ora mostriamo le istruzioni SQL
-      const sqlCommand = `
+      // Chiama l'API route per aggiornare la password
+      const response = await fetch('/api/admin/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          password: tempPassword
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        // Se l'API fallisce, mostra le istruzioni SQL come fallback
+        if (response.status === 500 || result.error?.includes('service_role')) {
+          const sqlCommand = `
 -- Eseguire questo comando nel SQL Editor di Supabase:
 UPDATE auth.users 
 SET encrypted_password = crypt('${tempPassword}', gen_salt('bf'))
 WHERE email = '${selectedUser.email}';
-      `.trim()
+          `.trim()
 
-      // Copia negli appunti se possibile
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(sqlCommand)
-        setMessage('Comando SQL copiato negli appunti! Eseguilo nel SQL Editor di Supabase.')
+          // Copia negli appunti se possibile
+          if (navigator.clipboard) {
+            await navigator.clipboard.writeText(sqlCommand)
+            setMessage('⚠️ API non disponibile. Comando SQL copiato negli appunti! Eseguilo nel SQL Editor di Supabase.')
+          } else {
+            setMessage('⚠️ API non disponibile. Copia questo comando e eseguilo nel SQL Editor di Supabase:\n\n' + sqlCommand)
+          }
+        } else {
+          throw new Error(result.error || 'Errore nell\'aggiornamento della password')
+        }
       } else {
-        setMessage('Copia questo comando e eseguilo nel SQL Editor di Supabase:\n\n' + sqlCommand)
+        setMessage(`✅ Password impostata con successo per ${selectedUser.nome} ${selectedUser.cognome}!`)
+        
+        // Aggiorna lo stato locale dell'utente
+        setUsers(prevUsers => 
+          prevUsers.map(u => 
+            u.id === selectedUser.id 
+              ? { ...u, auth_method: 'password_set' as const }
+              : u
+          )
+        )
+        
+        // Chiudi il modal dopo 2 secondi
+        setTimeout(() => {
+          setShowModal(false)
+          setMessage('')
+          setTempPassword('')
+        }, 2000)
       }
 
     } catch (error: any) {
-      setMessage('Errore: ' + error.message)
+      setMessage('❌ Errore: ' + error.message)
     } finally {
       setUpdating(false)
     }
@@ -324,7 +361,7 @@ WHERE email = '${selectedUser.email}';
                   onClick={updateUserPassword}
                   disabled={updating || !tempPassword}
                 >
-                  {updating ? 'Generazione...' : 'Genera Comando SQL'}
+                  {updating ? 'Impostazione...' : 'Imposta Password'}
                 </Button>
                 <Button
                   variant="outline"

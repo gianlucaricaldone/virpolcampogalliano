@@ -12,7 +12,7 @@ interface EventoFormProps {
 }
 
 export default function EventoForm({ eventoId, onClose, onSuccess }: EventoFormProps) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const supabase = useSupabase()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -76,7 +76,8 @@ export default function EventoForm({ eventoId, onClose, onSuccess }: EventoFormP
         costo_persona: formData.costo_persona ? parseFloat(formData.costo_persona) : null,
         max_partecipanti: formData.max_partecipanti ? parseInt(formData.max_partecipanti) : null,
         tipologia: formData.tipologia,
-        created_by: user?.id
+        created_by: user?.id,
+        organization_id: profile?.organization_id || undefined
       }
 
       if (eventoId) {
