@@ -38,7 +38,8 @@
       "Bash(npm uninstall:*)",
       "Bash(chmod:*)",
       "Bash(npx supabase:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

@@ -83,9 +83,28 @@ export default function PresenzePage() {
       const squadreData = data || []
       setSquadre(squadreData)
       
-      // Se l'utente è un allenatore e non è stata ancora impostata una squadra di default
-      if (hasAnyRole(['allenatore', 'vice_allenatore']) && !defaultSquadraSet && squadreData.length > 0) {
-        setSelectedSquadra(squadreData[0].id)
+      // Se l'utente è un allenatore (NON admin/dirigente) e non è stata ancora impostata una squadra di default
+      if (hasAnyRole(['allenatore', 'vice_allenatore']) && !hasAnyRole(['admin', 'dirigente']) && !defaultSquadraSet && squadreData.length > 0) {
+        console.log('=== DEBUG SELEZIONE SQUADRA ===')
+        console.log('Profile squadra_id:', profile?.squadra_id)
+        console.log('Squadre disponibili:', squadreData.map(s => ({ id: s.id, nome: s.nome })))
+        
+        // Cerca la squadra specifica dell'allenatore se ha una squadra assegnata
+        if (profile?.squadra_id && profile.squadra_id.length > 0) {
+          const squadraAllenatore = squadreData.find(s => profile.squadra_id?.includes(s.id))
+          console.log('Squadra allenatore trovata:', squadraAllenatore?.nome || 'Nessuna')
+          
+          if (squadraAllenatore) {
+            setSelectedSquadra(squadraAllenatore.id)
+            console.log('Selezionata squadra allenatore:', squadraAllenatore.nome)
+          } else {
+            setSelectedSquadra(squadreData[0].id)
+            console.log('Squadra allenatore non trovata, selezionata prima disponibile:', squadreData[0].nome)
+          }
+        } else {
+          setSelectedSquadra(squadreData[0].id)
+          console.log('Nessuna squadra assegnata, selezionata prima disponibile:', squadreData[0].nome)
+        }
         setDefaultSquadraSet(true)
       }
     } catch (error) {
@@ -611,10 +630,23 @@ export default function PresenzePage() {
               </CardHeader>
               <CardContent>
                 {tesserati.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Caricamento tesserati...</p>
-                  </div>
+                  selectedSquadra !== 'all' ? (
+                    <div className="text-center py-12">
+                      <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun tesserato nella squadra</h3>
+                      <p className="text-gray-500 mb-4">
+                        La squadra <strong>{squadre.find(s => s.id === selectedSquadra)?.nome}</strong> non ha ancora tesserati assegnati per questa stagione.
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        Per aggiungere tesserati alla squadra, vai nella sezione <strong>Tesserati</strong> e assegna i giocatori alla squadra.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                      <p className="text-gray-500">Caricamento tesserati...</p>
+                    </div>
+                  )
                 ) : (
                   <>
                     <div className="space-y-3 mb-4">

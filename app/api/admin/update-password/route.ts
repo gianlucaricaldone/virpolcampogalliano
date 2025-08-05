@@ -92,7 +92,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: `Errore nella creazione utente: ${createError.message}` }, { status: 500 })
         }
         
-        console.log('Auth user created successfully:', newAuthUser?.id)
+        console.log('Auth user created successfully:', newAuthUser?.user?.id)
         return NextResponse.json({ success: true, data: newAuthUser })
       }
       
