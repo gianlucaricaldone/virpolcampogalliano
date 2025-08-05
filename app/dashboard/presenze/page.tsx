@@ -59,7 +59,14 @@ export default function PresenzePage() {
   }, [selectedSquadra])
 
   const fetchSquadre = async () => {
+    console.log('=== INIZIO fetchSquadre ===')
+    console.log('stagioneCorrente?.id:', stagioneCorrente?.id)
+    console.log('profile:', profile)
+    console.log('profile?.squadra_id:', profile?.squadra_id)
+    console.log('defaultSquadraSet:', defaultSquadraSet)
+    
     if (!stagioneCorrente?.id) {
+      console.log('Uscita early: nessuna stagione corrente')
       setLoading(false)
       return
     }
@@ -82,6 +89,14 @@ export default function PresenzePage() {
       
       const squadreData = data || []
       setSquadre(squadreData)
+      
+      console.log('=== DOPO QUERY SQUADRE ===')
+      console.log('squadreData:', squadreData)
+      console.log('Condizioni per auto-selezione:')
+      console.log('- profile?.squadra_id:', profile?.squadra_id)
+      console.log('- profile.squadra_id.length > 0:', profile?.squadra_id && profile.squadra_id.length > 0)
+      console.log('- !defaultSquadraSet:', !defaultSquadraSet)
+      console.log('- squadreData.length > 0:', squadreData.length > 0)
       
       // Se l'utente ha almeno una squadra assegnata e non è stata ancora impostata una squadra di default
       if (profile?.squadra_id && profile.squadra_id.length > 0 && !defaultSquadraSet && squadreData.length > 0) {
