@@ -30,7 +30,6 @@ export default function PresenzePage() {
   const [selectedSquadra, setSelectedSquadra] = useState<string>('all')
   const [defaultSquadraSet, setDefaultSquadraSet] = useState(false)
   const [tesserati, setTesserati] = useState<any[]>([])
-  const [bulkMode, setBulkMode] = useState(false)
   const [selectedTesserati, setSelectedTesserati] = useState<Set<string>>(new Set())
   const [report, setReport] = useState('')
   const [statistichePeriodo, setStatistichePeriodo] = useState<StatistichePeriodo>('SETTIMANALE')
@@ -52,12 +51,6 @@ export default function PresenzePage() {
     }
   }, [selectedDate, selectedType, selectedSquadra, activeTab])
   
-  // Chiudi bulk mode se ci sono già presenze quando cambiano i filtri
-  useEffect(() => {
-    if (presenze.length > 0 && bulkMode) {
-      setBulkMode(false)
-    }
-  }, [presenze.length])
 
   useEffect(() => {
     if (selectedSquadra !== 'all') {
@@ -222,44 +215,89 @@ export default function PresenzePage() {
     if (tesserati.length === 0) return
 
     try {
-      // Gestisci TUTTI i tesserati: presenti (selezionati) e assenti (non selezionati)
-      const promises = tesserati.map(async (tesserato) => {
-        const isPresent = selectedTesserati.has(tesserato.id)
-        
-        // Controlla se esiste già una presenza per oggi - usa .maybeSingle() invece di .single()
-        const { data: existing } = await supabase
-          .from('presenze')
-          .select('id')
-          .eq('tesserato_id', tesserato.id)
-          .eq('data', selectedDate)
-          .eq('tipo', ATTENDANCE_TYPES[selectedType])
-          .maybeSingle()
+      // Prima, ottieni tutte le presenze esistenti in una sola query
+      const { data: existingPresenze } = await supabase
+        .from('presenze')
+        .select('id, tesserato_id')
+        .eq('data', selectedDate)
+        .eq('tipo', ATTENDANCE_TYPES[selectedType])
+        .eq('squadra_id', selectedSquadra)
+        .in('tesserato_id', tesserati.map(t => t.id))
 
-        if (existing) {
-          // Aggiorna presenza esistente
-          return supabase
-            .from('presenze')
-            .update({ presente: isPresent })
-            .eq('id', existing.id)
+      const existingMap = new Map(
+        (existingPresenze || []).map(p => [p.tesserato_id, p.id])
+      )
+
+      // Prepara i dati per insert e update
+      const toInsert: any[] = []
+      const toUpdatePresent: string[] = []
+      const toUpdateAbsent: string[] = []
+
+      tesserati.forEach(tesserato => {
+        const isPresent = selectedTesserati.has(tesserato.id)
+        const existingId = existingMap.get(tesserato.id)
+
+        if (existingId) {
+          // Aggiungi agli array di update
+          if (isPresent) {
+            toUpdatePresent.push(existingId)
+          } else {
+            toUpdateAbsent.push(existingId)
+          }
         } else {
-          // Crea nuova presenza con organization_id
-          return supabase
-            .from('presenze')
-            .insert({
-              tesserato_id: tesserato.id,
-              data: selectedDate,
-              tipo: ATTENDANCE_TYPES[selectedType],
-              presente: isPresent,
-              squadra_id: selectedSquadra !== 'all' ? selectedSquadra : null,
-              stagione_id: stagioneCorrente?.id,
-              organization_id: DEFAULT_ORGANIZATION_ID
-            })
+          // Prepara per insert
+          toInsert.push({
+            tesserato_id: tesserato.id,
+            data: selectedDate,
+            tipo: ATTENDANCE_TYPES[selectedType],
+            presente: isPresent,
+            squadra_id: selectedSquadra !== 'all' ? selectedSquadra : null,
+            stagione_id: stagioneCorrente?.id,
+            organization_id: DEFAULT_ORGANIZATION_ID
+          })
         }
       })
 
-      await Promise.all(promises)
+      // Esegui le operazioni in batch
+      const operations = []
+
+      // Insert batch
+      if (toInsert.length > 0) {
+        operations.push(
+          supabase.from('presenze').insert(toInsert)
+        )
+      }
+
+      // Update presenti batch
+      if (toUpdatePresent.length > 0) {
+        operations.push(
+          supabase
+            .from('presenze')
+            .update({ presente: true })
+            .in('id', toUpdatePresent)
+        )
+      }
+
+      // Update assenti batch
+      if (toUpdateAbsent.length > 0) {
+        operations.push(
+          supabase
+            .from('presenze')
+            .update({ presente: false })
+            .in('id', toUpdateAbsent)
+        )
+      }
+
+      // Esegui tutte le operazioni
+      const results = await Promise.all(operations)
+      
+      // Controlla errori
+      const errors = results.filter(r => r.error).map(r => r.error)
+      if (errors.length > 0) {
+        throw new Error(errors.map(e => e?.message).join(', '))
+      }
+
       setSelectedTesserati(new Set())
-      setBulkMode(false)
       fetchPresenze()
       alert(`✅ Presenze registrate con successo!\n${selectedTesserati.size} presenti, ${tesserati.length - selectedTesserati.size} assenti`)
     } catch (error) {
@@ -540,20 +578,6 @@ export default function PresenzePage() {
                   ))}
                 </select>
               </div>
-              {activeTab === 'presenze' && selectedSquadra !== 'all' && (
-                <div className="flex items-end">
-                  <Button
-                    onClick={() => setBulkMode(!bulkMode)}
-                    variant={bulkMode ? 'default' : 'outline'}
-                    className="w-full"
-                    disabled={presenze.length > 0}
-                    title={presenze.length > 0 ? 'Presenze già registrate per questa data e tipo' : ''}
-                  >
-                    <UserCheck className="mr-2 h-4 w-4" />
-                    {bulkMode ? 'Annulla Selezione' : 'Inserimento Rapido'}
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -577,7 +601,7 @@ export default function PresenzePage() {
             </Card>
           )}
           
-          {bulkMode && selectedSquadra !== 'all' && (
+          {selectedSquadra !== 'all' && presenze.length === 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Inserimento Rapido Presenze</CardTitle>
@@ -586,8 +610,15 @@ export default function PresenzePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 mb-4">
-                  {tesserati.map((tesserato) => (
+                {tesserati.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Caricamento tesserati...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3 mb-4">
+                      {tesserati.map((tesserato) => (
                     <label
                       key={tesserato.id}
                       className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
@@ -637,6 +668,8 @@ export default function PresenzePage() {
                     Registra Presenze
                   </Button>
                 </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}

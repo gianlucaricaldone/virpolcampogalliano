@@ -49,9 +49,9 @@ export default function PasswordSetupPage() {
   const fetchUsers = async () => {
     console.log('fetchUsers called')
     try {
-      // Query diretta alla tabella users per evitare problemi con viste
+      // Prima ottieni gli utenti dalla tabella public.users
       console.log('Making query to users table...')
-      const { data, error } = await supabase
+      const { data: publicUsers, error: publicError } = await supabase
         .from('users')
         .select(`
           id,
@@ -63,16 +63,45 @@ export default function PasswordSetupPage() {
         `)
         .order('created_at', { ascending: false })
 
-      console.log('Query result:', { data, error })
+      if (publicError) throw publicError
       
-      if (error) throw error
+      console.log('Public users found:', publicUsers?.length || 0)
       
-      // Aggiungiamo i campi necessari per la compatibilità con l'interfaccia
-      const usersWithAuthStatus = (data || []).map(user => ({
-        ...user,
-        auth_method: 'magic_link_only' as const,
-        last_sign_in_at: null
-      }))
+      // Poi ottieni la lista degli utenti auth per verificare chi ha già una password
+      const authResponse = await fetch('/api/admin/list-auth-users', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      let authUsers: any[] = []
+      if (authResponse.ok) {
+        const authData = await authResponse.json()
+        authUsers = authData.users || []
+        console.log('Auth users found:', authUsers.length)
+      }
+      
+      // Combina le informazioni
+      const usersWithAuthStatus = (publicUsers || []).map(user => {
+        // Trova l'utente auth corrispondente
+        const authUser = authUsers.find(au => 
+          au.id === user.id || 
+          au.email?.toLowerCase() === user.email?.toLowerCase()
+        )
+        
+        // Se l'utente pubblico non ha email ma l'utente auth sì, usa quella
+        const email = user.email || authUser?.email || null
+        
+        return {
+          ...user,
+          email,
+          auth_method: authUser?.identities?.some((i: any) => i.provider === 'email') 
+            ? 'password_set' as const 
+            : 'magic_link_only' as const,
+          last_sign_in_at: authUser?.last_sign_in_at || null
+        }
+      })
       
       console.log('Users processed:', usersWithAuthStatus.length)
       setUsers(usersWithAuthStatus)
@@ -103,6 +132,13 @@ export default function PasswordSetupPage() {
     setMessage('')
 
     try {
+      console.log('Updating password for user:', { 
+        userId: selectedUser.id, 
+        email: selectedUser.email,
+        nome: selectedUser.nome,
+        cognome: selectedUser.cognome 
+      })
+      
       // Chiama l'API route per aggiornare la password
       const response = await fetch('/api/admin/update-password', {
         method: 'POST',
@@ -111,6 +147,7 @@ export default function PasswordSetupPage() {
         },
         body: JSON.stringify({
           userId: selectedUser.id,
+          email: selectedUser.email,
           password: tempPassword
         })
       })
@@ -138,7 +175,11 @@ WHERE email = '${selectedUser.email}';
           throw new Error(result.error || 'Errore nell\'aggiornamento della password')
         }
       } else {
-        setMessage(`✅ Password impostata con successo per ${selectedUser.nome} ${selectedUser.cognome}!`)
+        if (result.data?.email && !selectedUser.email) {
+          setMessage(`✅ Account creato e password impostata con successo per ${selectedUser.nome} ${selectedUser.cognome}!\n\nL'utente ora può accedere con:\nEmail: ${result.data.email}\nPassword: ${tempPassword}`)
+        } else {
+          setMessage(`✅ Password impostata con successo per ${selectedUser.nome} ${selectedUser.cognome}!`)
+        }
         
         // Aggiorna lo stato locale dell'utente
         setUsers(prevUsers => 
@@ -273,6 +314,43 @@ WHERE email = '${selectedUser.email}';
           </CardContent>
         </Card>
       )}
+      
+      {/* Avviso per email mancanti */}
+      {users.some(u => !u.email) && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-800">Email Mancanti</h3>
+                <p className="text-red-700 mt-1">
+                  Alcuni utenti non hanno l'email sincronizzata. Esegui questa query SQL nel pannello Supabase:
+                </p>
+                <pre className="mt-2 p-3 bg-red-100 rounded text-sm overflow-x-auto">
+{`-- Prima sincronizza le email da auth.users
+UPDATE public.users u
+SET email = au.email, updated_at = NOW()
+FROM auth.users au
+WHERE u.id = au.id
+  AND (u.email IS NULL OR u.email = '')
+  AND au.email IS NOT NULL;
+
+-- Poi genera email temporanee per utenti senza corrispondenza in auth
+UPDATE public.users
+SET email = LOWER(CONCAT(
+    COALESCE(REPLACE(nome, ' ', ''), 'utente'),
+    '.',
+    COALESCE(REPLACE(cognome, ' ', ''), CAST(id AS VARCHAR(8))),
+    '@temp.local'
+)),
+updated_at = NOW()
+WHERE email IS NULL OR email = '';`}
+                </pre>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Lista utenti */}
       <Card>
@@ -289,7 +367,11 @@ WHERE email = '${selectedUser.email}';
                 <div className="flex items-center space-x-4">
                   <div>
                     <div className="font-medium">{user.cognome} {user.nome}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="text-sm text-gray-500">
+                      {user.email || (
+                        <span className="text-red-500 italic">Email mancante</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex space-x-2">
                     {getRoleBadge(user.role)}
@@ -304,7 +386,7 @@ WHERE email = '${selectedUser.email}';
                       <div>Mai effettuato l'accesso</div>
                     )}
                   </div>
-                  {user.auth_method === 'magic_link_only' && (
+                  {user.auth_method === 'magic_link_only' && user.email && (
                     <Button
                       onClick={() => openPasswordModal(user)}
                       size="sm"
@@ -313,6 +395,11 @@ WHERE email = '${selectedUser.email}';
                       <Key className="w-4 h-4 mr-2" />
                       Imposta Password
                     </Button>
+                  )}
+                  {!user.email && (
+                    <span className="text-sm text-red-600">
+                      Richiede sincronizzazione
+                    </span>
                   )}
                 </div>
               </div>
@@ -351,8 +438,20 @@ WHERE email = '${selectedUser.email}';
               </div>
 
               {message && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <pre className="text-sm text-blue-800 whitespace-pre-wrap">{message}</pre>
+                <div className={`p-3 border rounded-md ${
+                  message.includes('✅') 
+                    ? 'bg-green-50 border-green-200' 
+                    : message.includes('❌')
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <pre className={`text-sm whitespace-pre-wrap ${
+                    message.includes('✅') 
+                      ? 'text-green-800' 
+                      : message.includes('❌')
+                      ? 'text-red-800'
+                      : 'text-blue-800'
+                  }`}>{message}</pre>
                 </div>
               )}
 
