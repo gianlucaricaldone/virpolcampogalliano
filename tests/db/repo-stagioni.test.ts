@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { etichettaDaCodice } from '@/lib/domain/stagione'
 import { elencaStagioni, stagioneCorrente, stagionePerCodice } from '@/lib/repos/stagioni'
 import type { Database } from '@/lib/db/types'
@@ -12,6 +12,19 @@ beforeEach(async () => {
   // stagioni ← squadre è on delete restrict: una squadra committata da un
   // test precedente basterebbe a rendere questa delete un no-op silenzioso,
   // e il fallimento emergerebbe altrove, in un test che non ha toccato nulla.
+  const { error } = await db.from('stagioni').delete().neq('codice', '')
+  if (error) throw error
+})
+
+// Questa suite scrive con un client service-role vero, fuori da qualunque
+// transazione annullata: senza un afterAll, l'ultimo test del file lascia le
+// sue righe committate (es. '2024-25', '2025-26', '2026-27' con lo stato di
+// default 'aperta') per chiunque legga stagioni dopo — seed:dev incluso, se
+// girasse dopo test:db invece che prima. Quale dei due file
+// repo-stagioni*.test.ts gira per ultimo non è deterministico, quindi non
+// basta pulire a inizio file: va pulito anche alla fine. Stesso pattern già
+// in uso in sessione.test.ts per lo stesso motivo.
+afterAll(async () => {
   const { error } = await db.from('stagioni').delete().neq('codice', '')
   if (error) throw error
 })

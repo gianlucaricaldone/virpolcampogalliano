@@ -19,29 +19,41 @@ const UTENTI = [
 async function main() {
   const db = supabaseAdmin()
 
-  const { data: stagioneEsistente } = await db
-    .from('stagioni').select('id').eq('codice', '2026-27').maybeSingle()
-  const stagioneId = stagioneEsistente?.id ?? (
-    await db.from('stagioni').insert({
-      codice: '2026-27', etichetta: '2026/2027',
-      data_inizio: '2026-09-01', data_fine: '2027-06-30',
-    }).select('id').single()
-  ).data!.id
+  // upsert su codice, non "select poi inserisci se manca": tests/db/repo-stagioni.test.ts
+  // e repo-stagioni-scrittura.test.ts scrivono con un client service-role vero
+  // (non dentro una transazione annullata, l'unico modo per cui l'harness sa
+  // isolare i test — vedi "Debito noto" in CLAUDE.md) e l'ultimo test di
+  // QUALUNQUE dei due file lascia una riga '2026-27' e/o '2025-26' commit­tata,
+  // con stato di default 'aperta'. Quale dei due file gira per ultimo non è
+  // deterministico (vitest non ordina i file alfabeticamente), quindi un
+  // controllo "esiste già?" che si limita a riusare la riga trovata eredita
+  // uno stato scelto da un test, non da questo script — osservato di persona:
+  // la 2025-26 restava 'aperta' invece di 'chiusa' a seconda dell'ordine.
+  // upsert forza etichetta/date/stato ai valori giusti anche su una riga
+  // preesistente, indipendentemente da chi l'ha creata.
+  const { data: stagione2026, error: erroreStagione2026 } = await db
+    .from('stagioni')
+    .upsert(
+      { codice: '2026-27', etichetta: '2026/2027', data_inizio: '2026-09-01', data_fine: '2027-06-30', stato: 'aperta' },
+      { onConflict: 'codice' },
+    )
+    .select('id')
+    .single()
+  if (erroreStagione2026) throw erroreStagione2026
+  const stagioneId = stagione2026.id
 
   // Seconda stagione, chiusa: con una sola stagione seminata, SelettoreStagione
   // ha una sola opzione e non si può verificare né che il cambio selezione
   // sposti davvero il segmento di stagione nell'URL, né che compaia
   // l'etichetta "(chiusa)". Più vecchia della 2026-27 e chiusa: non deve
   // diventare la stagione corrente al posto suo.
-  const { data: stagionePrecedente } = await db
-    .from('stagioni').select('id').eq('codice', '2025-26').maybeSingle()
-  if (!stagionePrecedente) {
-    const { error } = await db.from('stagioni').insert({
-      codice: '2025-26', etichetta: '2025/2026',
-      data_inizio: '2025-09-01', data_fine: '2026-06-30', stato: 'chiusa',
-    })
-    if (error) throw error
-  }
+  const { error: erroreStagione2025 } = await db
+    .from('stagioni')
+    .upsert(
+      { codice: '2025-26', etichetta: '2025/2026', data_inizio: '2025-09-01', data_fine: '2026-06-30', stato: 'chiusa' },
+      { onConflict: 'codice' },
+    )
+  if (erroreStagione2025) throw erroreStagione2025
 
   // { perPage: 200 } perché listUsers() è paginato e si ferma a 50 di default:
   // oltre quella soglia il controllo "esiste già?" qui sotto non troverebbe
