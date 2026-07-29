@@ -71,6 +71,38 @@ grant select, insert, update, delete on
 -- sola lettura.
 grant select on public.v_quote, public.v_presenze to authenticated;
 
+-- pg_default_acl del ruolo postgres concede Dxtm (truncate, references, trigger,
+-- maintain) ad anon e authenticated su ogni tabella e vista creata dalle
+-- migration. Le RLS non hanno un verbo per TRUNCATE: nessuna policy può
+-- filtrarlo, quindi senza questa revoke la chiave anon — che viaggia nel
+-- bundle del browser — può svuotare persone e pagamenti_quota per intero.
+-- (TRUNCATE su una vista non è comunque eseguibile: Postgres lo rifiuta a
+-- prescindere dal privilegio. Lo si revoca comunque, per coerenza con le
+-- tabelle e perché una vista futura potrebbe non restare tale.) references e
+-- trigger oggi non sono sfruttabili (anon e authenticated non hanno CREATE
+-- su public, quindi non possiedono oggetti a cui appenderli) ma si revocano
+-- comunque: sono gratis.
+revoke truncate, references, trigger, maintain on
+  public.stagioni, public.squadre, public.persone, public.profili,
+  public.tesseramenti, public.incarichi_staff, public.sedute_allenamento,
+  public.presenze, public.quote_importi, public.pagamenti_quota,
+  public.v_quote, public.v_presenze
+  from anon, authenticated;
+
+-- Così le tabelle create dalle migration future ereditano la restrizione
+-- invece di dipendere dal fatto che qualcuno se lo ricordi.
+alter default privileges for role postgres in schema public
+  revoke truncate, references, trigger, maintain on tables from anon, authenticated;
+
+-- service_role scavalca le RLS per progetto, ma i privilegi di tabella gli
+-- servono comunque. Lo usano solo gli script in scripts/, e una regola ESLint
+-- vieta di importarne il client da app/, components/ e lib/repos/.
+grant select, insert, update, delete on
+  public.stagioni, public.squadre, public.persone, public.profili,
+  public.tesseramenti, public.incarichi_staff, public.sedute_allenamento,
+  public.presenze, public.quote_importi, public.pagamenti_quota
+  to service_role;
+
 -- STAGIONI: lette da tutti (il sito pubblico ne ha bisogno), scritte dall'admin.
 create policy stagioni_sel on public.stagioni for select to anon, authenticated
   using (true);

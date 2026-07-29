@@ -248,6 +248,21 @@ describe('stagione chiusa', () => {
         ),
       ).rejects.toThrow(/row-level security/)
     }))
+
+  it('rifiuta le scritture dell\'admin', () =>
+    inRollback(async (c) => {
+      const { admin, stagione } = await dueSquadre(c)
+      await c.query(`update public.stagioni set stato = 'chiusa' where id = $1`, [stagione])
+      await expect(
+        asUser(c, admin, () =>
+          c.query(
+            `insert into public.squadre (stagione_id, nome, categoria)
+             values ($1, 'Tardiva', 'X')`,
+            [stagione],
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/)
+    }))
 })
 
 describe('dirigente e admin', () => {
@@ -309,9 +324,13 @@ describe('utente anonimo', () => {
       ).rejects.toThrow(/permission denied/)
     }))
 
-  it('NON scrive squadre', () =>
+  it('NON scrive squadre, che invece legge', () =>
     inRollback(async (c) => {
       const { stagione } = await dueSquadre(c)
+      // Oggi a rifiutare è il privilegio di tabella (anon ha solo select su
+      // squadre, non insert), non una policy: la stessa riga con la policy
+      // sola direbbe row-level security. Entrambe restano nella regex perché
+      // è la barriera che fa scattare per prima a decidere il messaggio.
       await expect(
         asAnon(c, () =>
           c.query(
@@ -321,5 +340,23 @@ describe('utente anonimo', () => {
           ),
         ),
       ).rejects.toThrow(/row-level security|permission denied/)
+    }))
+
+  it('anon non ha privilegi né policy oltre stagioni e squadre', () =>
+    inRollback(async (c) => {
+      const { rows: privilegi } = await c.query(
+        `select table_name, privilege_type from information_schema.table_privileges
+         where table_schema = 'public' and grantee = 'anon' order by 1, 2`)
+      expect(privilegi).toEqual([
+        { table_name: 'squadre', privilege_type: 'SELECT' },
+        { table_name: 'stagioni', privilege_type: 'SELECT' },
+      ])
+      const { rows: policy } = await c.query(
+        `select tablename, policyname from pg_policies
+         where schemaname = 'public' and 'anon' = any(roles) order by 1`)
+      expect(policy).toEqual([
+        { tablename: 'squadre', policyname: 'squadre_sel' },
+        { tablename: 'stagioni', policyname: 'stagioni_sel' },
+      ])
     }))
 })

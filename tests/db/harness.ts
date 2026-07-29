@@ -30,29 +30,50 @@ export async function asUser<T>(c: Client, userId: string, fn: () => Promise<T>)
   await c.query(`select set_config('request.jwt.claims', $1, true)`, [
     JSON.stringify({ sub: userId, role: 'authenticated' }),
   ])
+  let fnHaRifiutato = false
   try {
     return await fn()
+  } catch (errore) {
+    fnHaRifiutato = true
+    throw errore
   } finally {
-    // Se fn() rifiuta (es. violazione RLS), la transazione è già abortita e
-    // questi cleanup falliscono a loro volta: senza .catch(), l'eccezione del
-    // finally sostituirebbe quella originale di fn() e ogni asserzione sul
-    // messaggio (`rejects.toThrow(/row-level security/)`) vedrebbe invece il
-    // generico "current transaction is aborted". inRollback fa comunque
-    // rollback dell'intera transazione a fine test, quindi ignorare l'esito
-    // di questi due comandi qui non lascia lo stato incoerente.
-    await c.query('set local role postgres').catch(() => {})
-    await c.query(`select set_config('request.jwt.claims', null, true)`).catch(() => {})
+    // Se fn() ha rifiutato (es. violazione RLS), la transazione è già
+    // abortita e questi cleanup falliscono a loro volta: senza .catch() qui,
+    // l'eccezione del finally sostituirebbe quella originale di fn() e ogni
+    // asserzione sul messaggio (`rejects.toThrow(/row-level security/)`)
+    // vedrebbe invece il generico "current transaction is aborted".
+    // inRollback fa comunque rollback dell'intera transazione a fine test,
+    // quindi ignorare l'esito di questi due comandi in quel solo caso non
+    // lascia stato incoerente. Se fn() È riuscita, un cleanup che fallisce va
+    // invece propagato: altrimenti il ruolo impersonato resterebbe attivo per
+    // il resto della transazione senza che nessun test se ne accorga.
+    if (fnHaRifiutato) {
+      await c.query('set local role postgres').catch(() => {})
+      await c.query(`select set_config('request.jwt.claims', null, true)`).catch(() => {})
+    } else {
+      await c.query('set local role postgres')
+      await c.query(`select set_config('request.jwt.claims', null, true)`)
+    }
   }
 }
 
 /** Come asUser, ma senza sessione: è il caso del sito pubblico. */
 export async function asAnon<T>(c: Client, fn: () => Promise<T>): Promise<T> {
   await c.query('set local role anon')
+  let fnHaRifiutato = false
   try {
     return await fn()
+  } catch (errore) {
+    fnHaRifiutato = true
+    throw errore
   } finally {
-    // Stesso motivo di asUser: non mascherare l'errore originale di fn().
-    await c.query('set local role postgres').catch(() => {})
+    // Stesso motivo di asUser: non mascherare l'errore originale di fn(), ma
+    // nemmeno un cleanup fallito quando fn() è riuscita.
+    if (fnHaRifiutato) {
+      await c.query('set local role postgres').catch(() => {})
+    } else {
+      await c.query('set local role postgres')
+    }
   }
 }
 
