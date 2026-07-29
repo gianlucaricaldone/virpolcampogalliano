@@ -124,3 +124,49 @@ export async function creaSquadra(
   )
   return rows[0].id as string
 }
+
+/** Inserisce un tesseramento e ne restituisce l'id. */
+export async function creaTesseramento(
+  c: Client,
+  dati: {
+    personaId: string
+    stagioneId: string
+    squadraId?: string | null
+    numeroMaglia?: number | null
+    visitaScadenza?: string | null
+    visitaConsegnataIl?: string | null
+  },
+): Promise<string> {
+  const { rows } = await c.query(
+    `insert into public.tesseramenti
+       (persona_id, stagione_id, squadra_id, numero_maglia, visita_consegnata_il, visita_scadenza)
+     values ($1, $2, $3, $4, $5, $6) returning id`,
+    [
+      dati.personaId,
+      dati.stagioneId,
+      dati.squadraId ?? null,
+      dati.numeroMaglia ?? null,
+      dati.visitaConsegnataIl ?? null,
+      dati.visitaScadenza ?? null,
+    ],
+  )
+  return rows[0].id as string
+}
+
+/** Inserisce un incarico di staff e ne restituisce l'id. */
+export async function creaIncarico(
+  c: Client,
+  dati: {
+    personaId: string
+    stagioneId: string
+    squadraId: string
+    ruolo?: 'allenatore' | 'vice_allenatore' | 'dirigente_squadra'
+  },
+): Promise<string> {
+  const { rows } = await c.query(
+    `insert into public.incarichi_staff (persona_id, stagione_id, squadra_id, ruolo)
+     values ($1, $2, $3, $4) returning id`,
+    [dati.personaId, dati.stagioneId, dati.squadraId, dati.ruolo ?? 'allenatore'],
+  )
+  return rows[0].id as string
+}
