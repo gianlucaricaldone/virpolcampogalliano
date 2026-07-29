@@ -1,5 +1,8 @@
+import { loadEnvFile } from 'node:process'
 import { defineConfig } from 'vitest/config'
 import path from 'node:path'
+
+try { loadEnvFile('.env.local') } catch { /* in CI le variabili arrivano dall'ambiente */ }
 
 export default defineConfig({
   test: {

@@ -22,9 +22,9 @@ const eslintConfig = [
     files: [
       'app/**/*.{ts,tsx}',
       'components/**/*.{ts,tsx}',
-      'lib/repos/**/*.ts',
+      'lib/repos/**/*.{ts,tsx}',
       'tests/lint/fixtures/app/**/*.{ts,tsx}',
-      'tests/lint/fixtures/lib/repos/**/*.ts',
+      'tests/lint/fixtures/lib/repos/**/*.{ts,tsx}',
     ],
     rules: {
       // `regex`, non `group`: `group` confronta glob sul testo letterale

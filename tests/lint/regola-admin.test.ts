@@ -47,4 +47,10 @@ describe('regola sul client service role', () => {
     const esito = eseguiEslint('tests/lint/fixtures/lib/repos/pulito.ts')
     expect(esito.codice).toBe(0)
   }, TIMEOUT_SPAWN)
+
+  it('rifiuta un import relativo di supabase/admin da un .tsx dentro lib/repos/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/lib/repos/importa-admin-tsx.tsx')
+    expect(esito.codice).not.toBe(0)
+    expect(esito.output).toMatch(/service role/i)
+  }, TIMEOUT_SPAWN)
 })
