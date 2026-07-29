@@ -48,16 +48,22 @@ alter table public.pagamenti_quota    enable row level security;
 -- nuovo default condiviso col cloud: le tabelle create dal ruolo postgres
 -- NON sono più raggiungibili da anon/authenticated senza un grant esplicito.
 -- Vedi supabase/config.toml per il commento sul campo (deprecato, rimozione
--- prevista per il 2026-10-30). Senza il grant qui sotto, ogni query di
--- anon/authenticated fallirebbe con "permission denied for table" ancora
--- prima che una policy RLS venga valutata: le RLS restano comunque l'unico
--- filtro sulle RIGHE, in loro assenza per una combinazione ruolo/verbo
--- l'accesso resta comunque negato.
+-- prevista per il 2026-10-30). Senza un grant, ogni query fallirebbe con
+-- "permission denied for table" ancora prima che una policy RLS venga
+-- valutata: le RLS restano comunque l'unico filtro sulle RIGHE, in loro
+-- assenza per una combinazione ruolo/verbo l'accesso resta comunque negato.
+--
+-- anon serve solo al sito pubblico, che mostra i nomi delle squadre: sola
+-- lettura e solo su queste due tabelle. Così un errore in una policy futura
+-- non può esporre anagrafiche o dati finanziari a chi ha la chiave anon, che
+-- viaggia nel bundle del browser. Due barriere indipendenti invece di una.
+grant select on public.stagioni, public.squadre to anon;
+
 grant select, insert, update, delete on
   public.stagioni, public.squadre, public.persone, public.profili,
   public.tesseramenti, public.incarichi_staff, public.sedute_allenamento,
   public.presenze, public.quote_importi, public.pagamenti_quota
-  to anon, authenticated;
+  to authenticated;
 
 -- v_quote e v_presenze sono security_invoker: oltre alle RLS delle tabelle
 -- sottostanti (già coperte sopra), serve anche il privilegio SELECT sulla

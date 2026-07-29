@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Client } from 'pg'
 import {
   asAnon, asUser, creaIncarico, creaPersona, creaSeduta, creaSquadra, creaStagione,
-  creaTesseramento, creaUtenteAuth, impostaQuota, inRollback, registraPagamento,
+  creaTesseramento, creaUtenteAuth, impostaQuota, inRollback, registraPagamento, registraPresenza,
 } from './harness'
 
 /**
@@ -113,14 +113,10 @@ describe('allenatore — lettura', () => {
 describe('allenatore — scrittura', () => {
   it('inserisce presenze sulla propria seduta', () =>
     inRollback(async (c) => {
-      const { mister, squadraA, sedutaA, giocatoreA } = await dueSquadre(c)
-      await asUser(c, mister, async () => {
-        await c.query(
-          `insert into public.presenze (seduta_id, tesseramento_id, squadra_id, stato)
-           values ($1, $2, $3, 'presente')`,
-          [sedutaA, giocatoreA, squadraA],
-        )
-      })
+      const { mister, sedutaA, giocatoreA } = await dueSquadre(c)
+      // registraPresenza ricava squadra_id dalla seduta stessa: la riga resta
+      // consistente per costruzione, non per un valore passato a parte.
+      await asUser(c, mister, () => registraPresenza(c, sedutaA, giocatoreA, 'presente'))
       const { rows } = await c.query('select count(*)::int as n from public.presenze')
       expect(rows[0].n).toBe(1)
     }))
@@ -128,6 +124,11 @@ describe('allenatore — scrittura', () => {
   it('NON inserisce presenze sulla seduta della squadra altrui', () =>
     inRollback(async (c) => {
       const { mister, squadraB, sedutaB, giocatoreB } = await dueSquadre(c)
+      // Insert diretto (non registraPresenza): mister non vede nemmeno la
+      // seduta B tramite la propria policy di SELECT, quindi il derive via
+      // subquery non inserirebbe righe e mascherarebbe il diniego della
+      // WITH CHECK con l'errore "seduta inesistente" dell'helper. squadra_id
+      // è comunque quello vero della seduta, non un valore a caso.
       await expect(
         asUser(c, mister, () =>
           c.query(
@@ -226,16 +227,10 @@ describe('stagione chiusa', () => {
 
   it('rifiuta le scritture dell\'allenatore', () =>
     inRollback(async (c) => {
-      const { mister, stagione, squadraA, sedutaA, giocatoreA } = await dueSquadre(c)
+      const { mister, stagione, sedutaA, giocatoreA } = await dueSquadre(c)
       await c.query(`update public.stagioni set stato = 'chiusa' where id = $1`, [stagione])
       await expect(
-        asUser(c, mister, () =>
-          c.query(
-            `insert into public.presenze (seduta_id, tesseramento_id, squadra_id, stato)
-             values ($1, $2, $3, 'presente')`,
-            [sedutaA, giocatoreA, squadraA],
-          ),
-        ),
+        asUser(c, mister, () => registraPresenza(c, sedutaA, giocatoreA, 'presente')),
       ).rejects.toThrow(/row-level security/)
     }))
 
@@ -304,11 +299,14 @@ describe('utente anonimo', () => {
   it.each([
     'persone', 'profili', 'tesseramenti', 'incarichi_staff',
     'sedute_allenamento', 'presenze', 'quote_importi', 'pagamenti_quota',
-  ])('NON legge %s', (tabella) =>
+  ])('NON raggiunge %s', (tabella) =>
     inRollback(async (c) => {
       await dueSquadre(c)
-      const n = await asAnon(c, () => conta(c, `select * from public.${tabella}`))
-      expect(n).toBe(0)
+      // anon non ha nemmeno il privilegio di tabella: il rifiuto arriva prima
+      // che una policy venga valutata. È la barriera esterna delle due.
+      await expect(
+        asAnon(c, () => c.query(`select * from public.${tabella}`)),
+      ).rejects.toThrow(/permission denied/)
     }))
 
   it('NON scrive squadre', () =>
