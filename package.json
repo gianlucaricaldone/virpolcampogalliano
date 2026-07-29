@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "eslint . --ignore-pattern 'tests/lint/fixtures/**'",
     "type-check": "tsc --noEmit",
     "test:unit": "vitest run -c vitest.unit.config.ts",
     "test:db": "vitest run -c vitest.db.config.ts",
