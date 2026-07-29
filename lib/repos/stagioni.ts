@@ -52,3 +52,30 @@ export async function stagionePerCodice(db: Db, codice: string): Promise<Stagion
   if (error) throw error
   return data ? daRiga(data) : null
 }
+
+export async function creaStagione(
+  db: Db,
+  dati: { codice: string; etichetta: string; dataInizio: string; dataFine: string },
+): Promise<Stagione> {
+  const { data, error } = await db
+    .from('stagioni')
+    .insert({
+      codice: dati.codice,
+      etichetta: dati.etichetta,
+      data_inizio: dati.dataInizio,
+      data_fine: dati.dataFine,
+    })
+    .select(CAMPI)
+    .single()
+  if (error) throw error
+  return daRiga(data)
+}
+
+export async function cambiaStato(
+  db: Db,
+  id: string,
+  stato: 'aperta' | 'chiusa',
+): Promise<void> {
+  const { error } = await db.from('stagioni').update({ stato }).eq('id', id)
+  if (error) throw error
+}
