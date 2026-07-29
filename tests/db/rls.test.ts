@@ -10,7 +10,10 @@ import {
  * È lo scenario su cui si misura ogni diniego.
  */
 async function dueSquadre(c: Client) {
-  const stagione = await creaStagione(c, { codice: '2026-27' })
+  // Codice di default (casuale): un valore fisso qui scontrerebbe la riga
+  // '2026-27' committata da scripts/seed-dev.ts se questa suite girasse dopo
+  // seed:dev, con un errore di vincolo unique attribuito al test sbagliato.
+  const stagione = await creaStagione(c)
   const squadraA = await creaSquadra(c, stagione, { nome: 'A' })
   const squadraB = await creaSquadra(c, stagione, { nome: 'B' })
 
@@ -37,6 +40,31 @@ async function dueSquadre(c: Client) {
 async function conta(c: Client, sql: string, params: unknown[] = []): Promise<number> {
   const { rows } = await c.query(sql, params)
   return rows.length
+}
+
+/**
+ * Privilegi di tabella per un ruolo, letti da pg_class.relacl via aclexplode
+ * invece che da information_schema.table_privileges: su PostgreSQL 17.6
+ * quella vista non riporta MAINTAIN — verificato concedendolo su una tabella
+ * di prova: pg_class.relacl lo conteneva, la vista no — quindi un confronto
+ * su quella vista per MAINTAIN è decorativo, non potrebbe mai fallire nemmeno
+ * se il privilegio venisse concesso per errore. aclexplode espande invece
+ * ogni voce dell'ACL reale, MAINTAIN compreso.
+ */
+async function privilegiTabella(
+  c: Client, grantee: string,
+): Promise<{ table_name: string; privilege_type: string }[]> {
+  const { rows } = await c.query(
+    `select c.relname as table_name, a.privilege_type
+     from pg_class c
+     join pg_namespace n on n.oid = c.relnamespace
+     cross join lateral aclexplode(c.relacl) as a(grantor, grantee, privilege_type, is_grantable)
+     join pg_roles r on r.oid = a.grantee
+     where n.nspname = 'public' and c.relkind in ('r', 'v') and r.rolname = $1
+     order by 1, 2`,
+    [grantee],
+  )
+  return rows
 }
 
 describe('funzioni helper', () => {
@@ -402,9 +430,7 @@ describe('utente anonimo', () => {
 
   it('anon non ha privilegi né policy oltre stagioni e squadre', () =>
     inRollback(async (c) => {
-      const { rows: privilegi } = await c.query(
-        `select table_name, privilege_type from information_schema.table_privileges
-         where table_schema = 'public' and grantee = 'anon' order by 1, 2`)
+      const privilegi = await privilegiTabella(c, 'anon')
       expect(privilegi).toEqual([
         { table_name: 'squadre', privilege_type: 'SELECT' },
         { table_name: 'stagioni', privilege_type: 'SELECT' },
@@ -434,9 +460,7 @@ describe('privilegi di tabella per authenticated', () => {
 
   it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle due viste', () =>
     inRollback(async (c) => {
-      const { rows: privilegi } = await c.query(
-        `select table_name, privilege_type from information_schema.table_privileges
-         where table_schema = 'public' and grantee = 'authenticated' order by 1, 2`)
+      const privilegi = await privilegiTabella(c, 'authenticated')
       const atteso = [
         ...TABELLE.flatMap((t) =>
           ['DELETE', 'INSERT', 'SELECT', 'UPDATE'].map((p) => ({ table_name: t, privilege_type: p }))),
@@ -448,10 +472,10 @@ describe('privilegi di tabella per authenticated', () => {
 
   it('né anon né authenticated hanno TRUNCATE, REFERENCES, TRIGGER o MAINTAIN su nulla in public', () =>
     inRollback(async (c) => {
-      const { rows } = await c.query(
-        `select grantee, table_name, privilege_type from information_schema.table_privileges
-         where table_schema = 'public' and grantee in ('anon', 'authenticated')
-           and privilege_type in ('TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN')`)
-      expect(rows).toEqual([])
+      const vietati = new Set(['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN'])
+      for (const grantee of ['anon', 'authenticated']) {
+        const privilegi = await privilegiTabella(c, grantee)
+        expect(privilegi.filter((p) => vietati.has(p.privilege_type))).toEqual([])
+      }
     }))
 })
