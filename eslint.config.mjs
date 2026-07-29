@@ -53,7 +53,10 @@ const eslintConfig = [
     },
   },
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**", "lib/db/types.ts", "playwright-report/**"],
+    // supabase/.temp è generato da `supabase start` (bundle dell'edge
+    // runtime): non è tracciato da git (vedi supabase/.gitignore) ma
+    // ESLint non legge i .gitignore annidati, quindi va escluso qui.
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**", "lib/db/types.ts", "playwright-report/**", "supabase/.temp/**"],
   },
 ];
 
