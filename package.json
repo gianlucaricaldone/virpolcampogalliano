@@ -12,7 +12,8 @@
     "test:db": "vitest run -c vitest.db.config.ts",
     "test:e2e": "playwright test",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > lib/db/types.ts"
+    "db:types": "supabase gen types typescript --local > lib/db/types.ts",
+    "seed:dev": "npx tsx scripts/seed-dev.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
@@ -34,6 +36,7 @@
     "pg": "^8.22.0",
     "supabase": "^2.110.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }
