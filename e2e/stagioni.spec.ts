@@ -23,10 +23,21 @@ test('un codice stagione inesistente dà 404, non una pagina bianca', async ({ p
   expect(risposta?.status()).toBe(404)
 })
 
-test('il selettore cambia solo il segmento di stagione', async ({ page }) => {
+test('il selettore mostra le stagioni chiuse come tali e ne cambia solo il segmento', async ({ page }) => {
   await accedi(page)
   await page.goto('/2026-27')
-  await expect(page.getByRole('combobox')).toHaveValue('2026-27')
+  const selettore = page.getByRole('combobox')
+  await expect(selettore).toHaveValue('2026-27')
+
+  // scripts/seed-dev.ts semina anche la 2025-26, chiusa: prima di questo il
+  // selettore aveva una sola opzione e nessun test poteva verificare né
+  // l'etichetta "(chiusa)" né che selezionarne una diversa sposti davvero il
+  // segmento di stagione nell'URL — cancellando SelettoreStagione.cambia()
+  // per intero, questo stesso test restava verde.
+  await expect(selettore.locator('option[value="2025-26"]')).toHaveText('2025/2026 (chiusa)')
+
+  await selettore.selectOption('2025-26')
+  await expect(page).toHaveURL(/\/2025-26$/)
 })
 
 test('l\'uscita riporta al login e chiude la sessione', async ({ page }) => {
