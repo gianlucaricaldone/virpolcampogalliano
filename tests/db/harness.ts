@@ -1,5 +1,6 @@
 import { Client } from 'pg'
 import { randomUUID } from 'node:crypto'
+import { etichettaDaCodice } from '@/lib/domain/stagione'
 
 const DB_URL =
   process.env.SUPABASE_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
@@ -86,6 +87,40 @@ export async function creaPersona(
       dati.dataNascita ?? '2012-05-14',
       dati.codiceFiscale ?? null,
     ],
+  )
+  return rows[0].id as string
+}
+
+/** Inserisce una stagione e ne restituisce l'id. */
+export async function creaStagione(
+  c: Client,
+  dati: { codice?: string; stato?: 'aperta' | 'chiusa'; dataInizio?: string; dataFine?: string } = {},
+): Promise<string> {
+  const codice = dati.codice ?? '2026-27'
+  const { rows } = await c.query(
+    `insert into public.stagioni (codice, etichetta, data_inizio, data_fine, stato)
+     values ($1, $2, $3, $4, $5) returning id`,
+    [
+      codice,
+      etichettaDaCodice(codice),
+      dati.dataInizio ?? '2026-09-01',
+      dati.dataFine ?? '2027-06-30',
+      dati.stato ?? 'aperta',
+    ],
+  )
+  return rows[0].id as string
+}
+
+/** Inserisce una squadra nella stagione data e ne restituisce l'id. */
+export async function creaSquadra(
+  c: Client,
+  stagioneId: string,
+  dati: { nome?: string; categoria?: string; annata?: number } = {},
+): Promise<string> {
+  const { rows } = await c.query(
+    `insert into public.squadre (stagione_id, nome, categoria, annata)
+     values ($1, $2, $3, $4) returning id`,
+    [stagioneId, dati.nome ?? 'Pulcini A', dati.categoria ?? 'Pulcini', dati.annata ?? 2015],
   )
   return rows[0].id as string
 }
