@@ -188,6 +188,6 @@ Gli altri finding differiti sono nel ledger, sezione per task.
 
 ## Trappole già pagate
 
-Vedi `docs/TRAPPOLE.md`. Leggilo prima di scrivere migration o test: contiene sei
+Vedi `docs/TRAPPOLE.md`. Leggilo prima di scrivere migration o test: contiene otto
 modi di fallire che hanno superato una review ciascuno, tutti della stessa
 famiglia — **producono verde**.

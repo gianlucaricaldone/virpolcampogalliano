@@ -1,6 +1,6 @@
 # Trappole già pagate
 
-Sei modi di fallire incontrati costruendo la fase 1. Hanno una cosa in comune, ed
+Otto modi di fallire incontrati costruendo la fase 1. Hanno una cosa in comune, ed
 è la ragione per cui vale la pena leggerli prima di scrivere una migration o un
 test: **producono verde**. Nessuno faceva fallire una suite. Quattro hanno
 superato una review prima di essere trovati.
@@ -130,6 +130,30 @@ dentro un template literal.
 **Cosa portarne via.** Dentro i literal **SQL** — i corpi di `COMMENT ON` — gli
 apostrofi raddoppiati sono escaping corretto e vanno lasciati. La distinzione è
 fra le due lingue nello stesso file, non fra giusto e sbagliato.
+
+---
+
+## 7. Un `loading.tsx` trasforma i 404 sotto di sé in 200
+
+**Cosa succedeva.** Aggiungere `app/(app)/loading.tsx` ha convertito in silenzio un test che passava — `un codice stagione inesistente dà 404` — da 404 a **200**, con il contenuto della not-found reso correttamente. Un `loading.tsx` crea un confine Suspense che avvolge tutto ciò che sta sotto, incluso `[stagione]/layout.tsx` dove sta il `notFound()`; con lo streaming avviato lo status è già partito.
+
+Verificato su build di produzione: file a livello `(app)/` → status 200; file a livello `[stagione]/` → status 404. Stesso contenuto reso, solo lo status diverso.
+
+**Come è chiuso.** Il file sta in `app/(app)/[stagione]/loading.tsx`, **fratello** del layout che fa il controllo, quindi avvolge solo la pagina.
+
+**Cosa portarne via, e riguarda il lavoro futuro.** La trappola non è scomparsa, è scesa di un livello: qualunque `notFound()` in una **pagina** sotto quel confine restituisce 200 — provato con una pagina sonda. Le rotte di dettaglio dei piani successivi (`squadre/[id]`, `tesseramenti/[id]`) sono il posto naturale per un `notFound()` e lo perderebbero in silenzio.
+
+Regola: `notFound()` nel `layout.tsx` del segmento di dettaglio, non nella sua `page.tsx`. E il test E2E di ogni rotta nuova asserisce `response.status()`, non solo che il contenuto della not-found compaia: è l'unica assertion che distingue 404 da 200.
+
+## 8. `[auth.email] enable_signup` non è un interruttore per le registrazioni
+
+**Cosa succedeva.** Per chiudere le registrazioni self-service è stato messo `enable_signup = false` sia in `[auth]` sia in `[auth.email]` di `supabase/config.toml`. Il primo è corretto: il CLI lo mappa su `GOTRUE_DISABLE_SIGNUP`. Il secondo è il **provider** email — il CLI lo mappa su `GOTRUE_EXTERNAL_EMAIL_ENABLED`, e GoTrue rifiuta il grant password quando quel provider è spento.
+
+Effetto: **login spento per tutti**, admin compresi, con `422 email_provider_disabled`. E siccome l'azione di accesso traduce solo `invalid_credentials`, l'utente avrebbe visto "Si è verificato un errore" senza spiegazione.
+
+**Perché nessun test lo coglieva, che è la parte importante.** `supabase db reset` riavvia il container auth ma **non rigenera il suo ambiente da `config.toml`**. Solo `supabase stop && supabase start` lo fa. Lo stack in esecuzione portava ancora la configurazione precedente: la suite E2E passava 14/14 senza esercitare né la regressione né il fix, e la protezione stessa non era in vigore — la registrazione pubblica con la chiave anon rispondeva 200.
+
+**Cosa portarne via.** Dopo ogni modifica a `config.toml` che riguardi auth: `supabase stop && supabase start` prima di credere a un verde. E le due asserzioni che rendono la protezione verificabile — signup con chiave anon deve dare `422 signup_disabled`, login di un utente reale deve dare `200`.
 
 ---
 
