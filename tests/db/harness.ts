@@ -33,8 +33,15 @@ export async function asUser<T>(c: Client, userId: string, fn: () => Promise<T>)
   try {
     return await fn()
   } finally {
-    await c.query('set local role postgres')
-    await c.query(`select set_config('request.jwt.claims', null, true)`)
+    // Se fn() rifiuta (es. violazione RLS), la transazione è già abortita e
+    // questi cleanup falliscono a loro volta: senza .catch(), l'eccezione del
+    // finally sostituirebbe quella originale di fn() e ogni asserzione sul
+    // messaggio (`rejects.toThrow(/row-level security/)`) vedrebbe invece il
+    // generico "current transaction is aborted". inRollback fa comunque
+    // rollback dell'intera transazione a fine test, quindi ignorare l'esito
+    // di questi due comandi qui non lascia lo stato incoerente.
+    await c.query('set local role postgres').catch(() => {})
+    await c.query(`select set_config('request.jwt.claims', null, true)`).catch(() => {})
   }
 }
 
@@ -44,7 +51,8 @@ export async function asAnon<T>(c: Client, fn: () => Promise<T>): Promise<T> {
   try {
     return await fn()
   } finally {
-    await c.query('set local role postgres')
+    // Stesso motivo di asUser: non mascherare l'errore originale di fn().
+    await c.query('set local role postgres').catch(() => {})
   }
 }
 
