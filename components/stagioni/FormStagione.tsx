@@ -19,11 +19,13 @@ export function FormStagione() {
         <label htmlFor="dataInizio" className="block text-sm font-medium">Inizio</label>
         <input id="dataInizio" name="dataInizio" type="date" required
                className="mt-1 rounded border px-2 py-1" />
+        {campi?.dataInizio && <p role="alert" className="mt-1 text-sm text-red-700">{campi.dataInizio}</p>}
       </div>
       <div>
         <label htmlFor="dataFine" className="block text-sm font-medium">Fine</label>
         <input id="dataFine" name="dataFine" type="date" required
                className="mt-1 rounded border px-2 py-1" />
+        {campi?.dataFine && <p role="alert" className="mt-1 text-sm text-red-700">{campi.dataFine}</p>}
       </div>
       <button type="submit" disabled={inCorso}
               className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60">
