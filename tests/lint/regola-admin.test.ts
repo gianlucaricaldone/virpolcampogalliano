@@ -53,4 +53,15 @@ describe('regola sul client service role', () => {
     expect(esito.codice).not.toBe(0)
     expect(esito.output).toMatch(/service role/i)
   }, TIMEOUT_SPAWN)
+
+  // scripts/env espone envScript(), che legge la stessa service role di
+  // lib/supabase/admin: `import { envScript } from '@/scripts/env'` seguito
+  // da createClient(url, chiave) produce, in due righe, un client che ignora
+  // ogni RLS — e la regola originale, che sorvegliava solo /supabase/admin$,
+  // lo lasciava passare.
+  it('rifiuta un import relativo di scripts/env dentro lib/repos/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/lib/repos/importa-env-script.ts')
+    expect(esito.codice).not.toBe(0)
+    expect(esito.output).toMatch(/service role/i)
+  }, TIMEOUT_SPAWN)
 })

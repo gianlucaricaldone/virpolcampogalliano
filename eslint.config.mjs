@@ -13,6 +13,11 @@ const messaggioAdmin =
   'lib/supabase/admin usa la chiave service role e ignora ogni RLS: ' +
   'può essere importato solo da scripts/.'
 
+const messaggioEnvScript =
+  'scripts/env legge la chiave service role: può essere importato solo da ' +
+  'scripts/, altrimenti produce un client che ignora ogni RLS quanto ' +
+  'lib/supabase/admin.'
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
@@ -36,6 +41,9 @@ const eslintConfig = [
         patterns: [{
           regex: '(^|/)supabase/admin$',
           message: messaggioAdmin,
+        }, {
+          regex: '(^|/)scripts/env$',
+          message: messaggioEnvScript,
         }],
       }],
     },
