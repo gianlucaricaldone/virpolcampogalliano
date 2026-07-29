@@ -22,4 +22,15 @@ describe('regola sul client service role', () => {
     const esito = eseguiEslint('lib/env.ts')
     expect(esito.codice).toBe(0)
   })
+
+  it('rifiuta un import relativo di supabase/admin sotto lib/repos/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/lib/repos/importa-admin.ts')
+    expect(esito.codice).not.toBe(0)
+    expect(esito.output).toMatch(/service role/i)
+  })
+
+  it('non segnala nulla su un file pulito dentro lib/repos/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/lib/repos/pulito.ts')
+    expect(esito.codice).toBe(0)
+  })
 })

@@ -16,18 +16,25 @@ const messaggioAdmin =
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    // I percorsi sorvegliati. `tests/lint/fixtures/app/**` è incluso di proposito:
-    // tiene la regola stessa sotto test.
+    // I percorsi sorvegliati. `tests/lint/fixtures/app/**` e
+    // `tests/lint/fixtures/lib/repos/**` sono inclusi di proposito:
+    // tengono la regola stessa sotto test.
     files: [
       'app/**/*.{ts,tsx}',
       'components/**/*.{ts,tsx}',
       'lib/repos/**/*.ts',
       'tests/lint/fixtures/app/**/*.{ts,tsx}',
+      'tests/lint/fixtures/lib/repos/**/*.ts',
     ],
     rules: {
+      // `regex`, non `group`: `group` confronta glob sul testo letterale
+      // dello specifier, quindi un import relativo che da lib/repos/ non
+      // riscrive il segmento `lib` (es. '../supabase/admin') gli sfuggiva.
+      // La regex intercetta ogni import che termina in /supabase/admin,
+      // alias o relativo.
       'no-restricted-imports': ['error', {
         patterns: [{
-          group: ['**/lib/supabase/admin', '@/lib/supabase/admin'],
+          regex: '(^|/)supabase/admin$',
           message: messaggioAdmin,
         }],
       }],
