@@ -162,6 +162,33 @@ describe('allenatore — scrittura', () => {
         ),
       ).rejects.toThrow(/row-level security/)
     }))
+
+  it('NON crea persone', () =>
+    inRollback(async (c) => {
+      const { mister } = await dueSquadre(c)
+      await expect(
+        asUser(c, mister, () =>
+          c.query(
+            `insert into public.persone (nome, cognome, data_nascita)
+             values ('Nuovo', 'Giocatore', '2015-01-01')`,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/)
+    }))
+
+  it('NON crea sedute sulla squadra altrui', () =>
+    inRollback(async (c) => {
+      const { mister, squadraB, stagione } = await dueSquadre(c)
+      await expect(
+        asUser(c, mister, () =>
+          c.query(
+            `insert into public.sedute_allenamento (squadra_id, stagione_id, data)
+             values ($1, $2, '2026-10-08')`,
+            [squadraB, stagione],
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/)
+    }))
 })
 
 describe('allenatore — dati finanziari', () => {
@@ -211,6 +238,37 @@ describe('allenatore — dati finanziari', () => {
         return rows
       })
       expect(righe[0]).toMatchObject({ quota_attesa: '250.00', pagato: '125.00', stato: 'parziale' })
+    }))
+
+  // La suite finora provava solo che l'allenatore non LEGGE queste due
+  // tabelle. Senza queste, una futura policy quote_ins permissiva lascerebbe
+  // un allenatore fissare l'importo di una quota con la suite verde: la RLS
+  // è l'unica barriera, e l'assenza di una policy va provata anche in scrittura.
+  it('NON scrive quote_importi', () =>
+    inRollback(async (c) => {
+      const { mister, stagione } = await dueSquadre(c)
+      await expect(
+        asUser(c, mister, () =>
+          c.query(
+            `insert into public.quote_importi (stagione_id, importo) values ($1, 100)`,
+            [stagione],
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/)
+    }))
+
+  it('NON scrive pagamenti_quota', () =>
+    inRollback(async (c) => {
+      const { mister, giocatoreA } = await dueSquadre(c)
+      await expect(
+        asUser(c, mister, () =>
+          c.query(
+            `insert into public.pagamenti_quota (tesseramento_id, importo, data)
+             values ($1, 50, '2026-09-15')`,
+            [giocatoreA],
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/)
     }))
 })
 
@@ -358,5 +416,42 @@ describe('utente anonimo', () => {
         { tablename: 'squadre', policyname: 'squadre_sel' },
         { tablename: 'stagioni', policyname: 'stagioni_sel' },
       ])
+    }))
+})
+
+// La suite sopra copre anon catalogo per catalogo, ma il Critical che questo
+// schema doveva chiudere era che AUTHENTICATED — ogni allenatore — poteva
+// TRUNCATE public.persone: un privilegio di tabella, non una riga, quindi
+// nessuna policy RLS può filtrarlo. Una migration futura che concedesse
+// `all on all tables` ad authenticated, o una tabella nuova con GRANT ALL,
+// lo farebbe tornare con la suite verde se solo anon fosse sorvegliato.
+describe('privilegi di tabella per authenticated', () => {
+  const TABELLE = [
+    'incarichi_staff', 'pagamenti_quota', 'persone', 'presenze', 'profili',
+    'quote_importi', 'sedute_allenamento', 'squadre', 'stagioni', 'tesseramenti',
+  ]
+  const VISTE = ['v_presenze', 'v_quote']
+
+  it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle due viste', () =>
+    inRollback(async (c) => {
+      const { rows: privilegi } = await c.query(
+        `select table_name, privilege_type from information_schema.table_privileges
+         where table_schema = 'public' and grantee = 'authenticated' order by 1, 2`)
+      const atteso = [
+        ...TABELLE.flatMap((t) =>
+          ['DELETE', 'INSERT', 'SELECT', 'UPDATE'].map((p) => ({ table_name: t, privilege_type: p }))),
+        ...VISTE.map((v) => ({ table_name: v, privilege_type: 'SELECT' })),
+      ].sort((a, b) =>
+        a.table_name.localeCompare(b.table_name) || a.privilege_type.localeCompare(b.privilege_type))
+      expect(privilegi).toEqual(atteso)
+    }))
+
+  it('né anon né authenticated hanno TRUNCATE, REFERENCES, TRIGGER o MAINTAIN su nulla in public', () =>
+    inRollback(async (c) => {
+      const { rows } = await c.query(
+        `select grantee, table_name, privilege_type from information_schema.table_privileges
+         where table_schema = 'public' and grantee in ('anon', 'authenticated')
+           and privilege_type in ('TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN')`)
+      expect(rows).toEqual([])
     }))
 })
