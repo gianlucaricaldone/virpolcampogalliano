@@ -16,9 +16,16 @@ create table public.tesseramenti (
     check (numero_maglia is null or numero_maglia between 1 and 99),
   -- Chiave esterna composita: la squadra deve appartenere alla stessa stagione
   -- del tesseramento. Nel vecchio schema questo errore era possibile e muto.
+  --
+  -- ON DELETE SET NULL con l'elenco colonne (squadra_id): richiede Postgres
+  -- 15. Senza l'elenco, un SET NULL su una FK composita annulla TUTTE le
+  -- colonne locali della chiave, quindi anche stagione_id — che è NOT NULL —
+  -- e la DELETE su squadre fallirebbe. La semantica voluta è: la squadra
+  -- viene cancellata, il tesserato resta iscritto alla stagione senza
+  -- squadra assegnata.
   constraint tesseramenti_squadra_di_stagione
     foreign key (squadra_id, stagione_id)
-    references public.squadre (id, stagione_id) on delete set null
+    references public.squadre (id, stagione_id) on delete set null (squadra_id)
 );
 
 comment on column public.tesseramenti.squadra_id is

@@ -206,3 +206,49 @@ export async function leggiQuota(c: Client, tesseramentoId: string) {
   )
   return rows[0] as { quota_attesa: string; pagato: string; residuo: string; stato: string }
 }
+
+/** Inserisce una seduta di allenamento e ne restituisce l'id. */
+export async function creaSeduta(
+  c: Client,
+  dati: { squadraId: string; stagioneId: string; data?: string; oraInizio?: string | null },
+): Promise<string> {
+  const { rows } = await c.query(
+    `insert into public.sedute_allenamento (squadra_id, stagione_id, data, ora_inizio)
+     values ($1, $2, $3, $4) returning id`,
+    [dati.squadraId, dati.stagioneId, dati.data ?? '2026-10-01', dati.oraInizio ?? null],
+  )
+  return rows[0].id as string
+}
+
+/**
+ * Registra una presenza ricavando `squadra_id` dalla seduta, così i chiamanti
+ * non devono conoscere la colonna denormalizzata. Per provare il rifiuto di
+ * una squadra incoerente serve una insert scritta a mano, non questa.
+ */
+export async function registraPresenza(
+  c: Client,
+  sedutaId: string,
+  tesseramentoId: string,
+  stato: 'presente' | 'assente' | 'giustificato' | 'infortunato',
+): Promise<void> {
+  await c.query(
+    `insert into public.presenze (seduta_id, tesseramento_id, squadra_id, stato)
+     select s.id, $2, s.squadra_id, $3
+     from public.sedute_allenamento s where s.id = $1`,
+    [sedutaId, tesseramentoId, stato],
+  )
+}
+
+/** Legge le statistiche di presenza da v_presenze per un tesseramento. */
+export async function leggiPresenze(c: Client, tesseramentoId: string) {
+  const { rows } = await c.query(
+    `select sedute_squadra, presenti, assenti, giustificati, infortuni,
+            non_registrate, percentuale::text as percentuale
+     from public.v_presenze where tesseramento_id = $1`,
+    [tesseramentoId],
+  )
+  return rows[0] as {
+    sedute_squadra: number; presenti: number; assenti: number; giustificati: number
+    infortuni: number; non_registrate: number; percentuale: string | null
+  }
+}
