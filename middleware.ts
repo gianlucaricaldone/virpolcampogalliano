@@ -37,7 +37,13 @@ export async function middleware(richiesta: NextRequest) {
     destinazione.pathname = '/login'
     return NextResponse.redirect(destinazione)
   }
-  if (user && percorso === '/login') {
+  // ?sessione=terminata è il segnale che (app)/layout.tsx aggiunge quando
+  // auth.getUser() è riuscito (per questo `user` è valorizzato qui) ma il
+  // profilo applicativo no (disattivato o cancellato): senza l'eccezione, il
+  // rimbalzo verso /gestione riporterebbe subito qui, e da qui di nuovo a
+  // /gestione, in loop — vedi il commento in (app)/layout.tsx.
+  const sessioneTerminata = richiesta.nextUrl.searchParams.get('sessione') === 'terminata'
+  if (user && percorso === '/login' && !sessioneTerminata) {
     const destinazione = richiesta.nextUrl.clone()
     destinazione.pathname = '/gestione'
     return NextResponse.redirect(destinazione)

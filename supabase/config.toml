@@ -173,13 +173,20 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# Disabilitato: non esistono account self-service, li crea solo un admin (via
+# service role, in scripts/seed-dev.ts o equivalente). Con signup abilitato,
+# chiunque avesse la chiave anon — pubblica per definizione, viaggia nel
+# bundle del browser — potrebbe creare una riga in auth.users con una sessione
+# valida ma senza profilo in public.profili, finendo nel loop di redirect fra
+# middleware e (app)/layout.tsx che il fix per la disattivazione (getSessione
+# che restituisce null) risolve solo per gli account che esistevano già.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -218,7 +225,8 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-enable_signup = true
+# Vedi il commento su [auth] enable_signup: stesso motivo, stessa scelta.
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
