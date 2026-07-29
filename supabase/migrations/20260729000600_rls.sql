@@ -28,8 +28,24 @@ create or replace function app.stagione_aperta(p_stagione uuid) returns boolean
     )
   $$;
 
+-- quote_importi ha tre colonne di livello nullable, esattamente una non nulla
+-- per riga (vincolo quote_importi_un_solo_livello): per sapere se la riga
+-- appartiene a una stagione aperta bisogna risolvere la stagione attraverso
+-- quello dei tre livelli che è valorizzato, non solo il primo.
+create or replace function app.stagione_di_quota(
+  p_stagione uuid, p_squadra uuid, p_tesseramento uuid
+) returns uuid
+  language sql stable security definer set search_path = '' as $$
+    select coalesce(
+      p_stagione,
+      (select s.stagione_id from public.squadre s where s.id = p_squadra),
+      (select t.stagione_id from public.tesseramenti t where t.id = p_tesseramento)
+    )
+  $$;
+
 grant execute on function
-  app.mio_ruolo(), app.mia_persona(), app.mie_squadre(), app.stagione_aperta(uuid)
+  app.mio_ruolo(), app.mia_persona(), app.mie_squadre(), app.stagione_aperta(uuid),
+  app.stagione_di_quota(uuid, uuid, uuid)
   to anon, authenticated;
 
 alter table public.stagioni           enable row level security;
@@ -90,7 +106,11 @@ revoke truncate, references, trigger, maintain on
   from anon, authenticated;
 
 -- Così le tabelle create dalle migration future ereditano la restrizione
--- invece di dipendere dal fatto che qualcuno se lo ricordi.
+-- invece di dipendere dal fatto che qualcuno se lo ricordi — ma solo per
+-- quelle create dal ruolo postgres, che è quello usato da `supabase db push`.
+-- ALTER DEFAULT PRIVILEGES è per-ruolo-creatore: pg_default_acl continua a
+-- concedere ad anon e authenticated i privilegi pieni su tabelle create da
+-- supabase_admin, se mai qualcuno le creasse con quel ruolo.
 alter default privileges for role postgres in schema public
   revoke truncate, references, trigger, maintain on tables from anon, authenticated;
 
@@ -102,6 +122,13 @@ grant select, insert, update, delete on
   public.tesseramenti, public.incarichi_staff, public.sedute_allenamento,
   public.presenze, public.quote_importi, public.pagamenti_quota
   to service_role;
+
+-- bypassrls esenta service_role dalle RLS, non dai privilegi di tabella: senza
+-- questo grant una lettura di v_quote/v_presenze tramite supabaseAdmin()
+-- fallisce con "permission denied for view" nonostante il bypass. Niente
+-- TRUNCATE: non serve a nessuno script esistente ed è meglio non concederlo
+-- per abitudine.
+grant select on public.v_quote, public.v_presenze to service_role;
 
 -- STAGIONI: lette da tutti (il sito pubblico ne ha bisogno), scritte dall'admin.
 create policy stagioni_sel on public.stagioni for select to anon, authenticated
@@ -266,16 +293,32 @@ create policy presenze_del on public.presenze for delete to authenticated
 
 -- QUOTE E PAGAMENTI: nessuna policy per allenatore né per anon.
 -- La lettura non è vincolata alla stagione aperta, altrimenti lo storico
--- dei pagamenti diventerebbe invisibile invece che immutabile.
+-- dei pagamenti diventerebbe invisibile invece che immutabile. Le scritture sì
+-- (via app.stagione_di_quota): altrimenti un dirigente potrebbe modificare
+-- l'importo atteso di una stagione chiusa e alterare retroattivamente lo
+-- stato di v_quote per ogni tesseramento di quella stagione, senza che
+-- pagamenti_ins (già vincolata) possa più correggerlo con un versamento.
 create policy quote_sel on public.quote_importi for select to authenticated
   using (app.mio_ruolo() in ('admin', 'dirigente'));
 create policy quote_ins on public.quote_importi for insert to authenticated
-  with check (app.mio_ruolo() in ('admin', 'dirigente'));
+  with check (
+    app.mio_ruolo() in ('admin', 'dirigente')
+    and app.stagione_aperta(app.stagione_di_quota(stagione_id, squadra_id, tesseramento_id))
+  );
 create policy quote_upd on public.quote_importi for update to authenticated
-  using (app.mio_ruolo() in ('admin', 'dirigente'))
-  with check (app.mio_ruolo() in ('admin', 'dirigente'));
+  using (
+    app.mio_ruolo() in ('admin', 'dirigente')
+    and app.stagione_aperta(app.stagione_di_quota(stagione_id, squadra_id, tesseramento_id))
+  )
+  with check (
+    app.mio_ruolo() in ('admin', 'dirigente')
+    and app.stagione_aperta(app.stagione_di_quota(stagione_id, squadra_id, tesseramento_id))
+  );
 create policy quote_del on public.quote_importi for delete to authenticated
-  using (app.mio_ruolo() = 'admin');
+  using (
+    app.mio_ruolo() = 'admin'
+    and app.stagione_aperta(app.stagione_di_quota(stagione_id, squadra_id, tesseramento_id))
+  );
 
 create policy pagamenti_sel on public.pagamenti_quota for select to authenticated
   using (app.mio_ruolo() in ('admin', 'dirigente'));
