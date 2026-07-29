@@ -53,14 +53,13 @@ create table public.presenze (
   constraint presenze_seduta_di_squadra
     foreign key (seduta_id, squadra_id)
     references public.sedute_allenamento (id, squadra_id) on delete cascade,
-  -- Deferred, non immediata: cancellare una squadra fa scattare nello stesso
-  -- statement sia il CASCADE di sedute_allenamento sia il SET NULL su
-  -- tesseramenti, e l'ordine con cui Postgres li applica non è una garanzia
-  -- del motore, solo un dettaglio implementativo che un pg_dump o una futura
-  -- squash delle migration potrebbero cambiare in silenzio. Rimandare il
-  -- controllo a fine transazione rende il risultato indipendente dall'ordine:
-  -- ciò che conta è lo stato finale, non quelli intermedi. Cambia solo
-  -- *quando* una violazione viene segnalata, mai *se*.
+  -- Differito: una `delete from squadre` innesca più percorsi di cascade
+  -- (sedute e presenze via cascade, tesseramenti.squadra_id via set null) e
+  -- Postgres li esegue in ordine di creazione dei trigger. Lo stato finale è
+  -- coerente, quello intermedio no. Verificare a fine transazione invece che
+  -- per istruzione rende la garanzia indipendente da quell'ordine, che nessun
+  -- dump o squash di migration promette di preservare. Cambia QUANDO una
+  -- violazione viene segnalata, non SE.
   constraint presenze_tesseramento_di_squadra
     foreign key (tesseramento_id, squadra_id)
     references public.tesseramenti (id, squadra_id) on delete cascade

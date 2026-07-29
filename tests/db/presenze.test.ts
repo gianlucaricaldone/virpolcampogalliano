@@ -84,14 +84,15 @@ describe('presenze', () => {
 
   it('rifiuta di spostare un tesseramento con presenze già registrate', () =>
     inRollback(async (c) => {
+      // Il vincolo è `deferrable initially deferred`: dentro una transazione
+      // che finisce in rollback la verifica non avverrebbe mai e il test
+      // passerebbe senza controllare nulla. In produzione la stessa
+      // violazione emerge al commit.
+      await c.query('set constraints presenze_tesseramento_di_squadra immediate')
       const { stagione, squadra, tesseramento } = await scenario(c)
       const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
       await registraPresenza(c, seduta, tesseramento, 'presente')
       const altra = await creaSquadra(c, stagione, { nome: 'Altra' })
-      // presenze_tesseramento_di_squadra è deferred: dentro inRollback non si
-      // arriva mai al commit, quindi va resa immediata qui per osservare la
-      // stessa violazione che in produzione emergerebbe comunque al commit.
-      await c.query('set constraints presenze_tesseramento_di_squadra immediate')
       await expect(
         c.query('update public.tesseramenti set squadra_id = $1 where id = $2', [
           altra,
@@ -109,24 +110,19 @@ describe('presenze', () => {
       const { rows } = await c.query(
         `select (select count(*)::int from public.presenze) as presenze,
                 (select count(*)::int from public.sedute_allenamento) as sedute,
-                (select squadra_id from public.tesseramenti where id = $1) as squadra_tesseramento`,
+                (select squadra_id from public.tesseramenti where id = $1) as squadra_tesseramento,
+                -- La stagione deve SOPRAVVIVERE: su una FK multi-colonna un
+                -- \`set null\` nudo annullerebbe anche questa, e senza questa
+                -- asserzione il difetto resterebbe invisibile.
+                (select stagione_id from public.tesseramenti where id = $1) as stagione_tesseramento`,
         [tesseramento],
       )
-      expect(rows[0]).toEqual({ presenze: 0, sedute: 0, squadra_tesseramento: null })
-    }))
-
-  it('cancellare una squadra lascia intatta la stagione del tesseramento', () =>
-    inRollback(async (c) => {
-      const { stagione, squadra, tesseramento } = await scenario(c)
-      const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
-      await registraPresenza(c, seduta, tesseramento, 'presente')
-      await c.query('delete from public.squadre where id = $1', [squadra])
-      const { rows } = await c.query('select stagione_id from public.tesseramenti where id = $1', [
-        tesseramento,
-      ])
-      // Un SET NULL senza elenco colonne annullerebbe anche stagione_id: il
-      // tesserato resta iscritto alla stagione, solo la squadra viene meno.
-      expect(rows[0].stagione_id).toBe(stagione)
+      expect(rows[0]).toEqual({
+        presenze: 0,
+        sedute: 0,
+        squadra_tesseramento: null,
+        stagione_tesseramento: stagione,
+      })
     }))
 })
 
