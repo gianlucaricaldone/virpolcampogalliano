@@ -170,3 +170,39 @@ export async function creaIncarico(
   )
   return rows[0].id as string
 }
+
+/** Inserisce l'importo atteso a uno dei tre livelli (stagione, squadra, tesseramento). */
+export async function impostaQuota(
+  c: Client,
+  dati: { stagioneId?: string; squadraId?: string; tesseramentoId?: string; importo: number },
+): Promise<void> {
+  await c.query(
+    `insert into public.quote_importi (stagione_id, squadra_id, tesseramento_id, importo)
+     values ($1, $2, $3, $4)`,
+    [dati.stagioneId ?? null, dati.squadraId ?? null, dati.tesseramentoId ?? null, dati.importo],
+  )
+}
+
+/** Registra un versamento per un tesseramento. */
+export async function registraPagamento(
+  c: Client,
+  tesseramentoId: string,
+  importo: number,
+  data = '2026-09-15',
+): Promise<void> {
+  await c.query(
+    `insert into public.pagamenti_quota (tesseramento_id, importo, data)
+     values ($1, $2, $3)`,
+    [tesseramentoId, importo, data],
+  )
+}
+
+/** Legge lo stato della quota da v_quote per un tesseramento. */
+export async function leggiQuota(c: Client, tesseramentoId: string) {
+  const { rows } = await c.query(
+    `select quota_attesa::text, pagato::text, residuo::text, stato
+     from public.v_quote where tesseramento_id = $1`,
+    [tesseramentoId],
+  )
+  return rows[0] as { quota_attesa: string; pagato: string; residuo: string; stato: string }
+}
