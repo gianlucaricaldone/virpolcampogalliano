@@ -222,13 +222,16 @@ export async function creaSeduta(
 
 /**
  * Registra una presenza ricavando `squadra_id` dalla seduta, così i chiamanti
- * non devono conoscere la colonna denormalizzata. Questo copre solo il lato
- * seduta: se il tesseramento appartiene a un'altra squadra la riga viene
- * inserita comunque, perché il rifiuto arriva solo da
- * `presenze_tesseramento_di_squadra`, che è deferred e si verifica quindi al
- * commit, non a questa insert. Un test che deve osservarlo deve prima rendere
- * il vincolo immediato con `set constraints presenze_tesseramento_di_squadra
- * immediate`.
+ * non devono conoscere la colonna denormalizzata.
+ *
+ * ATTENZIONE: ricavare la squadra dalla seduta rende impossibile violare
+ * `presenze_seduta_di_squadra`, ma NON `presenze_tesseramento_di_squadra`.
+ * Passando un tesseramento di un'altra squadra si ottiene la combinazione
+ * (seduta di A, tesseramento di B, squadra_id = A), che il vincolo immediato
+ * accetta e solo quello differito rifiuta — quindi al commit. Dentro
+ * `inRollback` il commit non arriva mai e la riga invalida passa inosservata:
+ * un test che deve vederla rifiutata dichiari prima
+ * `set constraints presenze_tesseramento_di_squadra immediate`.
  */
 export async function registraPresenza(
   c: Client,
@@ -242,9 +245,9 @@ export async function registraPresenza(
      from public.sedute_allenamento s where s.id = $1`,
     [sedutaId, tesseramentoId, stato],
   )
-  if (rowCount !== 1) {
-    throw new Error(`nessuna seduta con id ${sedutaId}: presenza non registrata`)
-  }
+  // L'insert nasce da un select: una seduta inesistente inserirebbe zero righe
+  // e risolverebbe in silenzio, lasciando un'asserzione vuota a valle.
+  if (rowCount !== 1) throw new Error(`seduta inesistente: ${sedutaId}`)
 }
 
 /** Legge le statistiche di presenza da v_presenze per un tesseramento. */

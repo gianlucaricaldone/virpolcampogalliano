@@ -84,25 +84,22 @@ describe('presenze', () => {
 
   it('rifiuta un tesseramento di un\'altra squadra sulla seduta', () =>
     inRollback(async (c) => {
-      // Mirror del test precedente: qui è il tesseramento a essere di
-      // un'altra squadra, non la seduta. Il rifiuto arriva solo da
-      // presenze_tesseramento_di_squadra, che è deferred, quindi va reso
-      // immediato per osservarlo dentro una transazione che va in rollback.
+      // L'altra metà della garanzia. Questa combinazione — seduta di A,
+      // tesseramento di B, squadra_id di A — è quella che registraPresenza
+      // produrrebbe da sé, e che solo il vincolo differito rifiuta: senza
+      // renderlo immediato il test passerebbe senza verificare nulla.
       await c.query('set constraints presenze_tesseramento_di_squadra immediate')
       const { stagione, squadra } = await scenario(c)
-      const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
       const altra = await creaSquadra(c, stagione, { nome: 'Altra' })
-      const personaAltra = await creaPersona(c, { codiceFiscale: 'ALTRA' })
-      const tesseramentoAltra = await creaTesseramento(c, {
-        personaId: personaAltra, stagioneId: stagione, squadraId: altra,
+      const tesseratoAltra = await creaTesseramento(c, {
+        personaId: await creaPersona(c, { codiceFiscale: 'ALTRA' }),
+        stagioneId: stagione,
+        squadraId: altra,
       })
-      await expect(
-        c.query(
-          `insert into public.presenze (seduta_id, tesseramento_id, squadra_id, stato)
-           values ($1, $2, $3, 'presente')`,
-          [seduta, tesseramentoAltra, squadra],
-        ),
-      ).rejects.toThrow(/presenze_tesseramento_di_squadra/)
+      const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
+      await expect(registraPresenza(c, seduta, tesseratoAltra, 'presente')).rejects.toThrow(
+        /presenze_tesseramento_di_squadra/,
+      )
     }))
 
   it('rifiuta di spostare un tesseramento con presenze già registrate', () =>
@@ -130,16 +127,17 @@ describe('presenze', () => {
       const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
       await registraPresenza(c, seduta, tesseramento, 'presente')
       await c.query('delete from public.squadre where id = $1', [squadra])
-      // Prova che la transazione potrebbe anche commettere, non solo che la
-      // DELETE è andata a buon fine: senza questa riga il test non tocca il
-      // vincolo differito che la cancellazione squadra deve attraversare.
+      // Forza subito il check che il vincolo differito rimanderebbe al commit:
+      // senza questo il test proverebbe che l'istruzione riesce, non che la
+      // transazione potrebbe chiudersi — che è la proprietà per cui il vincolo
+      // è differito.
       await c.query('set constraints all immediate')
       const { rows } = await c.query(
         `select (select count(*)::int from public.presenze) as presenze,
                 (select count(*)::int from public.sedute_allenamento) as sedute,
                 (select squadra_id from public.tesseramenti where id = $1) as squadra_tesseramento,
                 -- La stagione deve SOPRAVVIVERE: su una FK multi-colonna un
-                -- \`set null\` nudo annullerebbe anche questa, e senza questa
+                -- set null nudo annullerebbe anche questa, e senza questa
                 -- asserzione il difetto resterebbe invisibile.
                 (select stagione_id from public.tesseramenti where id = $1) as stagione_tesseramento`,
         [tesseramento],

@@ -33,6 +33,11 @@ comment on table public.sedute_allenamento is
   'La seduta è un''entità: distingue "allenamento non compilato" da "tutti '
   'assenti" e dà un denominatore definito alle percentuali di presenza.';
 
+-- Nessun indice aggiuntivo su (squadra_id, data): il prefisso di
+-- sedute_squadra_data_ora_key copre già quelle interrogazioni, e un btree si
+-- percorre anche a rovescio per `data desc`. Due strutture per un solo
+-- pattern di accesso sono solo scritture in più da mantenere.
+
 create table public.presenze (
   id              uuid primary key default gen_random_uuid(),
   seduta_id       uuid not null,
@@ -53,11 +58,13 @@ create table public.presenze (
     references public.sedute_allenamento (id, squadra_id) on delete cascade,
   -- Differito: una `delete from squadre` innesca più percorsi di cascade
   -- (sedute e presenze via cascade, tesseramenti.squadra_id via set null) e
-  -- Postgres li esegue in ordine di creazione dei trigger. Lo stato finale è
-  -- coerente, quello intermedio no. Verificare a fine transazione invece che
-  -- per istruzione rende la garanzia indipendente da quell'ordine, che nessun
-  -- dump o squash di migration promette di preservare. Cambia QUANDO una
-  -- violazione viene segnalata, non SE.
+  -- Postgres li esegue nell'ordine alfabetico dei nomi dei trigger, che per
+  -- quelli di integrità referenziale contengono l'oid — quindi segue l'ordine
+  -- di creazione solo finché gli oid hanno la stessa ampiezza in cifre. Lo
+  -- stato finale è coerente, quello intermedio no. Verificare a fine
+  -- transazione invece che per istruzione rende la garanzia indipendente da
+  -- quell'ordine, che nessun dump o squash di migration promette di
+  -- preservare. Cambia QUANDO una violazione viene segnalata, non SE.
   constraint presenze_tesseramento_di_squadra
     foreign key (tesseramento_id, squadra_id)
     references public.tesseramenti (id, squadra_id) on delete cascade
@@ -66,11 +73,12 @@ create table public.presenze (
 
 comment on constraint presenze_tesseramento_di_squadra on public.presenze is
   'Spostare un tesseramento in un''altra squadra viene rifiutato finché '
-  'esistono presenze: quelle presenze appartengono alla squadra in cui sono '
-  'state registrate. Per spostare il giocatore si cancellano prima le '
-  'presenze, oppure si cancellano e si sposta nella stessa transazione: '
-  'essendo il vincolo differito, la verifica avviene a fine transazione, '
-  'quindi commette pulita.';
+  'esistono presenze sulla vecchia: quelle presenze appartengono alla squadra '
+  'dove sono state raccolte. Essendo il vincolo differito, dentro una sola '
+  'transazione si possono spostare il tesseramento e cancellare le presenze '
+  'in qualunque ordine, perché conta solo lo stato a fine transazione. '
+  'Spostare le presenze insieme al giocatore non è invece possibile: la loro '
+  'seduta resta della vecchia squadra e quel vincolo è immediato.';
 
 create index presenze_tesseramento_idx on public.presenze (tesseramento_id);
 
