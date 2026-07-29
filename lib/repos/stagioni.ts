@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { stagioneCorrenteDa } from '@/lib/domain/stagione'
 import type { Database } from '@/lib/db/types'
 
 type Db = SupabaseClient<Database>
@@ -35,16 +36,12 @@ export async function elencaStagioni(db: Db): Promise<Stagione[]> {
 /**
  * Stagione corrente: la prima aperta ordinata per data di inizio decrescente.
  * Derivata e non memorizzata — a luglio, con la stagione nuova già aperta e la
- * precedente non ancora chiusa, restituisce quella nuova.
+ * precedente non ancora chiusa, restituisce quella nuova. La regola vive in
+ * un'unica funzione pura (lib/domain/stagione.ts), condivisa con NavBackoffice:
+ * niente di ordina-e-filtra duplicato qui.
  */
 export async function stagioneCorrente(db: Db): Promise<Stagione | null> {
-  const { data, error } = await db
-    .from('stagioni').select(CAMPI)
-    .eq('stato', 'aperta')
-    .order('data_inizio', { ascending: false })
-    .limit(1).maybeSingle()
-  if (error) throw error
-  return data ? daRiga(data) : null
+  return stagioneCorrenteDa(await elencaStagioni(db))
 }
 
 export async function stagionePerCodice(db: Db, codice: string): Promise<Stagione | null> {

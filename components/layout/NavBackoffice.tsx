@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import type { RuoloApp } from '@/lib/auth/session'
+import { stagioneCorrenteDa } from '@/lib/domain/stagione'
 import type { Stagione } from '@/lib/repos/stagioni'
 
 export function NavBackoffice({ ruolo, stagioni }: { ruolo: RuoloApp; stagioni: Stagione[] }) {
-  const corrente = stagioni.find((s) => s.stato === 'aperta') ?? stagioni[0]
+  const corrente = stagioneCorrenteDa(stagioni)
 
   return (
     <header className="border-b bg-white">
