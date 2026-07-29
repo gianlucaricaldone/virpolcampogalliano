@@ -28,7 +28,12 @@ export async function accedi(_precedente: unknown, form: FormData): Promise<Risu
   const esito = await eseguiAzione('accesso', async () => {
     const db = await supabaseServer()
     const { error } = await db.auth.signInWithPassword(campi.data)
-    if (error) throw new CredenzialiNonValide()
+    // Solo le credenziali sbagliate diventano un messaggio per l'utente. Un
+    // rate limit, un progetto malconfigurato o un'interruzione del servizio
+    // Auth sono bug: devono arrivare a error.tsx col loro errore originale,
+    // non travestiti da password errata.
+    if (error?.code === 'invalid_credentials') throw new CredenzialiNonValide()
+    if (error) throw error
     return null
   })
 
