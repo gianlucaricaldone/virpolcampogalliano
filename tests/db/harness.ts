@@ -16,8 +16,11 @@ export async function inRollback<T>(fn: (c: Client) => Promise<T>): Promise<T> {
     await c.query('begin')
     return await fn(c)
   } finally {
+    // Senza .catch() qui, un c.end() che fallisse sostituirebbe il vero esito
+    // di fn() (o un errore di rollback già ignorato sopra) con un errore di
+    // socket, oscurando la causa reale del fallimento del test.
     await c.query('rollback').catch(() => {})
-    await c.end()
+    await c.end().catch(() => {})
   }
 }
 
@@ -120,12 +123,26 @@ export async function creaPersona(
   return rows[0].id as string
 }
 
+/**
+ * Codice-stagione casuale nella forma YYYY-YY imposta dal vincolo
+ * stagioni_codice_forma. Non un valore fisso: se test:db girasse dopo
+ * seed:dev (fuori dall'ordine previsto) una stagione di default '2026-27'
+ * scontrerebbe la riga già seminata e committata, con un errore di vincolo
+ * unique attribuito al test sbagliato.
+ */
+function codiceCasuale(): string {
+  const cifre = randomUUID().replace(/-/g, '')
+  const anno = parseInt(cifre.slice(0, 8), 16) % 10000
+  const suffisso = parseInt(cifre.slice(8, 16), 16) % 100
+  return `${String(anno).padStart(4, '0')}-${String(suffisso).padStart(2, '0')}`
+}
+
 /** Inserisce una stagione e ne restituisce l'id. */
 export async function creaStagione(
   c: Client,
   dati: { codice?: string; stato?: 'aperta' | 'chiusa'; dataInizio?: string; dataFine?: string } = {},
 ): Promise<string> {
-  const codice = dati.codice ?? '2026-27'
+  const codice = dati.codice ?? codiceCasuale()
   const { rows } = await c.query(
     `insert into public.stagioni (codice, etichetta, data_inizio, data_fine, stato)
      values ($1, $2, $3, $4, $5) returning id`,

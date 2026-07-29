@@ -9,7 +9,11 @@ const db = createClient<Database>(URL, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
 })
 
 beforeEach(async () => {
-  await db.from('stagioni').delete().neq('codice', '')
+  // stagioni ← squadre è on delete restrict: una squadra committata da un
+  // test precedente basterebbe a rendere questa delete un no-op silenzioso,
+  // e il fallimento emergerebbe altrove, in un test che non ha toccato nulla.
+  const { error } = await db.from('stagioni').delete().neq('codice', '')
+  if (error) throw error
 })
 
 const valida = {

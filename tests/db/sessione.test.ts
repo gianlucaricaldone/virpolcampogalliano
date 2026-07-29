@@ -31,11 +31,15 @@ async function clientPerRuolo(ruolo: 'admin' | 'dirigente' | 'allenatore') {
 
   let personaId: string | null = null
   if (ruolo === 'allenatore') {
-    const { data } = await servizio
+    // Controllare l'errore prima di usare data!.id: senza, un insert fallito
+    // diventa un TypeError su "Cannot read properties of null" attribuito al
+    // punto sbagliato, invece dell'errore Postgres reale che l'ha causato.
+    const { data, error } = await servizio
       .from('persone')
       .insert({ nome: 'Mister', cognome: 'Prova', data_nascita: '1980-01-01' })
       .select('id').single()
-    personaId = data!.id
+    if (error) throw error
+    personaId = data.id
     idPersoneCreate.push(personaId)
   }
   await servizio.from('profili').insert({ id: creato.user.id, ruolo, persona_id: personaId })
