@@ -41,7 +41,7 @@ describe('sedute_allenamento', () => {
       const squadraDiS1 = await creaSquadra(c, s1)
       await expect(
         creaSeduta(c, { squadraId: squadraDiS1, stagioneId: s2 }),
-      ).rejects.toThrow(/violates foreign key constraint/)
+      ).rejects.toThrow(/sedute_squadra_di_stagione/)
     }))
 })
 
@@ -82,6 +82,29 @@ describe('presenze', () => {
       ).rejects.toThrow(/presenze_seduta_di_squadra/)
     }))
 
+  it('rifiuta un tesseramento di un\'altra squadra sulla seduta', () =>
+    inRollback(async (c) => {
+      // Mirror del test precedente: qui è il tesseramento a essere di
+      // un'altra squadra, non la seduta. Il rifiuto arriva solo da
+      // presenze_tesseramento_di_squadra, che è deferred, quindi va reso
+      // immediato per osservarlo dentro una transazione che va in rollback.
+      await c.query('set constraints presenze_tesseramento_di_squadra immediate')
+      const { stagione, squadra } = await scenario(c)
+      const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
+      const altra = await creaSquadra(c, stagione, { nome: 'Altra' })
+      const personaAltra = await creaPersona(c, { codiceFiscale: 'ALTRA' })
+      const tesseramentoAltra = await creaTesseramento(c, {
+        personaId: personaAltra, stagioneId: stagione, squadraId: altra,
+      })
+      await expect(
+        c.query(
+          `insert into public.presenze (seduta_id, tesseramento_id, squadra_id, stato)
+           values ($1, $2, $3, 'presente')`,
+          [seduta, tesseramentoAltra, squadra],
+        ),
+      ).rejects.toThrow(/presenze_tesseramento_di_squadra/)
+    }))
+
   it('rifiuta di spostare un tesseramento con presenze già registrate', () =>
     inRollback(async (c) => {
       // Il vincolo è `deferrable initially deferred`: dentro una transazione
@@ -107,6 +130,10 @@ describe('presenze', () => {
       const seduta = await creaSeduta(c, { squadraId: squadra, stagioneId: stagione })
       await registraPresenza(c, seduta, tesseramento, 'presente')
       await c.query('delete from public.squadre where id = $1', [squadra])
+      // Prova che la transazione potrebbe anche commettere, non solo che la
+      // DELETE è andata a buon fine: senza questa riga il test non tocca il
+      // vincolo differito che la cancellazione squadra deve attraversare.
+      await c.query('set constraints all immediate')
       const { rows } = await c.query(
         `select (select count(*)::int from public.presenze) as presenze,
                 (select count(*)::int from public.sedute_allenamento) as sedute,

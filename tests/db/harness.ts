@@ -222,8 +222,13 @@ export async function creaSeduta(
 
 /**
  * Registra una presenza ricavando `squadra_id` dalla seduta, così i chiamanti
- * non devono conoscere la colonna denormalizzata. Per provare il rifiuto di
- * una squadra incoerente serve una insert scritta a mano, non questa.
+ * non devono conoscere la colonna denormalizzata. Questo copre solo il lato
+ * seduta: se il tesseramento appartiene a un'altra squadra la riga viene
+ * inserita comunque, perché il rifiuto arriva solo da
+ * `presenze_tesseramento_di_squadra`, che è deferred e si verifica quindi al
+ * commit, non a questa insert. Un test che deve osservarlo deve prima rendere
+ * il vincolo immediato con `set constraints presenze_tesseramento_di_squadra
+ * immediate`.
  */
 export async function registraPresenza(
   c: Client,
@@ -231,12 +236,15 @@ export async function registraPresenza(
   tesseramentoId: string,
   stato: 'presente' | 'assente' | 'giustificato' | 'infortunato',
 ): Promise<void> {
-  await c.query(
+  const { rowCount } = await c.query(
     `insert into public.presenze (seduta_id, tesseramento_id, squadra_id, stato)
      select s.id, $2, s.squadra_id, $3
      from public.sedute_allenamento s where s.id = $1`,
     [sedutaId, tesseramentoId, stato],
   )
+  if (rowCount !== 1) {
+    throw new Error(`nessuna seduta con id ${sedutaId}: presenza non registrata`)
+  }
 }
 
 /** Legge le statistiche di presenza da v_presenze per un tesseramento. */

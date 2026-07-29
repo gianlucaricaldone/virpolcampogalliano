@@ -33,8 +33,6 @@ comment on table public.sedute_allenamento is
   'La seduta è un''entità: distingue "allenamento non compilato" da "tutti '
   'assenti" e dà un denominatore definito alle percentuali di presenza.';
 
-create index sedute_squadra_data_idx on public.sedute_allenamento (squadra_id, data desc);
-
 create table public.presenze (
   id              uuid primary key default gen_random_uuid(),
   seduta_id       uuid not null,
@@ -69,7 +67,10 @@ create table public.presenze (
 comment on constraint presenze_tesseramento_di_squadra on public.presenze is
   'Spostare un tesseramento in un''altra squadra viene rifiutato finché '
   'esistono presenze: quelle presenze appartengono alla squadra in cui sono '
-  'state registrate. Per spostare il giocatore si cancellano prima.';
+  'state registrate. Per spostare il giocatore si cancellano prima le '
+  'presenze, oppure si cancellano e si sposta nella stessa transazione: '
+  'essendo il vincolo differito, la verifica avviene a fine transazione, '
+  'quindi commette pulita.';
 
 create index presenze_tesseramento_idx on public.presenze (tesseramento_id);
 
