@@ -225,8 +225,18 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-# Vedi il commento su [auth] enable_signup: stesso motivo, stessa scelta.
-enable_signup = false
+# ATTENZIONE: nonostante il nome, questa non è la leva del signup — è quella
+# già disattivata sopra in [auth]. Il CLI mappa QUESTA chiave su
+# GOTRUE_EXTERNAL_EMAIL_ENABLED, l'interruttore del *provider* email: se è
+# false, GoTrue rifiuta anche il login via password per ogni utente esistente
+# (admin compreso) con 422 email_provider_disabled, non solo il self-service
+# signup. Verificato con un container GoTrue usa-e-getta puntato sullo stesso
+# database, a parità di [auth] enable_signup = false:
+#   [auth.email] enable_signup = false -> login utente reale: 422 email_provider_disabled
+#   [auth.email] enable_signup = true  -> login utente reale: 200 con access token
+# Deve restare true. Il signup resta comunque bloccato da [auth] enable_signup
+# sopra: quella è l'unica leva che serve per il requisito "niente self-service".
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
