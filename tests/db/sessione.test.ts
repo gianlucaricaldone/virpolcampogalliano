@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { ErroreAutorizzazione, getSessione, richiediRuolo } from '@/lib/auth/session'
 import type { Database } from '@/lib/db/types'
 
@@ -11,6 +11,13 @@ function clientServizio() {
   return createClient<Database>(URL, SERVICE, { auth: { persistSession: false } })
 }
 
+// Questa suite crea utenti Auth reali via API, quindi non può girare dentro
+// il rollback dell'harness: gli id creati vanno tracciati qui e rimossi in
+// afterAll, altrimenti auth.users/profili/persone crescono a ogni esecuzione
+// nel database locale condiviso da tutta la suite.
+const idUtentiCreati: string[] = []
+const idPersoneCreate: string[] = []
+
 /** Crea un utente reale via API di Auth e restituisce un client autenticato. */
 async function clientPerRuolo(ruolo: 'admin' | 'dirigente' | 'allenatore') {
   const servizio = clientServizio()
@@ -20,6 +27,7 @@ async function clientPerRuolo(ruolo: 'admin' | 'dirigente' | 'allenatore') {
     email, password, email_confirm: true,
   })
   if (error) throw error
+  idUtentiCreati.push(creato.user.id)
 
   let personaId: string | null = null
   if (ruolo === 'allenatore') {
@@ -28,6 +36,7 @@ async function clientPerRuolo(ruolo: 'admin' | 'dirigente' | 'allenatore') {
       .insert({ nome: 'Mister', cognome: 'Prova', data_nascita: '1980-01-01' })
       .select('id').single()
     personaId = data!.id
+    idPersoneCreate.push(personaId)
   }
   await servizio.from('profili').insert({ id: creato.user.id, ruolo, persona_id: personaId })
 
@@ -36,6 +45,21 @@ async function clientPerRuolo(ruolo: 'admin' | 'dirigente' | 'allenatore') {
   if (erroreAccesso) throw erroreAccesso
   return { db: utente, userId: creato.user.id, personaId, servizio }
 }
+
+afterAll(async () => {
+  const servizio = clientServizio()
+  // Eliminare l'utente Auth elimina a cascata il suo profilo
+  // (profili.id → auth.users.id on delete cascade). Le persone vanno
+  // rimosse dopo ed esplicitamente: profili.persona_id → persone.id è
+  // on delete restrict, quindi non si può cancellare una persona finché
+  // esiste ancora un profilo che la referenzia.
+  for (const id of idUtentiCreati) {
+    await servizio.auth.admin.deleteUser(id)
+  }
+  for (const id of idPersoneCreate) {
+    await servizio.from('persone').delete().eq('id', id)
+  }
+})
 
 describe('getSessione', () => {
   it('restituisce null senza sessione', async () => {
