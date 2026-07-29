@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import { leggiEnv } from "./lib/env";
+
+// Le variabili NEXT_PUBLIC_* vengono inlineate nel bundle già in fase di
+// build: una build con una variabile mancante è già rotta prima ancora che
+// il server parta, quindi la validazione avviene qui, non solo a runtime.
+leggiEnv(process.env);
 
 const nextConfig: NextConfig = {
   // Fissa la radice del workspace su questo progetto: un package-lock.json
