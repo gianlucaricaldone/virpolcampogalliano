@@ -96,6 +96,14 @@ with sedute_per_squadra as (
 )
 select
   t.id as tesseramento_id,
+  -- Stagione, squadra e persona sull'onda della vista: senza, ogni elenco di
+  -- statistiche dovrebbe prima leggere i tesseramenti e ricucire in
+  -- TypeScript. Si possono selezionare pur non essendo nel GROUP BY perché il
+  -- raggruppamento è sulla chiave primaria di `tesseramenti`, da cui
+  -- dipendono funzionalmente.
+  t.stagione_id,
+  t.squadra_id,
+  t.persona_id,
   coalesce(sps.sedute, 0) as sedute_squadra,
   count(p.id) filter (where p.stato = 'presente')::int     as presenti,
   count(p.id) filter (where p.stato = 'assente')::int      as assenti,
@@ -117,3 +125,42 @@ comment on view public.v_presenze is
   'riga per quel giocatore: non_registrate rende visibili i buchi invece di '
   'gonfiare la percentuale. percentuale è 0-100 con un decimale, nulla se la '
   'squadra non ha sedute.';
+
+-- Stessa regola, aggregata per squadra. Unica implementazione: la media di
+-- squadra non si ricalcola in TypeScript sommando le righe dei giocatori,
+-- altrimenti l'elenco e il riepilogo finirebbero per non concordare.
+create view public.v_presenze_squadra with (security_invoker = true) as
+with sedute_per_squadra as (
+  select squadra_id, count(*)::int as sedute
+  from public.sedute_allenamento
+  group by squadra_id
+)
+select
+  s.id as squadra_id,
+  s.stagione_id,
+  -- DISTINCT obbligatorio: il join con presenze moltiplica le righe di
+  -- tesseramenti, e un count() semplice conterebbe ogni giocatore una volta
+  -- per presenza registrata, gonfiando il denominatore.
+  count(distinct t.id)::int as tesserati,
+  coalesce(sps.sedute, 0) as sedute,
+  count(p.id) filter (where p.stato = 'presente')::int    as presenti,
+  count(p.id) filter (where p.stato = 'assente')::int     as assenti,
+  count(p.id) filter (where p.stato = 'giustificato')::int as giustificati,
+  count(p.id) filter (where p.stato = 'infortunato')::int  as infortuni,
+  (coalesce(sps.sedute, 0) * count(distinct t.id) - count(p.id))::int as non_registrate,
+  case
+    when coalesce(sps.sedute, 0) = 0 or count(distinct t.id) = 0 then null
+    else round(
+      count(p.id) filter (where p.stato = 'presente')::numeric * 100
+      / (sps.sedute * count(distinct t.id)), 1)
+  end as percentuale
+from public.squadre s
+left join public.tesseramenti t on t.squadra_id = s.id
+left join sedute_per_squadra sps on sps.squadra_id = s.id
+left join public.presenze p on p.tesseramento_id = t.id
+group by s.id, s.stagione_id, sps.sedute;
+
+comment on view public.v_presenze_squadra is
+  'Denominatore: sedute della squadra per numero di tesserati. Chi si tessera '
+  'a gennaio abbassa la media, ed è la lettura onesta — non si aggiusta il '
+  'denominatore per far sembrare migliore il dato.';

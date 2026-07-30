@@ -459,9 +459,9 @@ describe('privilegi di tabella per authenticated', () => {
   // v_visite è arrivata con la gestione della visita medica: la sua SELECT è
   // voluta e va aggiunta qui, non aggirata. Che questo test sia diventato
   // rosso da solo, al primo grant nuovo, è esattamente il suo mestiere.
-  const VISTE = ['v_presenze', 'v_quote', 'v_visite']
+  const VISTE = ['v_presenze', 'v_presenze_squadra', 'v_quote', 'v_visite']
 
-  it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle tre viste', () =>
+  it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle quattro viste', () =>
     inRollback(async (c) => {
       const privilegi = await privilegiTabella(c, 'authenticated')
       const atteso = [
