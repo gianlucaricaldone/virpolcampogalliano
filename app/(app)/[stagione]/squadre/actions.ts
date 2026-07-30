@@ -3,27 +3,15 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { daErroreZod, eseguiAzione, type Risultato } from '@/lib/azioni'
-import { ErroreAutorizzazione, richiediRuolo } from '@/lib/auth/session'
+import { stagioneModificabile } from '@/lib/azioni-stagione'
+import { richiediRuolo } from '@/lib/auth/session'
+import { creaIncarico, rimuoviIncarico } from '@/lib/repos/incarichi'
 import { aggiornaSquadra, creaSquadra, eliminaSquadra } from '@/lib/repos/squadre'
-import { stagionePerCodice } from '@/lib/repos/stagioni'
-import { supabaseServer, type Db } from '@/lib/supabase/server'
+import { supabaseServer } from '@/lib/supabase/server'
 import { campiSquadra, schemaSquadra } from '@/lib/validation/squadra'
+import { schemaIncarico } from '@/lib/validation/tesseramento'
 
 const SCRITTURA = ['admin', 'dirigente'] as const
-
-/**
- * La stagione arriva dal codice nell'URL e viene risolta qui, mai passata come
- * id in un campo nascosto: le policy la riverificano comunque, ma un id
- * arbitrario darebbe un 42501 opaco al posto di un messaggio.
- */
-async function stagioneModificabile(db: Db, codice: string) {
-  const stagione = await stagionePerCodice(db, codice)
-  if (!stagione) throw new ErroreAutorizzazione('Stagione inesistente')
-  if (stagione.stato === 'chiusa') {
-    throw new ErroreAutorizzazione('La stagione è chiusa: i dati sono in sola lettura')
-  }
-  return stagione
-}
 
 export async function creaSquadraAzione(
   codice: string,
@@ -84,4 +72,45 @@ export async function eliminaSquadraAzione(
 
   revalidatePath(`/${codice}/squadre`)
   redirect(`/${codice}/squadre`)
+}
+
+export async function creaIncaricoAzione(
+  codice: string,
+  squadraId: string,
+  _precedente: Risultato<null> | null,
+  form: FormData,
+): Promise<Risultato<null>> {
+  const campi = schemaIncarico.safeParse({
+    personaId: form.get('personaId'),
+    ruolo: form.get('ruolo'),
+  })
+  if (!campi.success) return daErroreZod(campi.error)
+
+  const esito = await eseguiAzione('incarichi.crea', async () => {
+    const db = await supabaseServer()
+    await richiediRuolo(db, [...SCRITTURA])
+    const stagione = await stagioneModificabile(db, codice)
+    await creaIncarico(db, { ...campi.data, stagioneId: stagione.id, squadraId })
+    return null
+  })
+
+  if (esito.ok) revalidatePath(`/${codice}/squadre/${squadraId}`)
+  return esito
+}
+
+export async function rimuoviIncaricoAzione(
+  codice: string,
+  squadraId: string,
+  id: string,
+): Promise<Risultato<null>> {
+  const esito = await eseguiAzione('incarichi.rimuovi', async () => {
+    const db = await supabaseServer()
+    await richiediRuolo(db, [...SCRITTURA])
+    await stagioneModificabile(db, codice)
+    await rimuoviIncarico(db, id)
+    return null
+  })
+
+  if (esito.ok) revalidatePath(`/${codice}/squadre/${squadraId}`)
+  return esito
 }

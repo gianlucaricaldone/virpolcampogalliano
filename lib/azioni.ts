@@ -8,6 +8,19 @@ export type Risultato<T> =
   | { ok: false; errore: string; campi?: Record<string, string> }
 
 /**
+ * Fallimento previsto con un messaggio già scritto per l'utente: stagione
+ * chiusa, numero di maglia occupato da un giocatore che sappiamo nominare.
+ * Non è un bug e non è un errore di autorizzazione — distinguerlo serve a non
+ * far somigliare un vincolo di dominio a un problema di permessi.
+ */
+export class ErroreDominio extends Error {
+  constructor(messaggio: string) {
+    super(messaggio)
+    this.name = 'ErroreDominio'
+  }
+}
+
+/**
  * Errori di validazione zod nella forma che i form si aspettano: un messaggio
  * per campo, sulla chiave del campo. Solo il primo problema per campo — è
  * quello che l'utente correggerà comunque per primo.
@@ -35,6 +48,10 @@ export async function eseguiAzione<T>(
   } catch (e) {
     if (e instanceof ErroreAutorizzazione) {
       log.warn(`${nome}.negata`, { motivo: e.message })
+      return { ok: false, errore: e.message }
+    }
+    if (e instanceof ErroreDominio) {
+      log.warn(`${nome}.rifiutata`, { motivo: e.message })
       return { ok: false, errore: e.message }
     }
     if (e instanceof Error && e.name === 'CredenzialiNonValide') {

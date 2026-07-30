@@ -27,6 +27,23 @@ describe('traduciErrorePostgres', () => {
     expect(traduciErrorePostgres(e)).toMatch(/non consentita/i)
   })
 
+  it('distingue i due significati di un 23503', () => {
+    // Stesso codice, cause opposte: una FK composita violata non è una riga
+    // sparita, e "ricarica la pagina" manderebbe l'utente a ricaricare in
+    // eterno senza mai capire che deve cancellare le presenze.
+    const composita = {
+      code: '23503',
+      message: 'insert or update on table "tesseramenti" violates foreign key constraint "presenze_tesseramento_di_squadra"',
+    }
+    expect(traduciErrorePostgres(composita)).toMatch(/presenze registrate/i)
+
+    const sparita = {
+      code: '23503',
+      message: 'insert or update on table "x" violates foreign key constraint "x_y_fkey"',
+    }
+    expect(traduciErrorePostgres(sparita)).toMatch(/ricarica la pagina/i)
+  })
+
   it('restituisce null per un errore che non conosce', () => {
     expect(traduciErrorePostgres({ code: '08006', message: 'connection failure' })).toBeNull()
   })
