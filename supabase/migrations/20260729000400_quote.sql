@@ -48,7 +48,23 @@ with versato as (
 )
 select
   t.id as tesseramento_id,
+  -- stagione e squadra sull'onda della vista: senza, ogni elenco di quote
+  -- dovrebbe prima leggere i tesseramenti e poi filtrare in TypeScript.
+  t.stagione_id,
+  t.squadra_id,
+  t.persona_id,
   coalesce(qt.importo, qs.importo, qst.importo, 0)::numeric(10,2) as quota_attesa,
+  -- Quale dei tre livelli sta decidendo l'importo. Serve all'interfaccia: un
+  -- override di squadra, senza dirlo, sembra un errore di calcolo del default
+  -- di stagione, e chi lo vede va a cercare il bug che non c'è.
+  -- L'ordine dei rami segue quello del coalesce qui sopra: tenerli adiacenti
+  -- è ciò che rende visibile una divergenza fra i due.
+  case
+    when qt.importo is not null then 'tesseramento'
+    when qs.importo is not null then 'squadra'
+    when qst.importo is not null then 'stagione'
+    else 'nessuno'
+  end as livello_importo,
   coalesce(v.pagato, 0)::numeric(10,2) as pagato,
   (coalesce(qt.importo, qs.importo, qst.importo, 0) - coalesce(v.pagato, 0))::numeric(10,2)
     as residuo,

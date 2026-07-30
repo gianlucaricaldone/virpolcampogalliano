@@ -1,9 +1,22 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { PannelloQuota } from '@/components/quote/PannelloQuota'
+import { RigaImporto } from '@/components/quote/RigaImporto'
 import { PannelloAssegnazione } from '@/components/tesseramenti/PannelloAssegnazione'
 import { getSessione } from '@/lib/auth/session'
+import {
+  elencaPagamenti,
+  importoTesseramento,
+  quotaPerTesseramento,
+} from '@/lib/repos/quote'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { supabaseServer } from '@/lib/supabase/server'
+import {
+  annullaPagamentoAzione,
+  impostaImportoAzione,
+  registraPagamentoAzione,
+  rimuoviImportoAzione,
+} from '../../quote/actions'
 import { stagioneRichiesta } from '../../dati'
 import { aggiornaAssegnazioneAzione, rimuoviTesseramentoAzione } from '../actions'
 import { caricaTesserato } from './dati'
@@ -21,10 +34,16 @@ export default async function PaginaTesseramento({
 
   const db = await supabaseServer()
   const sessione = await getSessione(db)
-  const puoScrivere =
-    (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&
-    stagione.stato === 'aperta'
+  const staff = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
+  const puoScrivere = staff && stagione.stato === 'aperta'
   const squadre = puoScrivere ? await elencaSquadre(db, stagione.id) : []
+
+  // L'allenatore non vede nulla di finanziario: non gli si chiede il dato,
+  // invece di chiederlo e nasconderlo.
+  const quota = staff ? await quotaPerTesseramento(db, tesseramentoId) : null
+  const pagamenti = staff ? await elencaPagamenti(db, tesseramentoId) : []
+  const override = staff ? await importoTesseramento(db, tesseramentoId) : null
+  const oggi = new Date().toISOString().slice(0, 10)
 
   return (
     <section className="space-y-6">
@@ -64,6 +83,38 @@ export default async function PaginaTesseramento({
           </p>
         )}
       </div>
+
+      {staff && quota && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Quota di iscrizione</h2>
+          <div className="rounded border bg-white">
+            <RigaImporto
+              etichetta="Importo personale"
+              valore={override}
+              ereditato={
+                override === null && quota.quotaAttesa > 0
+                  ? { importo: quota.quotaAttesa, da: quota.livelloImporto }
+                  : null
+              }
+              azione={impostaImportoAzione.bind(null, codice, { tesseramentoId })}
+              rimuovi={
+                sessione?.ruolo === 'admin' && puoScrivere
+                  ? rimuoviImportoAzione.bind(null, codice, { tesseramentoId })
+                  : undefined
+              }
+              modificabile={puoScrivere}
+            />
+          </div>
+          <PannelloQuota
+            quota={quota}
+            pagamenti={pagamenti}
+            registra={registraPagamentoAzione.bind(null, codice, tesseramentoId)}
+            annulla={annullaPagamentoAzione.bind(null, codice, tesseramentoId)}
+            oggi={oggi}
+            modificabile={puoScrivere}
+          />
+        </div>
+      )}
     </section>
   )
 }

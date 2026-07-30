@@ -238,6 +238,13 @@ export type Database = {
             referencedRelation: "tesseramenti"
             referencedColumns: ["id", "squadra_id"]
           },
+          {
+            foreignKeyName: "presenze_tesseramento_di_squadra"
+            columns: ["tesseramento_id", "squadra_id"]
+            isOneToOne: false
+            referencedRelation: "v_quote"
+            referencedColumns: ["tesseramento_id", "squadra_id"]
+          },
         ]
       }
       profili: {
@@ -547,13 +554,39 @@ export type Database = {
       }
       v_quote: {
         Row: {
+          livello_importo: string | null
           pagato: number | null
+          persona_id: string | null
           quota_attesa: number | null
           residuo: number | null
+          squadra_id: string | null
+          stagione_id: string | null
           stato: string | null
           tesseramento_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tesseramenti_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "persone"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "squadre"
+            referencedColumns: ["id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_stagione_id_fkey"
+            columns: ["stagione_id"]
+            isOneToOne: false
+            referencedRelation: "stagioni"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
