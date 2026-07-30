@@ -15,6 +15,7 @@ export function NavBackoffice({ ruolo, stagioni }: { ruolo: RuoloApp; stagioni: 
             <Link href={`/${corrente.codice}/squadre`}>Squadre</Link>
             <Link href={`/${corrente.codice}/tesseramenti`}>Tesserati</Link>
             <Link href={`/${corrente.codice}/presenze`}>Presenze</Link>
+            <Link href={`/${corrente.codice}/statistiche`}>Statistiche</Link>
             {/* Nessuna voce Quote per l'allenatore: le due tabelle finanziarie
                 non hanno policy per lui, e la pagina lo rimanderebbe indietro. */}
             {ruolo !== 'allenatore' && (
