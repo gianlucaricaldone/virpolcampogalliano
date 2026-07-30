@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Il font va applicato, non solo caricato. Prima questa regola nominava la
+ * pila di sistema — Arial e i suoi ripieghi — in CSS semplice, che vince sulle
+ * utility di Tailwind: si scaricavano due font da Google e si rendeva con
+ * quelli del sistema.
+ *
+ * Il tema chiaro non è un default preso per abitudine, è la scena d'uso: questo
+ * backoffice si compila a bordo campo, col telefono in mano e il sole addosso,
+ * dove uno sfondo chiaro si legge e uno scuro riflette. Prima c'era un blocco
+ * `prefers-color-scheme: dark` che scuriva il solo body: dentro lo shell non si
+ * vedeva, perché le pagine impongono `bg-neutral-50`, ma sulla home pubblica e
+ * su error.tsx — che sfondo non ne mettono — lasciava testi `neutral-600` su
+ * nero. Una dichiarazione che non copriva nulla e rompeva le due pagine
+ * scoperte.
+ */
+body {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  background: #ffffff;
+  color: #171717;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/*
+ * Un anello di focus visibile ovunque, e solo da tastiera. Prima i campi si
+ * affidavano all'outline di default del browser, che su un bordo nero da 1px
+ * si distingue appena, e i pulsanti resi come link non mostravano nulla: chi
+ * naviga con il tab non sapeva dove si trovava.
+ */
+:focus-visible {
+  outline: 2px solid #171717;
+  outline-offset: 2px;
+  border-radius: 2px;
 }

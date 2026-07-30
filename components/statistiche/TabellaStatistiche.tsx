@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { StatisticaGiocatore } from '@/lib/repos/statistiche'
+import { Tabella } from '../ui/Tabella'
 
 function percentuale(valore: number | null): string {
   // Nulla non è zero: la squadra non ha ancora fatto allenamenti, quindi la
@@ -25,7 +26,7 @@ export function TabellaStatistiche({
   }
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Giocatore</th>
@@ -71,6 +72,6 @@ export function TabellaStatistiche({
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

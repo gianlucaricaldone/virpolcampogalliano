@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Squadra } from '@/lib/repos/squadre'
+import { Tabella } from '../ui/Tabella'
 
 export function TabellaSquadre({
   squadre,
@@ -17,7 +18,7 @@ export function TabellaSquadre({
   }
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Squadra</th>
@@ -40,6 +41,6 @@ export function TabellaSquadre({
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

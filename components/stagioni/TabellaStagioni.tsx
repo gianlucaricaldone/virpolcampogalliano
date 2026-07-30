@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { cambiaStatoAzione } from '@/app/(app)/admin/stagioni/actions'
 import type { Stagione } from '@/lib/repos/stagioni'
+import { Tabella } from '../ui/Tabella'
 
 export function TabellaStagioni({ stagioni }: { stagioni: Stagione[] }) {
   const [inCorso, avvia] = useTransition()
@@ -31,7 +32,7 @@ export function TabellaStagioni({ stagioni }: { stagioni: Stagione[] }) {
   return (
     <div className="space-y-2">
       {errore && <p role="alert" className="text-sm text-red-700">{errore}</p>}
-      <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+      <Tabella>
         <thead className="bg-neutral-100 text-left">
           <tr>
             <th className="p-2">Stagione</th>
@@ -59,7 +60,7 @@ export function TabellaStagioni({ stagioni }: { stagioni: Stagione[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </Tabella>
     </div>
   )
 }

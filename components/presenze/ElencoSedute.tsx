@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { formattaData } from '@/lib/domain/data'
 import type { Seduta } from '@/lib/repos/presenze'
+import { Tabella } from '../ui/Tabella'
 
 export function ElencoSedute({
   sedute,
@@ -22,7 +23,7 @@ export function ElencoSedute({
   }
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Data</th>
@@ -58,6 +59,6 @@ export function ElencoSedute({
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

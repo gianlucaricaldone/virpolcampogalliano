@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { formattaData } from '@/lib/domain/data'
 import type { Tesserato } from '@/lib/repos/tesseramenti'
+import { Tabella } from '../ui/Tabella'
 
 export function TabellaTesserati({
   tesserati,
@@ -20,7 +21,7 @@ export function TabellaTesserati({
   }
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Tesserato</th>
@@ -53,6 +54,6 @@ export function TabellaTesserati({
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

@@ -1,10 +1,11 @@
 import type { StatisticaSquadra } from '@/lib/repos/statistiche'
+import { Tabella } from '../ui/Tabella'
 
 export function RiepilogoSquadre({ righe }: { righe: StatisticaSquadra[] }) {
   if (righe.length === 0) return null
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Squadra</th>
@@ -29,6 +30,6 @@ export function RiepilogoSquadre({ righe }: { righe: StatisticaSquadra[] }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

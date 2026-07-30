@@ -8,7 +8,13 @@ export function NavBackoffice({ ruolo, stagioni }: { ruolo: RuoloApp; stagioni: 
 
   return (
     <header className="border-b bg-white">
-      <nav className="mx-auto flex max-w-6xl items-center gap-4 p-4 text-sm">
+      {/*
+        `flex-wrap`, non una riga sola. Con otto voci a 390px la barra era larga
+        quasi il doppio del viewport e si portava dietro l'intera pagina: il
+        primo gesto su un telefono era uno scroll orizzontale. Le voci vanno a
+        capo, restano tutte visibili e nessuna finisce fuori schermo.
+      */}
+      <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 p-4 text-sm">
         <Link href="/gestione" className="font-semibold">Virpol</Link>
         {corrente && (
           <>

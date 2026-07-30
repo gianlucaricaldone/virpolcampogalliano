@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Storico } from '@/lib/repos/persone'
+import { Tabella } from '../ui/Tabella'
 
 const RUOLI: Record<string, string> = {
   allenatore: 'Allenatore',
@@ -28,7 +29,7 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
       {storico.tesseramenti.length > 0 && (
         <div>
           <h3 className="mb-2 text-sm font-semibold">Tesseramenti</h3>
-          <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+          <Tabella>
             <thead className="bg-neutral-100 text-left">
               <tr>
                 <th className="p-2">Stagione</th>
@@ -56,14 +57,14 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Tabella>
         </div>
       )}
 
       {storico.incarichi.length > 0 && (
         <div>
           <h3 className="mb-2 text-sm font-semibold">Incarichi di staff</h3>
-          <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+          <Tabella>
             <thead className="bg-neutral-100 text-left">
               <tr>
                 <th className="p-2">Stagione</th>
@@ -87,7 +88,7 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Tabella>
         </div>
       )}
     </div>

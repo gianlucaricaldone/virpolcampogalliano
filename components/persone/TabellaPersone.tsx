@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { formattaData } from '@/lib/domain/data'
 import type { Persona } from '@/lib/repos/persone'
+import { Tabella } from '../ui/Tabella'
 
 export function TabellaPersone({ persone }: { persone: Persona[] }) {
   if (persone.length === 0) {
@@ -12,7 +13,7 @@ export function TabellaPersone({ persone }: { persone: Persona[] }) {
   }
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Cognome e nome</th>
@@ -45,6 +46,6 @@ export function TabellaPersone({ persone }: { persone: Persona[] }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

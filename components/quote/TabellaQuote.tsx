@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { formattaEuro } from '@/lib/domain/denaro'
 import type { LivelloImporto, RigaQuota } from '@/lib/repos/quote'
+import { Tabella } from '../ui/Tabella'
 
 const ETICHETTA_STATO: Record<string, string> = {
   non_pagato: 'non pagato',
@@ -42,7 +43,7 @@ export function TabellaQuote({
   }
 
   return (
-    <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+    <Tabella>
       <thead className="bg-neutral-100 text-left">
         <tr>
           <th className="p-2">Tesserato</th>
@@ -90,6 +91,6 @@ export function TabellaQuote({
           </tr>
         ))}
       </tbody>
-    </table>
+    </Tabella>
   )
 }

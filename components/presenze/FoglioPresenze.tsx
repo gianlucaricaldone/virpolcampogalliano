@@ -4,6 +4,7 @@ import { useOptimistic, useState, useTransition } from 'react'
 import type { Risultato } from '@/lib/azioni'
 import { STATI_PRESENZA } from '@/lib/costanti'
 import type { RigaPresenza, StatoPresenza } from '@/lib/repos/presenze'
+import { Tabella } from '../ui/Tabella'
 
 type Modifica = { tesseramentoId: string; stato: StatoPresenza | null }
 
@@ -68,7 +69,7 @@ export function FoglioPresenze({
               onClick={() =>
                 invia(ottimistiche.map((r) => ({ tesseramentoId: r.tesseramentoId, stato: 'presente' as const })))
               }
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="min-h-11 rounded border px-4 text-sm disabled:opacity-60"
             >
               Tutti presenti
             </button>
@@ -78,7 +79,7 @@ export function FoglioPresenze({
               onClick={() =>
                 invia(ottimistiche.map((r) => ({ tesseramentoId: r.tesseramentoId, stato: null })))
               }
-              className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+              className="min-h-11 rounded border px-4 text-sm disabled:opacity-60"
             >
               Svuota
             </button>
@@ -86,7 +87,7 @@ export function FoglioPresenze({
         )}
       </div>
 
-      <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
+      <Tabella>
         <thead className="bg-neutral-100 text-left">
           <tr>
             <th className="p-2">Giocatore</th>
@@ -120,7 +121,12 @@ export function FoglioPresenze({
                             },
                           ])
                         }
-                        className={`rounded border px-2 py-1 disabled:opacity-60 ${
+                        // 44px di lato: è la misura minima di un bersaglio
+                        // tattile, e questa è la schermata che si compila col
+                        // pollice a bordo campo. A `px-2 py-1` i quattro
+                        // pulsanti erano larghi 26px e attaccati fra loro:
+                        // sbagliare stato era più facile che azzeccarlo.
+                        className={`min-h-11 min-w-11 rounded border font-medium disabled:opacity-60 ${
                           r.stato === s.valore ? 'bg-neutral-900 text-white' : 'bg-white'
                         }`}
                         title={s.etichetta}
@@ -138,7 +144,7 @@ export function FoglioPresenze({
             </tr>
           ))}
         </tbody>
-      </table>
+      </Tabella>
     </div>
   )
 }
