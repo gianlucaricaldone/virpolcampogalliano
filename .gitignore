@@ -42,3 +42,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code
+# Le skill di terze parti si reinstallano con `npx skills add` e sono vincolate
+# da skills-lock.json, che invece è versionato: tenerne una copia nel repo
+# significherebbe 76 file di vendoring che divergono in silenzio dalla sorgente.
+/.claude/skills/
+# Permessi e preferenze della singola macchina, non del progetto.
+/.claude/settings.local.json
