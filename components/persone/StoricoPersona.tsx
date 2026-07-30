@@ -18,7 +18,7 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
 
   if (vuoto) {
     return (
-      <p className="rounded border bg-white p-4 text-neutral-600">
+      <p className="rounded-lg border bg-white p-4 text-neutral-600">
         Nessun tesseramento né incarico registrato.
       </p>
     )
@@ -30,18 +30,18 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
         <div>
           <h3 className="mb-2 text-sm font-semibold">Tesseramenti</h3>
           <Tabella>
-            <thead className="bg-neutral-100 text-left">
+            <thead className="text-left">
               <tr>
-                <th className="p-2">Stagione</th>
-                <th className="p-2">Squadra</th>
-                <th className="p-2">Maglia</th>
+                <th>Stagione</th>
+                <th>Squadra</th>
+                <th>Maglia</th>
               </tr>
             </thead>
             <tbody>
               {storico.tesseramenti.map((t) => (
-                <tr key={t.id} className="border-t">
-                  <td className="p-2">{t.stagione.etichetta}</td>
-                  <td className="p-2">
+                <tr key={t.id}>
+                  <td>{t.stagione.etichetta}</td>
+                  <td>
                     {t.squadra ? (
                       <Link
                         href={`/${t.stagione.codice}/squadre/${t.squadra.id}`}
@@ -53,7 +53,7 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
                       <span className="text-neutral-500">senza squadra</span>
                     )}
                   </td>
-                  <td className="p-2 text-neutral-600">{t.numeroMaglia ?? '—'}</td>
+                  <td className="text-neutral-600">{t.numeroMaglia ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -65,18 +65,18 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
         <div>
           <h3 className="mb-2 text-sm font-semibold">Incarichi di staff</h3>
           <Tabella>
-            <thead className="bg-neutral-100 text-left">
+            <thead className="text-left">
               <tr>
-                <th className="p-2">Stagione</th>
-                <th className="p-2">Squadra</th>
-                <th className="p-2">Ruolo</th>
+                <th>Stagione</th>
+                <th>Squadra</th>
+                <th>Ruolo</th>
               </tr>
             </thead>
             <tbody>
               {storico.incarichi.map((i) => (
-                <tr key={i.id} className="border-t">
-                  <td className="p-2">{i.stagione.etichetta}</td>
-                  <td className="p-2">
+                <tr key={i.id}>
+                  <td>{i.stagione.etichetta}</td>
+                  <td>
                     <Link
                       href={`/${i.stagione.codice}/squadre/${i.squadra.id}`}
                       className="underline"
@@ -84,7 +84,7 @@ export function StoricoPersona({ storico }: { storico: Storico }) {
                       {i.squadra.nome}
                     </Link>
                   </td>
-                  <td className="p-2 text-neutral-600">{RUOLI[i.ruolo] ?? i.ruolo}</td>
+                  <td className="text-neutral-600">{RUOLI[i.ruolo] ?? i.ruolo}</td>
                 </tr>
               ))}
             </tbody>

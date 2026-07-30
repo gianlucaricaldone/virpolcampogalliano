@@ -29,7 +29,7 @@ export default async function PaginaSquadre({
         {puoScrivere && (
           <Link
             href={`/${codice}/squadre/nuova`}
-            className="rounded bg-neutral-900 px-3 py-2 text-sm text-white"
+            className="inline-flex min-h-10 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700"
           >
             Nuova squadra
           </Link>

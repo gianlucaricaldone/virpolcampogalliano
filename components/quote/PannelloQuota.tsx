@@ -42,7 +42,7 @@ export function PannelloQuota({
   const residuo = quota.residuo > 0 ? quota.residuo.toFixed(2) : ''
 
   return (
-    <div className="space-y-4 rounded border bg-white p-4">
+    <div className="space-y-4 rounded-lg border bg-white p-4">
       <dl className="grid gap-3 sm:grid-cols-4">
         <div>
           <dt className="text-xs uppercase tracking-wide text-neutral-500">Quota attesa</dt>
@@ -65,7 +65,7 @@ export function PannelloQuota({
       </dl>
 
       {pagamenti.length > 0 && (
-        <ul className="divide-y rounded border">
+        <ul className="divide-y rounded-lg border">
           {pagamenti.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-3 p-2 text-sm">
               <span>
@@ -108,7 +108,7 @@ export function PannelloQuota({
                 inputMode="decimal"
                 value={importo}
                 onChange={(e) => setImporto(e.target.value)}
-                className="mt-1 rounded border px-2 py-1"
+                className="mt-1.5 rounded-md border px-3 text-sm"
               />
               {campi?.importo && (
                 <p role="alert" className="mt-1 text-sm text-red-700">{campi.importo}</p>
@@ -121,7 +121,7 @@ export function PannelloQuota({
                 name="data"
                 type="date"
                 defaultValue={oggi}
-                className="mt-1 rounded border px-2 py-1"
+                className="mt-1.5 rounded-md border px-3 text-sm"
               />
               {campi?.data && (
                 <p role="alert" className="mt-1 text-sm text-red-700">{campi.data}</p>
@@ -129,7 +129,7 @@ export function PannelloQuota({
             </div>
             <div className="flex flex-col">
               <label htmlFor="metodo" className="text-sm font-medium">Metodo</label>
-              <select id="metodo" name="metodo" className="mt-1 rounded border px-2 py-1">
+              <select id="metodo" name="metodo" className="mt-1.5 rounded-md border px-3 text-sm">
                 {METODI.map((m) => (
                   <option key={m.valore} value={m.valore}>{m.etichetta}</option>
                 ))}
@@ -137,7 +137,7 @@ export function PannelloQuota({
             </div>
             <div className="flex flex-col">
               <label htmlFor="note" className="text-sm font-medium">Note</label>
-              <input id="note" name="note" className="mt-1 rounded border px-2 py-1" />
+              <input id="note" name="note" className="mt-1.5 rounded-md border px-3 text-sm" />
             </div>
           </div>
 
@@ -145,7 +145,7 @@ export function PannelloQuota({
             <button
               type="submit"
               disabled={inCorso}
-              className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60"
+              className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
             >
               {inCorso ? 'Registrazione…' : 'Registra versamento'}
             </button>
@@ -153,7 +153,7 @@ export function PannelloQuota({
               <button
                 type="button"
                 onClick={() => setImporto(meta)}
-                className="rounded border px-3 py-2 text-sm"
+                className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50"
               >
                 Metà quota ({formattaEuro(Number(meta))})
               </button>
@@ -162,7 +162,7 @@ export function PannelloQuota({
               <button
                 type="button"
                 onClick={() => setImporto(residuo)}
-                className="rounded border px-3 py-2 text-sm"
+                className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50"
               >
                 Saldo ({formattaEuro(Number(residuo))})
               </button>

@@ -38,14 +38,14 @@ export default async function Cruscotto({
       <h1 className="text-xl font-semibold">Stagione {stagione.etichetta}</h1>
 
       {squadre.length > 0 && (
-        <form method="get" className="flex flex-wrap items-end gap-3 rounded border bg-white p-4">
+        <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
           <div>
             <label htmlFor="squadra" className="block text-sm font-medium">Squadra</label>
             <select
               id="squadra"
               name="squadra"
               defaultValue={squadra ?? ''}
-              className="mt-1 rounded border px-2 py-1"
+              className="mt-1.5 rounded-md border px-3 text-sm"
             >
               <option value="">Tutte</option>
               {squadre.map((s) => (
@@ -53,7 +53,7 @@ export default async function Cruscotto({
               ))}
             </select>
           </div>
-          <button type="submit" className="rounded border px-3 py-2 text-sm">Filtra</button>
+          <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Filtra</button>
         </form>
       )}
 

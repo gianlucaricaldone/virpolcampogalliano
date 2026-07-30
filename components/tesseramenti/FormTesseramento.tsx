@@ -28,7 +28,7 @@ export function FormTesseramento({
   const campi = esito && !esito.ok ? esito.campi : undefined
 
   return (
-    <form action={invia} className="space-y-4 rounded border bg-white p-4">
+    <form action={invia} className="space-y-4 rounded-lg border bg-white p-4">
       <fieldset>
         <legend className="text-sm font-medium">Persona da tesserare</legend>
         {campi?.personaId && (
@@ -50,7 +50,7 @@ export function FormTesseramento({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col">
           <label htmlFor="squadraId" className="text-sm font-medium">Squadra</label>
-          <select id="squadraId" name="squadraId" className="mt-1 rounded border px-2 py-1">
+          <select id="squadraId" name="squadraId" className="mt-1.5 rounded-md border px-3 text-sm">
             {/* Vuoto in cima e non in fondo: tesserare senza squadra è lo
                 stato normale a inizio stagione, non l'eccezione. */}
             <option value="">Senza squadra</option>
@@ -70,7 +70,7 @@ export function FormTesseramento({
             name="numeroMaglia"
             inputMode="numeric"
             placeholder="facoltativo"
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
           {campi?.numeroMaglia && (
             <p role="alert" className="mt-1 text-sm text-red-700">{campi.numeroMaglia}</p>
@@ -82,7 +82,7 @@ export function FormTesseramento({
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60"
+          className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
         >
           {inCorso ? 'Tesseramento…' : 'Tessera'}
         </button>

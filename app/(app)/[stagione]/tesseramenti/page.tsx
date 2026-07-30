@@ -40,21 +40,21 @@ export default async function PaginaTesseramenti({
         {puoScrivere && (
           <Link
             href={`/${codice}/tesseramenti/nuovo`}
-            className="rounded bg-neutral-900 px-3 py-2 text-sm text-white"
+            className="inline-flex min-h-10 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700"
           >
             Tessera una persona
           </Link>
         )}
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded border bg-white p-4">
+      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
         <div>
           <label htmlFor="squadra" className="block text-sm font-medium">Squadra</label>
           <select
             id="squadra"
             name="squadra"
             defaultValue={squadra ?? ''}
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           >
             <option value="">Tutte</option>
             {squadre.map((s) => (
@@ -68,7 +68,7 @@ export default async function PaginaTesseramenti({
           <input type="checkbox" name="senza" value="1" defaultChecked={senzaSquadra} />
           Solo chi non ha una squadra
         </label>
-        <button type="submit" className="rounded border px-3 py-2 text-sm">Filtra</button>
+        <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Filtra</button>
       </form>
 
       <p className="text-sm text-neutral-600">

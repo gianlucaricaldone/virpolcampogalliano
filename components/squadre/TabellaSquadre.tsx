@@ -11,7 +11,7 @@ export function TabellaSquadre({
 }) {
   if (squadre.length === 0) {
     return (
-      <p className="rounded border bg-white p-4 text-neutral-600">
+      <p className="rounded-lg border bg-white p-4 text-neutral-600">
         Nessuna squadra in questa stagione.
       </p>
     )
@@ -19,25 +19,25 @@ export function TabellaSquadre({
 
   return (
     <Tabella>
-      <thead className="bg-neutral-100 text-left">
+      <thead className="text-left">
         <tr>
-          <th className="p-2">Squadra</th>
-          <th className="p-2">Categoria</th>
-          <th className="p-2">Annata</th>
-          <th className="p-2">Note</th>
+          <th>Squadra</th>
+          <th>Categoria</th>
+          <th>Annata</th>
+          <th>Note</th>
         </tr>
       </thead>
       <tbody>
         {squadre.map((s) => (
-          <tr key={s.id} className="border-t">
-            <td className="p-2 font-medium">
+          <tr key={s.id}>
+            <td className="font-medium">
               <Link href={`/${codiceStagione}/squadre/${s.id}`} className="underline">
                 {s.nome}
               </Link>
             </td>
-            <td className="p-2 text-neutral-600">{s.categoria}</td>
-            <td className="p-2 text-neutral-600">{s.annata ?? '—'}</td>
-            <td className="p-2 text-neutral-600">{s.note ?? '—'}</td>
+            <td className="text-neutral-600">{s.categoria}</td>
+            <td className="text-neutral-600">{s.annata ?? '—'}</td>
+            <td className="text-neutral-600">{s.note ?? '—'}</td>
           </tr>
         ))}
       </tbody>

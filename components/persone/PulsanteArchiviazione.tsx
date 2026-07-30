@@ -24,7 +24,7 @@ export function PulsanteArchiviazione({ id, attiva }: { id: string; attiva: bool
         type="button"
         onClick={cambia}
         disabled={inCorso}
-        className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+        className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50 disabled:opacity-60"
       >
         {attiva ? 'Archivia' : 'Riattiva'}
       </button>

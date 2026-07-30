@@ -46,7 +46,7 @@ export default async function PaginaNuovoTesseramento({
         una stagione sola.
       </p>
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded border bg-white p-4">
+      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
         <div>
           <label htmlFor="q" className="block text-sm font-medium">Cognome</label>
           <input
@@ -54,14 +54,14 @@ export default async function PaginaNuovoTesseramento({
             name="q"
             defaultValue={q ?? ''}
             placeholder="Cerca in anagrafica"
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
         </div>
-        <button type="submit" className="rounded border px-3 py-2 text-sm">Cerca</button>
+        <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Cerca</button>
       </form>
 
       {q && candidati.length === 0 && (
-        <p className="rounded border bg-white p-4 text-neutral-600">
+        <p className="rounded-lg border bg-white p-4 text-neutral-600">
           {trovate.length > 0
             ? 'Le persone trovate sono già tesserate in questa stagione.'
             : 'Nessuna persona trovata. '}

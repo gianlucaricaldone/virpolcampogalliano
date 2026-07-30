@@ -36,7 +36,7 @@ export function TabellaQuote({
 }) {
   if (righe.length === 0) {
     return (
-      <p className="rounded border bg-white p-4 text-neutral-600">
+      <p className="rounded-lg border bg-white p-4 text-neutral-600">
         Nessun tesserato corrisponde a questi filtri.
       </p>
     )
@@ -44,20 +44,20 @@ export function TabellaQuote({
 
   return (
     <Tabella>
-      <thead className="bg-neutral-100 text-left">
+      <thead className="text-left">
         <tr>
-          <th className="p-2">Tesserato</th>
-          <th className="p-2">Squadra</th>
-          <th className="p-2">Quota attesa</th>
-          <th className="p-2">Versato</th>
-          <th className="p-2">Residuo</th>
-          <th className="p-2">Stato</th>
+          <th>Tesserato</th>
+          <th>Squadra</th>
+          <th>Quota attesa</th>
+          <th>Versato</th>
+          <th>Residuo</th>
+          <th>Stato</th>
         </tr>
       </thead>
       <tbody>
         {righe.map((r) => (
-          <tr key={r.tesseramentoId} className="border-t">
-            <td className="p-2 font-medium">
+          <tr key={r.tesseramentoId}>
+            <td className="font-medium">
               <Link
                 href={`/${codiceStagione}/tesseramenti/${r.tesseramentoId}`}
                 className="underline"
@@ -65,8 +65,8 @@ export function TabellaQuote({
                 {r.persona.cognome} {r.persona.nome}
               </Link>
             </td>
-            <td className="p-2 text-neutral-600">{r.squadra?.nome ?? '—'}</td>
-            <td className="p-2">
+            <td className="text-neutral-600">{r.squadra?.nome ?? '—'}</td>
+            <td>
               {formattaEuro(r.quotaAttesa)}
               {/* Quale livello decide l'importo: senza, un override di squadra
                   sembra un errore di calcolo del default di stagione. */}
@@ -74,8 +74,8 @@ export function TabellaQuote({
                 {ETICHETTA_LIVELLO[r.livelloImporto]}
               </span>
             </td>
-            <td className="p-2">{formattaEuro(r.pagato)}</td>
-            <td className="p-2">
+            <td>{formattaEuro(r.pagato)}</td>
+            <td>
               {r.residuo < 0 ? (
                 // Un sovra-pagamento è un credito, non un errore.
                 <span className="text-sky-800">credito {formattaEuro(-r.residuo)}</span>
@@ -83,7 +83,7 @@ export function TabellaQuote({
                 formattaEuro(r.residuo)
               )}
             </td>
-            <td className="p-2">
+            <td>
               <span className={`rounded px-2 py-0.5 ${COLORE_STATO[r.stato]}`}>
                 {ETICHETTA_STATO[r.stato]}
               </span>

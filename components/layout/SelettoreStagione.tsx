@@ -26,7 +26,7 @@ export function SelettoreStagione({
       <select
         value={corrente}
         onChange={(e) => cambia(e.target.value)}
-        className="rounded border bg-white px-2 py-1"
+        className="rounded-md border bg-white px-3 text-sm"
       >
         {stagioni.map((s) => (
           <option key={s.codice} value={s.codice}>

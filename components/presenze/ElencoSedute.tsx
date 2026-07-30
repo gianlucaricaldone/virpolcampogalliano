@@ -16,7 +16,7 @@ export function ElencoSedute({
 }) {
   if (sedute.length === 0) {
     return (
-      <p className="rounded border bg-white p-4 text-neutral-600">
+      <p className="rounded-lg border bg-white p-4 text-neutral-600">
         Nessuna seduta registrata per questa squadra.
       </p>
     )
@@ -24,18 +24,18 @@ export function ElencoSedute({
 
   return (
     <Tabella>
-      <thead className="bg-neutral-100 text-left">
+      <thead className="text-left">
         <tr>
-          <th className="p-2">Data</th>
-          <th className="p-2">Ora</th>
-          <th className="p-2">Compilate</th>
-          <th className="p-2">Note</th>
+          <th>Data</th>
+          <th>Ora</th>
+          <th>Compilate</th>
+          <th>Note</th>
         </tr>
       </thead>
       <tbody>
         {sedute.map((s) => (
-          <tr key={s.id} className="border-t">
-            <td className="p-2 font-medium">
+          <tr key={s.id}>
+            <td className="font-medium">
               <Link
                 href={`/${codiceStagione}/presenze/${squadraId}/${s.id}`}
                 className="underline"
@@ -43,8 +43,8 @@ export function ElencoSedute({
                 {formattaData(s.data)}
               </Link>
             </td>
-            <td className="p-2 text-neutral-600">{s.oraInizio?.slice(0, 5) ?? '—'}</td>
-            <td className="p-2 text-neutral-600">
+            <td className="text-neutral-600">{s.oraInizio?.slice(0, 5) ?? '—'}</td>
+            <td className="text-neutral-600">
               {/* Il denominatore è la rosa di oggi: una seduta "0 su 18" è un
                   foglio mai compilato, e va distinta da una in cui erano tutti
                   assenti. */}
@@ -55,7 +55,7 @@ export function ElencoSedute({
                 </span>
               )}
             </td>
-            <td className="p-2 text-neutral-600">{s.note ?? '—'}</td>
+            <td className="text-neutral-600">{s.note ?? '—'}</td>
           </tr>
         ))}
       </tbody>

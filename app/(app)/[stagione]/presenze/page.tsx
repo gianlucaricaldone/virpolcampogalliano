@@ -28,7 +28,7 @@ export default async function PaginaPresenze({
       <h1 className="text-xl font-semibold">Presenze {stagione.etichetta}</h1>
 
       {squadre.length === 0 ? (
-        <p className="rounded border bg-white p-4 text-neutral-600">
+        <p className="rounded-lg border bg-white p-4 text-neutral-600">
           {sessione?.ruolo === 'allenatore'
             ? 'Non hai incarichi su nessuna squadra di questa stagione.'
             : 'Nessuna squadra in questa stagione.'}
@@ -39,7 +39,7 @@ export default async function PaginaPresenze({
             <li key={s.id}>
               <Link
                 href={`/${codice}/presenze/${s.id}`}
-                className="block rounded border bg-white p-4 hover:bg-neutral-50"
+                className="block rounded-lg border bg-white p-4 hover:bg-neutral-50"
               >
                 <span className="font-medium">{s.nome}</span>
                 <span className="mt-1 block text-sm text-neutral-600">

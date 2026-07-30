@@ -81,10 +81,10 @@ export default async function PaginaSquadra({
                 name="staff"
                 defaultValue={staff ?? ''}
                 placeholder="Cognome"
-                className="mt-1 rounded border px-2 py-1"
+                className="mt-1.5 rounded-md border px-3 text-sm"
               />
             </div>
-            <button type="submit" className="rounded border px-3 py-2 text-sm">Cerca</button>
+            <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Cerca</button>
           </form>
         )}
         <PannelloStaff
@@ -107,7 +107,7 @@ export default async function PaginaSquadra({
           <PulsanteEliminaSquadra codiceStagione={codice} id={squadra.id} nome={squadra.nome} />
         </div>
       ) : (
-        <p className="rounded border bg-white p-4 text-neutral-600">
+        <p className="rounded-lg border bg-white p-4 text-neutral-600">
           {stagione.stato === 'chiusa'
             ? 'Stagione chiusa: la squadra è in sola lettura.'
             : 'Non hai i permessi per modificare questa squadra.'}

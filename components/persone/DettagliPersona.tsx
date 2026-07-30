@@ -16,7 +16,7 @@ export function DettagliPersona({ persona }: { persona: Persona }) {
     .join(' ')
 
   return (
-    <dl className="grid gap-3 rounded border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
+    <dl className="grid gap-3 rounded-lg border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
       <Voce etichetta="Data di nascita" valore={persona.dataNascita} />
       <Voce etichetta="Codice fiscale" valore={persona.codiceFiscale} />
       <Voce etichetta="Email" valore={persona.email} />

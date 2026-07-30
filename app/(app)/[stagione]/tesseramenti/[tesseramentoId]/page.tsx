@@ -92,7 +92,7 @@ export default async function PaginaTesseramento({
             squadre={squadre}
           />
         ) : (
-          <p className="rounded border bg-white p-4 text-sm text-neutral-600">
+          <p className="rounded-lg border bg-white p-4 text-sm text-neutral-600">
             {tesserato.squadra ? tesserato.squadra.nome : 'Senza squadra'}
             {tesserato.numeroMaglia ? ` · maglia ${tesserato.numeroMaglia}` : ''}
             {stagione.stato === 'chiusa' && ' — stagione chiusa, sola lettura.'}
@@ -114,7 +114,7 @@ export default async function PaginaTesseramento({
       {staff && quota && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Quota di iscrizione</h2>
-          <div className="rounded border bg-white">
+          <div className="rounded-lg border bg-white">
             <RigaImporto
               etichetta="Importo personale"
               valore={override}

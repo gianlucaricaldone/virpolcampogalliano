@@ -25,7 +25,7 @@ export default async function IngressoBackoffice() {
   if (sessione?.ruolo === 'admin') redirect('/admin/stagioni')
 
   return (
-    <p className="rounded border bg-white p-4 text-neutral-600">
+    <p className="rounded-lg border bg-white p-4 text-neutral-600">
       Nessuna stagione aperta al momento: contatta un amministratore.
     </p>
   )

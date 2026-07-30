@@ -47,7 +47,7 @@ export function PulsanteRimuoviSeduta({ azione }: { azione: () => Promise<Risult
         <button
           type="button"
           onClick={() => setConferma(false)}
-          className="rounded border px-3 py-2 text-sm"
+          className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50"
         >
           Annulla
         </button>

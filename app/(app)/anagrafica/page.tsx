@@ -25,7 +25,7 @@ export default async function PaginaAnagrafica({
         {puoScrivere && (
           <Link
             href="/anagrafica/nuova"
-            className="rounded bg-neutral-900 px-3 py-2 text-sm text-white"
+            className="inline-flex min-h-10 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700"
           >
             Nuova persona
           </Link>
@@ -35,7 +35,7 @@ export default async function PaginaAnagrafica({
       {/* Form GET, non un client component: la ricerca finisce nell'URL, quindi
           è condivisibile, torna indietro con il tasto del browser e funziona
           senza JavaScript. */}
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded border bg-white p-4">
+      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
         <div>
           <label htmlFor="q" className="block text-sm font-medium">Cognome</label>
           <input
@@ -43,14 +43,14 @@ export default async function PaginaAnagrafica({
             name="q"
             defaultValue={q ?? ''}
             placeholder="Cerca per cognome"
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="archiviate" value="1" defaultChecked={archiviate === '1'} />
           Mostra anche le archiviate
         </label>
-        <button type="submit" className="rounded border px-3 py-2 text-sm">Cerca</button>
+        <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Cerca</button>
       </form>
 
       {sessione?.ruolo === 'allenatore' && (

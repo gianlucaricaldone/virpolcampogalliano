@@ -61,13 +61,13 @@ export function RigaImporto({
           placeholder={
             ereditato ? `${formattaEuro(ereditato.importo)} da ${ereditato.da}` : 'nessun importo'
           }
-          className="mt-1 w-40 rounded border px-2 py-1"
+          className="mt-1.5 w-40 rounded-md border px-3 text-sm"
         />
       </div>
       <button
         type="submit"
         disabled={inCorso}
-        className="rounded border px-3 py-2 text-sm disabled:opacity-60"
+        className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50 disabled:opacity-60"
       >
         {inCorso ? 'Salvataggio…' : 'Salva'}
       </button>

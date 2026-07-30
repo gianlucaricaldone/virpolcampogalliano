@@ -27,7 +27,7 @@ export function PannelloVisita({
   const campi = esito && !esito.ok ? esito.campi : undefined
 
   return (
-    <div className="space-y-3 rounded border bg-white p-4">
+    <div className="space-y-3 rounded-lg border bg-white p-4">
       <p>
         <span className={`rounded px-2 py-0.5 text-sm ${COLORE_VISITA[visita.stato]}`}>
           {descrizioneVisita(visita)}
@@ -43,7 +43,7 @@ export function PannelloVisita({
               name="scadenza"
               type="date"
               defaultValue={visita.scadenza ?? ''}
-              className="mt-1 rounded border px-2 py-1"
+              className="mt-1.5 rounded-md border px-3 text-sm"
             />
             {campi?.scadenza && (
               <p role="alert" className="mt-1 text-sm text-red-700">{campi.scadenza}</p>
@@ -58,7 +58,7 @@ export function PannelloVisita({
               name="consegnataIl"
               type="date"
               defaultValue={visita.consegnataIl ?? ''}
-              className="mt-1 rounded border px-2 py-1"
+              className="mt-1.5 rounded-md border px-3 text-sm"
             />
             {/* Informativa: lo stato dipende solo dalla scadenza, perché i dati
                 storici da migrare non hanno la data di consegna. */}
@@ -67,7 +67,7 @@ export function PannelloVisita({
           <button
             type="submit"
             disabled={inCorso}
-            className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60"
+            className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
           >
             {inCorso ? 'Salvataggio…' : 'Salva visita'}
           </button>

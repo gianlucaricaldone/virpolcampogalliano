@@ -41,7 +41,7 @@ export function PannelloImporti({
   const [aperto, setAperto] = useState(false)
 
   return (
-    <section className="rounded border bg-white">
+    <section className="rounded-lg border bg-white">
       <button
         type="button"
         onClick={() => setAperto(!aperto)}

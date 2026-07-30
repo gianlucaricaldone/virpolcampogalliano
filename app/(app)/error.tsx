@@ -21,7 +21,7 @@ export default function ErroreBackoffice({
       <button
         type="button"
         onClick={reset}
-        className="rounded bg-neutral-900 px-3 py-2 text-sm text-white"
+        className="inline-flex min-h-10 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700"
       >
         Riprova
       </button>

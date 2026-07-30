@@ -23,7 +23,7 @@ export function FormSquadra({
   const campi = esito && !esito.ok ? esito.campi : undefined
 
   return (
-    <form action={invia} className="space-y-4 rounded border bg-white p-4">
+    <form action={invia} className="space-y-4 rounded-lg border bg-white p-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col">
           <label htmlFor="nome" className="text-sm font-medium">Nome</label>
@@ -33,7 +33,7 @@ export function FormSquadra({
             required
             defaultValue={squadra?.nome ?? ''}
             placeholder="Pulcini A"
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
           {campi?.nome && <p role="alert" className="mt-1 text-sm text-red-700">{campi.nome}</p>}
         </div>
@@ -48,7 +48,7 @@ export function FormSquadra({
             required
             list="categorie"
             defaultValue={squadra?.categoria ?? ''}
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
           <datalist id="categorie">
             {CATEGORIE.map((c) => (
@@ -68,7 +68,7 @@ export function FormSquadra({
             inputMode="numeric"
             defaultValue={squadra?.annata ?? ''}
             placeholder="2015"
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
           {campi?.annata && (
             <p role="alert" className="mt-1 text-sm text-red-700">{campi.annata}</p>
@@ -81,7 +81,7 @@ export function FormSquadra({
             id="note"
             name="note"
             defaultValue={squadra?.note ?? ''}
-            className="mt-1 rounded border px-2 py-1"
+            className="mt-1.5 rounded-md border px-3 text-sm"
           />
         </div>
       </div>
@@ -90,7 +90,7 @@ export function FormSquadra({
         <button
           type="submit"
           disabled={inCorso}
-          className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60"
+          className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
         >
           {inCorso ? 'Salvataggio…' : etichettaInvio}
         </button>

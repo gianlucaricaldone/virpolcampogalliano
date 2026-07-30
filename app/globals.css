@@ -26,11 +26,47 @@ body {
   color: #171717;
 }
 
+@layer base {
+  /*
+   * IL difetto grafico di questo progetto, e si vedeva ovunque.
+   *
+   * Tailwind 4 ha cambiato il reset: `border: 0 solid` senza colore, quindi
+   * ogni bordo eredita `currentColor` — il colore del testo, qui #171717. In
+   * Tailwind 3 la stessa classe `border` dava gray-200. Il codice è scritto
+   * con le abitudini della 3, e il risultato era che card, campi, tabelle e
+   * pulsanti avevano tutti un bordo nero pieno: nessuna gerarchia, e il bordo
+   * di un campo vuoto pesava quanto il pulsante primario.
+   */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-neutral-200);
+  }
+
+  /*
+   * I campi hanno tutti la stessa altezza e lo stesso fondo, decisi qui e non
+   * in trenta punti diversi. 2.5rem è la misura comoda col mouse; sul foglio
+   * presenze, che si compila col pollice, i pulsanti salgono a 44px per conto
+   * loro.
+   */
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    background-color: #fff;
+    min-height: 2.5rem;
+  }
+
+  textarea {
+    min-height: 4.5rem;
+  }
+}
+
 /*
  * Un anello di focus visibile ovunque, e solo da tastiera. Prima i campi si
- * affidavano all'outline di default del browser, che su un bordo nero da 1px
- * si distingue appena, e i pulsanti resi come link non mostravano nulla: chi
- * naviga con il tab non sapeva dove si trovava.
+ * affidavano all'outline di default del browser e i pulsanti resi come link
+ * non mostravano nulla: chi naviga con il tab non sapeva dove si trovava.
  */
 :focus-visible {
   outline: 2px solid #171717;

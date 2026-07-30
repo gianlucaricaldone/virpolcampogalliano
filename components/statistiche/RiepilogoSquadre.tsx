@@ -6,25 +6,25 @@ export function RiepilogoSquadre({ righe }: { righe: StatisticaSquadra[] }) {
 
   return (
     <Tabella>
-      <thead className="bg-neutral-100 text-left">
+      <thead className="text-left">
         <tr>
-          <th className="p-2">Squadra</th>
-          <th className="p-2">Tesserati</th>
-          <th className="p-2">Sedute</th>
-          <th className="p-2">Presenze</th>
-          <th className="p-2">Non registrate</th>
-          <th className="p-2">Media</th>
+          <th>Squadra</th>
+          <th>Tesserati</th>
+          <th>Sedute</th>
+          <th>Presenze</th>
+          <th>Non registrate</th>
+          <th>Media</th>
         </tr>
       </thead>
       <tbody>
         {righe.map((r) => (
-          <tr key={r.squadraId} className="border-t">
-            <td className="p-2 font-medium">{r.nome}</td>
-            <td className="p-2 text-neutral-600">{r.tesserati}</td>
-            <td className="p-2 text-neutral-600">{r.sedute}</td>
-            <td className="p-2 text-neutral-600">{r.presenti}</td>
-            <td className="p-2 text-neutral-600">{r.nonRegistrate}</td>
-            <td className="p-2 font-medium">
+          <tr key={r.squadraId}>
+            <td className="font-medium">{r.nome}</td>
+            <td className="text-neutral-600">{r.tesserati}</td>
+            <td className="text-neutral-600">{r.sedute}</td>
+            <td className="text-neutral-600">{r.presenti}</td>
+            <td className="text-neutral-600">{r.nonRegistrate}</td>
+            <td className="font-medium">
               {r.percentuale === null ? '—' : `${r.percentuale.toFixed(1)}%`}
             </td>
           </tr>

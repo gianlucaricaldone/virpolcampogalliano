@@ -17,7 +17,7 @@ export function RiquadroVisite({
       </h2>
 
       {righe.length === 0 ? (
-        <p className="rounded border bg-white p-4 text-neutral-600">
+        <p className="rounded-lg border bg-white p-4 text-neutral-600">
           Nessuna visita mancante o in scadenza.
         </p>
       ) : (
@@ -25,7 +25,7 @@ export function RiquadroVisite({
           <p className="text-sm text-neutral-600">
             {righe.length} {righe.length === 1 ? 'tesserato' : 'tesserati'}
           </p>
-          <ul className="divide-y rounded border bg-white">
+          <ul className="divide-y rounded-lg border bg-white">
             {righe.map((r) => (
               <li key={r.tesseramentoId} className="flex flex-wrap items-baseline justify-between gap-3 p-2 text-sm">
                 <Link

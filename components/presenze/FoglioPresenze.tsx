@@ -88,19 +88,19 @@ export function FoglioPresenze({
       </div>
 
       <Tabella>
-        <thead className="bg-neutral-100 text-left">
+        <thead className="text-left">
           <tr>
-            <th className="p-2">Giocatore</th>
-            <th className="p-2">Maglia</th>
-            <th className="p-2">Stato</th>
+            <th>Giocatore</th>
+            <th>Maglia</th>
+            <th>Stato</th>
           </tr>
         </thead>
         <tbody>
           {ottimistiche.map((r) => (
-            <tr key={r.tesseramentoId} className="border-t">
-              <td className="p-2 font-medium">{r.cognome} {r.nome}</td>
-              <td className="p-2 text-neutral-600">{r.numeroMaglia ?? '—'}</td>
-              <td className="p-2">
+            <tr key={r.tesseramentoId}>
+              <td className="font-medium">{r.cognome} {r.nome}</td>
+              <td className="text-neutral-600">{r.numeroMaglia ?? '—'}</td>
+              <td>
                 {modificabile ? (
                   <div className="flex flex-wrap gap-1">
                     {STATI_PRESENZA.map((s) => (

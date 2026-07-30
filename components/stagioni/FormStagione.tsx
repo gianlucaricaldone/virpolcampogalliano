@@ -8,27 +8,27 @@ export function FormStagione() {
   const campi = esito && !esito.ok ? esito.campi : undefined
 
   return (
-    <form action={azione} className="flex flex-wrap items-end gap-3 rounded border bg-white p-4">
+    <form action={azione} className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
       <div>
         <label htmlFor="codice" className="block text-sm font-medium">Codice</label>
         <input id="codice" name="codice" placeholder="2026-27" required
-               className="mt-1 rounded border px-2 py-1" />
+               className="mt-1.5 rounded-md border px-3 text-sm" />
         {campi?.codice && <p role="alert" className="mt-1 text-sm text-red-700">{campi.codice}</p>}
       </div>
       <div>
         <label htmlFor="dataInizio" className="block text-sm font-medium">Inizio</label>
         <input id="dataInizio" name="dataInizio" type="date" required
-               className="mt-1 rounded border px-2 py-1" />
+               className="mt-1.5 rounded-md border px-3 text-sm" />
         {campi?.dataInizio && <p role="alert" className="mt-1 text-sm text-red-700">{campi.dataInizio}</p>}
       </div>
       <div>
         <label htmlFor="dataFine" className="block text-sm font-medium">Fine</label>
         <input id="dataFine" name="dataFine" type="date" required
-               className="mt-1 rounded border px-2 py-1" />
+               className="mt-1.5 rounded-md border px-3 text-sm" />
         {campi?.dataFine && <p role="alert" className="mt-1 text-sm text-red-700">{campi.dataFine}</p>}
       </div>
       <button type="submit" disabled={inCorso}
-              className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60">
+              className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60">
         {inCorso ? 'Creazione…' : 'Crea stagione'}
       </button>
       {esito && !esito.ok && !campi && (

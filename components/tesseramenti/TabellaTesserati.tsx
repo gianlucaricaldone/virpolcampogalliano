@@ -14,7 +14,7 @@ export function TabellaTesserati({
 }) {
   if (tesserati.length === 0) {
     return (
-      <p className="rounded border bg-white p-4 text-neutral-600">
+      <p className="rounded-lg border bg-white p-4 text-neutral-600">
         Nessun tesserato corrisponde a questi filtri.
       </p>
     )
@@ -22,25 +22,25 @@ export function TabellaTesserati({
 
   return (
     <Tabella>
-      <thead className="bg-neutral-100 text-left">
+      <thead className="text-left">
         <tr>
-          <th className="p-2">Tesserato</th>
-          <th className="p-2">Nascita</th>
-          {mostraSquadra && <th className="p-2">Squadra</th>}
-          <th className="p-2">Maglia</th>
+          <th>Tesserato</th>
+          <th>Nascita</th>
+          {mostraSquadra && <th>Squadra</th>}
+          <th>Maglia</th>
         </tr>
       </thead>
       <tbody>
         {tesserati.map((t) => (
-          <tr key={t.id} className="border-t">
-            <td className="p-2 font-medium">
+          <tr key={t.id}>
+            <td className="font-medium">
               <Link href={`/${codiceStagione}/tesseramenti/${t.id}`} className="underline">
                 {t.persona.cognome} {t.persona.nome}
               </Link>
             </td>
-            <td className="p-2 text-neutral-600">{formattaData(t.persona.dataNascita)}</td>
+            <td className="text-neutral-600">{formattaData(t.persona.dataNascita)}</td>
             {mostraSquadra && (
-              <td className="p-2 text-neutral-600">
+              <td className="text-neutral-600">
                 {t.squadra ? (
                   <Link href={`/${codiceStagione}/squadre/${t.squadra.id}`} className="underline">
                     {t.squadra.nome}
@@ -50,7 +50,7 @@ export function TabellaTesserati({
                 )}
               </td>
             )}
-            <td className="p-2 text-neutral-600">{t.numeroMaglia ?? '—'}</td>
+            <td className="text-neutral-600">{t.numeroMaglia ?? '—'}</td>
           </tr>
         ))}
       </tbody>

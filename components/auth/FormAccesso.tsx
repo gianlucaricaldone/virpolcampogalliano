@@ -23,25 +23,25 @@ export function FormAccesso({ messaggio }: { messaggio?: string }) {
             {messaggio}
           </p>
         )}
-        <form action={azione} className="mt-6 space-y-4 rounded border bg-white p-6">
+        <form action={azione} className="mt-6 space-y-5 rounded-lg border bg-white p-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium">Email</label>
           <input id="email" name="email" type="email" required autoComplete="username"
-                 className="mt-1 w-full rounded border px-3 py-2" />
+                 className="mt-1.5 w-full rounded-md border px-3 text-sm" />
           {campi?.email && <p role="alert" className="mt-1 text-sm text-red-700">{campi.email}</p>}
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium">Password</label>
           <input id="password" name="password" type="password" required
                  autoComplete="current-password"
-                 className="mt-1 w-full rounded border px-3 py-2" />
+                 className="mt-1.5 w-full rounded-md border px-3 text-sm" />
           {campi?.password && <p role="alert" className="mt-1 text-sm text-red-700">{campi.password}</p>}
         </div>
         {esito && !esito.ok && !campi && (
           <p role="alert" className="text-sm text-red-700">{esito.errore}</p>
         )}
         <button type="submit" disabled={inCorso}
-                className="min-h-11 w-full rounded bg-neutral-900 px-3 text-white disabled:opacity-60">
+                className="min-h-11 w-full rounded-md bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60">
           {inCorso ? 'Accesso in corso…' : 'Entra'}
         </button>
         </form>

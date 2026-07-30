@@ -11,7 +11,7 @@ export function TabellaStagioni({ stagioni }: { stagioni: Stagione[] }) {
 
   if (stagioni.length === 0) {
     return (
-      <p className="rounded border bg-white p-4 text-neutral-600">
+      <p className="rounded-lg border bg-white p-4 text-neutral-600">
         Nessuna stagione: creane una per iniziare.
       </p>
     )
@@ -33,21 +33,21 @@ export function TabellaStagioni({ stagioni }: { stagioni: Stagione[] }) {
     <div className="space-y-2">
       {errore && <p role="alert" className="text-sm text-red-700">{errore}</p>}
       <Tabella>
-        <thead className="bg-neutral-100 text-left">
+        <thead className="text-left">
           <tr>
-            <th className="p-2">Stagione</th>
-            <th className="p-2">Periodo</th>
-            <th className="p-2">Stato</th>
-            <th className="p-2" />
+            <th>Stagione</th>
+            <th>Periodo</th>
+            <th>Stato</th>
+            <th />
           </tr>
         </thead>
         <tbody>
           {stagioni.map((s) => (
-            <tr key={s.id} className="border-t">
-              <td className="p-2 font-medium">{s.etichetta}</td>
-              <td className="p-2 text-neutral-600">{s.dataInizio} → {s.dataFine}</td>
-              <td className="p-2">{s.stato}</td>
-              <td className="p-2 text-right">
+            <tr key={s.id}>
+              <td className="font-medium">{s.etichetta}</td>
+              <td className="text-neutral-600">{s.dataInizio} → {s.dataFine}</td>
+              <td>{s.stato}</td>
+              <td className="text-right">
                 <button
                   type="button"
                   disabled={inCorso}

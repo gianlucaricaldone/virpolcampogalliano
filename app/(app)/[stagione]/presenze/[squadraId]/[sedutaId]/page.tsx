@@ -40,7 +40,7 @@ export default async function PaginaFoglio({
       </div>
 
       {foglio.righe.length === 0 ? (
-        <p className="rounded border bg-white p-4 text-neutral-600">
+        <p className="rounded-lg border bg-white p-4 text-neutral-600">
           Nessun tesserato in questa squadra: il foglio è vuoto finché non ci sono giocatori.
         </p>
       ) : (
