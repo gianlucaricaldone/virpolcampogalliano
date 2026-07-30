@@ -1,3 +1,4 @@
+import type { ZodError } from 'zod'
 import { ErroreAutorizzazione } from '@/lib/auth/session'
 import { traduciErrorePostgres } from '@/lib/errors/postgres'
 import { log } from '@/lib/log'
@@ -5,6 +6,20 @@ import { log } from '@/lib/log'
 export type Risultato<T> =
   | { ok: true; dati: T }
   | { ok: false; errore: string; campi?: Record<string, string> }
+
+/**
+ * Errori di validazione zod nella forma che i form si aspettano: un messaggio
+ * per campo, sulla chiave del campo. Solo il primo problema per campo — è
+ * quello che l'utente correggerà comunque per primo.
+ */
+export function daErroreZod(errore: ZodError): Risultato<never> {
+  const campi: Record<string, string> = {}
+  for (const problema of errore.issues) {
+    const campo = String(problema.path[0])
+    campi[campo] ??= problema.message
+  }
+  return { ok: false, errore: 'Controlla i dati inseriti', campi }
+}
 
 /**
  * Racchiude il corpo di una Server Action e trasforma i fallimenti previsti
