@@ -85,7 +85,8 @@ grant select, insert, update, delete on
 -- sottostanti (già coperte sopra), serve anche il privilegio SELECT sulla
 -- vista stessa per il chiamante. Nessun insert/update/delete: sono viste di
 -- sola lettura.
-grant select on public.v_quote, public.v_presenze to authenticated;
+grant select on public.v_quote, public.v_presenze, public.v_presenze_squadra
+  to authenticated;
 
 -- pg_default_acl del ruolo postgres concede Dxtm (truncate, references, trigger,
 -- maintain) ad anon e authenticated su ogni tabella e vista creata dalle
@@ -102,7 +103,7 @@ revoke truncate, references, trigger, maintain on
   public.stagioni, public.squadre, public.persone, public.profili,
   public.tesseramenti, public.incarichi_staff, public.sedute_allenamento,
   public.presenze, public.quote_importi, public.pagamenti_quota,
-  public.v_quote, public.v_presenze
+  public.v_quote, public.v_presenze, public.v_presenze_squadra
   from anon, authenticated;
 
 -- Così le tabelle create dalle migration future ereditano la restrizione
@@ -128,7 +129,8 @@ grant select, insert, update, delete on
 -- fallisce con "permission denied for view" nonostante il bypass. Niente
 -- TRUNCATE: non serve a nessuno script esistente ed è meglio non concederlo
 -- per abitudine.
-grant select on public.v_quote, public.v_presenze to service_role;
+grant select on public.v_quote, public.v_presenze, public.v_presenze_squadra
+  to service_role;
 
 -- STAGIONI: lette da tutti (il sito pubblico ne ha bisogno), scritte dall'admin.
 create policy stagioni_sel on public.stagioni for select to anon, authenticated

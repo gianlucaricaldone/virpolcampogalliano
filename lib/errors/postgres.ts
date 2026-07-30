@@ -28,6 +28,18 @@ const perVincolo: Record<string, string> = {
   pagamenti_importo_positivo: 'L\'importo del versamento deve essere maggiore di zero',
   profili_allenatore_ha_persona:
     'Un allenatore deve essere collegato a una persona in anagrafica',
+  incarichi_staff_persona_id_squadra_id_ruolo_key:
+    'Questa persona ha già questo ruolo nella squadra',
+  // Vincoli di chiave esterna (23503). Il messaggio generico — "elemento
+  // collegato non più esistente: ricarica la pagina" — sarebbe fuorviante:
+  // qui non manca nulla, è la combinazione a non essere ammessa.
+  presenze_tesseramento_di_squadra:
+    'Il giocatore ha presenze registrate con la squadra attuale: quelle presenze '
+    + 'appartengono a quella squadra. Cancellale prima di spostarlo.',
+  tesseramenti_squadra_di_stagione:
+    'La squadra scelta non appartiene a questa stagione',
+  incarichi_squadra_di_stagione:
+    'La squadra scelta non appartiene a questa stagione',
 }
 
 /**
@@ -38,12 +50,16 @@ const perVincolo: Record<string, string> = {
 export function traduciErrorePostgres(e: unknown): string | null {
   if (!isErrorePostgres(e)) return null
 
-  if (e.code === '23505' || e.code === '23514') {
+  // Il nome del vincolo si controlla per primo su tutti e tre i codici: un
+  // 23503 può essere sia "la riga collegata non c'è più" sia una combinazione
+  // vietata da una FK composita, e i due meritano messaggi opposti.
+  if (e.code === '23505' || e.code === '23514' || e.code === '23503') {
     for (const [vincolo, messaggio] of Object.entries(perVincolo)) {
       if (e.message.includes(vincolo)) return messaggio
     }
-    return e.code === '23505' ? 'Valore già presente' : 'Valore non ammesso'
   }
+  if (e.code === '23505') return 'Valore già presente'
+  if (e.code === '23514') return 'Valore non ammesso'
   if (e.code === '23503') return 'Elemento collegato non più esistente: ricarica la pagina'
   if (e.code === '42501') return 'Operazione non consentita'
   return null

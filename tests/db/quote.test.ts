@@ -71,6 +71,36 @@ describe('v_quote — risoluzione dell\'importo atteso', () => {
     }))
 })
 
+describe('v_quote — livello che determina l\'importo', () => {
+  it('dice quale dei tre livelli sta decidendo', () =>
+    inRollback(async (c) => {
+      // Senza questo campo un override di squadra sembra un errore di calcolo
+      // del default di stagione, e chi lo vede cerca un bug che non c'è.
+      const { stagione, squadra, tesseramento } = await scenario(c)
+      expect((await leggiQuota(c, tesseramento)).livello_importo).toBe('nessuno')
+
+      await impostaQuota(c, { stagioneId: stagione, importo: 250 })
+      expect((await leggiQuota(c, tesseramento)).livello_importo).toBe('stagione')
+
+      await impostaQuota(c, { squadraId: squadra, importo: 280 })
+      expect((await leggiQuota(c, tesseramento)).livello_importo).toBe('squadra')
+
+      await impostaQuota(c, { tesseramentoId: tesseramento, importo: 125 })
+      expect((await leggiQuota(c, tesseramento)).livello_importo).toBe('tesseramento')
+    }))
+
+  it('resta coerente con l\'importo che espone', () =>
+    inRollback(async (c) => {
+      // I due campi nascono dallo stesso ordine di precedenza: se qualcuno
+      // cambiasse il coalesce senza toccare il case, direbbero cose diverse.
+      const { stagione, squadra, tesseramento } = await scenario(c)
+      await impostaQuota(c, { stagioneId: stagione, importo: 250 })
+      await impostaQuota(c, { squadraId: squadra, importo: 280 })
+      const q = await leggiQuota(c, tesseramento)
+      expect(q).toMatchObject({ quota_attesa: '280.00', livello_importo: 'squadra' })
+    }))
+})
+
 describe('v_quote — stato', () => {
   it('non_pagato senza versamenti', () =>
     inRollback(async (c) => {

@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { SelettoreStagione } from '@/components/layout/SelettoreStagione'
-import { elencaStagioni, stagionePerCodice } from '@/lib/repos/stagioni'
+import { elencaStagioni } from '@/lib/repos/stagioni'
 import { supabaseServer } from '@/lib/supabase/server'
+import { caricaStagione } from './dati'
 
 export default async function LayoutStagione({
   children,
@@ -11,10 +12,10 @@ export default async function LayoutStagione({
   params: Promise<{ stagione: string }>
 }) {
   const { stagione: codice } = await params
-  const db = await supabaseServer()
-  const stagione = await stagionePerCodice(db, codice)
+  const stagione = await caricaStagione(codice)
   if (!stagione) notFound()
 
+  const db = await supabaseServer()
   const stagioni = await elencaStagioni(db)
   const solaLettura = stagione.stato === 'chiusa'
 

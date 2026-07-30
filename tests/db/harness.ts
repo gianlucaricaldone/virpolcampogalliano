@@ -246,11 +246,14 @@ export async function registraPagamento(
 /** Legge lo stato della quota da v_quote per un tesseramento. */
 export async function leggiQuota(c: Client, tesseramentoId: string) {
   const { rows } = await c.query(
-    `select quota_attesa::text, pagato::text, residuo::text, stato
+    `select quota_attesa::text, pagato::text, residuo::text, stato, livello_importo
      from public.v_quote where tesseramento_id = $1`,
     [tesseramentoId],
   )
-  return rows[0] as { quota_attesa: string; pagato: string; residuo: string; stato: string }
+  return rows[0] as {
+    quota_attesa: string; pagato: string; residuo: string
+    stato: string; livello_importo: string
+  }
 }
 
 /** Inserisce una seduta di allenamento e ne restituisce l'id. */

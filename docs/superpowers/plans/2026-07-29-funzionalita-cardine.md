@@ -1,5 +1,22 @@
 # Funzionalità cardine — Implementation Plan (piano 2)
 
+> **Eseguito e completato.** Tutti e nove i task sono a schermo e verificati.
+> Scostamenti rispetto a quanto scritto sotto, tutti motivati nei commit:
+>
+> - **Task 1** usa `signInWithPassword` reale, non un JWT firmato in locale (~90 ms
+>   per client, misurati), e la pulizia rilegge le righe cancellate.
+> - **Task 4** scrive squadra e maglia in una sola UPDATE: due chiamate sono due
+>   transazioni, e nessun ordine fra le due è quello giusto.
+> - **Task 5** ha esteso `v_quote` in place — il baseline non è deployato — con
+>   `livello_importo`, `stagione_id`, `squadra_id`, `persona_id`.
+> - **Task 6** ha creato `v_visite` in una migration nuova, come proposto.
+> - **Task 9** ha aggiunto `v_presenze_squadra` per la media di squadra; export CSV
+>   non fatto.
+> - Il vincolo sul `notFound()` nel `layout.tsx` (vedi "Global Constraints") **era
+>   sbagliato** e questo piano l'ha scoperto al primo uso: conta che fra il
+>   `notFound()` e la radice non ci sia nessun `loading.tsx`, non dove sta il
+>   controllo. Corretto in `docs/TRAPPOLE.md` §7.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Portare su schermo le sette funzionalità richieste — inserimento giocatori e allenatori, squadre, assegnazioni, presenze agli allenamenti, quota di iscrizione, visita medica — più il cruscotto scadenze e le statistiche presenze.
@@ -50,7 +67,7 @@ Serve anche per una ragione che vale più della comodità: `lib/repos/*.ts` pren
 - `traccia(tabella: string, id: string): void` e `pulisci(): Promise<void>` — registro degli id creati e cancellazione in ordine inverso di dipendenza
 - Un `afterAll` esportato o un helper `conPulizia(fn)` — decidi la forma, ma la pulizia deve girare anche se un test lancia
 
-- [ ] **Step 1: Scrivere il test dell'harness stesso**
+- [x] **Step 1: Scrivere il test dell'harness stesso**
 
 L'harness è infrastruttura: va testato come tale. Almeno questi casi:
 
@@ -64,12 +81,12 @@ it('pulisci() gira anche se il corpo del test lancia', ...)
 
 Il terzo è quello che conta: è la proprietà per cui l'harness esiste. Usa `elencaStagioni` o un repository già esistente come cavia, così il test non dipende da codice di questo piano.
 
-- [ ] **Step 2: Eseguire e osservare il rosso**
+- [x] **Step 2: Eseguire e osservare il rosso**
 
 Run: `npm run test:db -- harness-repo`
 Expected: FAIL, il modulo non esiste.
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 Due approcci possibili per l'autenticazione, e la scelta va motivata nel report:
 
@@ -80,12 +97,12 @@ Preferisci (2) se la differenza di tempo è tollerabile: usa il percorso reale e
 
 La pulizia va in ordine inverso di dipendenza: `presenze`, `pagamenti_quota`, `quote_importi`, `incarichi_staff`, `tesseramenti`, `sedute_allenamento`, `squadre`, `stagioni`, `profili`, `auth.users`, `persone`. Cancella **solo** per id tracciati: mai un `delete().neq()`, che è il pattern che questo task esiste per eliminare.
 
-- [ ] **Step 4: Verificare e committare**
+- [x] **Step 4: Verificare e committare**
 
 Run: `npm run db:reset && npm run test:db && npm run test:unit`
 Poi: due esecuzioni consecutive di `test:db` devono dare conteggi identici. Un harness che ripulisce è idempotente.
 
-- [ ] **Step 5: Convertire le due suite esistenti che usano `delete().neq()`**
+- [x] **Step 5: Convertire le due suite esistenti che usano `delete().neq()`**
 
 `tests/db/repo-stagioni.test.ts` e `tests/db/repo-stagioni-scrittura.test.ts`. Non è scope creep: sono le due suite che il nuovo harness esiste per sostituire, e lasciarle indietro significa lasciare il pattern in circolazione come esempio da imitare.
 

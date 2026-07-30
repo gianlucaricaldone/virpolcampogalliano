@@ -22,21 +22,22 @@ Documenti di riferimento, in quell'altro repo:
 
 Se una decisione qui ti sembra arbitraria, la ragione è in uno di quei tre.
 
-## Stato: fase 1 di 6, completa
+## Stato: fondamenta e funzionalità cardine, complete
 
-Questa fase ha costruito le fondamenta: schema, autorizzazione, autenticazione,
-shell del backoffice. Le fasi successive, ognuna con spec e piano propri:
+La fase 1 ha costruito le fondamenta — schema, autorizzazione, autenticazione,
+shell del backoffice. Il piano 2 (`docs/superpowers/plans/2026-07-29-funzionalita-cardine.md`)
+ha portato a schermo le sette funzionalità richieste. Quel che resta:
 
-| Fase | Contenuto |
-|---|---|
-| 2 | anagrafica persone, squadre, tesseramenti, incarichi staff, admin utenti |
-| 3 | quote, pagamenti, visita medica, cruscotto scadenze |
-| 4 | sedute, foglio presenze, statistiche |
-| 5 | sito pubblico |
-| 6 | script di migrazione dati e cutover |
+| Fase | Contenuto | Stato |
+|---|---|---|
+| 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
+| — | admin utenti (creazione profili dal backoffice) | non fatta |
+| 5 | sito pubblico | da fare |
+| 6 | script di migrazione dati e cutover | da fare |
 
-**Il primo task della fase 2 non è una feature.** È un harness di test per i
-repository — vedi "Debito noto" sotto.
+Le sette funzionalità richieste sono a schermo. Resta fuori dal piano 2 la
+gestione degli utenti applicativi dal backoffice: i profili si creano con
+`seed:dev` o a mano.
 
 ## Stack
 
@@ -53,7 +54,7 @@ sembra funzionante e non protegge nulla.
 
 ```bash
 npx supabase start          # richiede Docker attivo
-npm run db:reset            # applica le 6 migration da zero
+npm run db:reset            # applica le 7 migration da zero
 npm run seed:dev            # 3 utenti + stagioni di prova
 npm run dev                 # http://localhost:3000
 ```
@@ -95,11 +96,19 @@ cinque minuti, quindi un ruolo revocato restava utilizzabile per cinque minuti.
 Se ti serve deduplicazione dentro una richiesta usa `React.cache`, che è
 request-scoped e non ha TTL — non un `Map` a livello di modulo.
 
-**Le regole di business vivono solo nello SQL.** Stato quota, stato visita medica,
-percentuali di presenza: esistono nelle view `v_quote` e `v_presenze` e in nessuna
-copia TypeScript. Due implementazioni divergono, e quando divergono l'elenco dice
-"parziale" mentre la scheda dice "saldato". `lib/domain/` contiene solo funzioni
-pure di formattazione, mai regole.
+**Le regole di business vivono solo nello SQL.** Stato quota, livello che
+determina l'importo, stato della visita medica, percentuali per giocatore e per
+squadra: esistono in `v_quote`, `v_visite`, `v_presenze`, `v_presenze_squadra` e
+in nessuna copia TypeScript. Due implementazioni divergono, e quando divergono
+l'elenco dice "parziale" mentre la scheda dice "saldato". `lib/domain/` contiene
+solo funzioni pure di formattazione (`denaro`, `data`, `visita`, `stagione`), mai
+regole: `descrizioneVisita` traduce in una frase uno stato che ha già deciso la
+view, non lo calcola.
+
+Se ti serve un valore che una view non espone, **si estende la view**. È stato
+fatto due volte in questo piano: `livello_importo` su `v_quote`, e stagione,
+squadra e persona su `v_quote` e `v_presenze` — senza, ogni elenco avrebbe
+ricucito i dati in TypeScript.
 
 **Le RLS sono la difesa primaria, i controlli applicativi la seconda.**
 `richiediRuolo` in una Server Action dà un messaggio leggibile; la policy regge
@@ -126,6 +135,19 @@ client autenticato come allenatore e come dirigente deve dare risultati diversi,
 **Le pagine orchestrano.** Recuperano dati e compongono componenti. Nessuna sopra
 le ~150 righe: se cresce, dentro c'è un componente da estrarre.
 
+**Fra un `notFound()` e la radice non deve esserci nessun `loading.tsx`.** Il
+confine Suspense avvolge tutto ciò che sta sotto il suo segmento, layout
+annidati compresi: con lo streaming avviato lo status è già 200, e la not-found
+viene servita con 200. Lo scheletro del cruscotto vive per questo nel gruppo di
+rotta `(cruscotto)`, che non cambia l'URL e lascia fuori le rotte sorelle. Ogni
+rotta di dettaglio nuova vuole un E2E che asserisca `response.status()`: è
+l'unica assertion che distingue i due casi. Vedi `docs/TRAPPOLE.md` §7, dove la
+regola scritta dopo la fase 1 era sbagliata e il piano 2 l'ha corretta.
+
+**Gli id nell'URL vanno controllati nella forma prima di arrivare a Postgres.**
+Un segmento che non è un uuid diventa `22P02`, cioè un 500 al posto di un 404:
+i loader in `dati.ts` di ogni rotta di dettaglio lo verificano con una regex.
+
 **Le Server Action restituiscono `Risultato<T>`**, non lanciano per i fallimenti
 previsti. Le eccezioni restano per i bug veri e arrivano a `error.tsx`. Il
 wrapper `eseguiAzione` fa la distinzione: un bug non deve somigliare a un errore
@@ -140,9 +162,9 @@ legge `duplicate key value violates unique constraint`.
 
 | Suite | Cosa prova |
 |---|---|
-| `test:unit` | funzioni pure, traduzione errori, schemi zod |
-| `test:db` | vincoli, view, **e la matrice RLS completa** — il cuore |
-| `test:e2e` | i flussi: login, ruoli, navigazione stagioni, CRUD stagioni |
+| `test:unit` | funzioni pure, traduzione errori, schemi zod, formattazione |
+| `test:db` | vincoli, view, i repository eseguiti come tre ruoli diversi, **e la matrice RLS completa** — il cuore |
+| `test:e2e` | i flussi: accesso, stagioni, anagrafica, squadre, tesseramenti, quote, visita, presenze, scadenze, statistiche |
 
 **La suite RLS si autovalida solo se ogni ruolo ha sia un test di permesso sia uno
 di diniego.** Se l'impersonificazione si rompesse, `auth.uid()` sarebbe nullo,
@@ -151,9 +173,29 @@ fallirebbero. Un ruolo con `BYPASSRLS` sbaglia nel verso opposto. Non cancellare
 né indebolire un test di permesso per arrivare al verde: trasforma l'intera
 matrice in un falso verde, ed è l'unico modo di fallire che nessuno intercetta.
 
-`tests/db/harness.ts` isola ogni test in una transazione con rollback e sa
-impersonare utenti applicativi. Usalo per tutto ciò che parla direttamente a
-Postgres.
+### Due harness, e quale usare
+
+`tests/db/harness.ts` (`inRollback`) avvolge un `pg.Client` e isola con
+BEGIN/ROLLBACK. Serve per **vincoli e view**: ciò che si verifica parlando SQL
+diretto.
+
+`tests/db/harness-repo.ts` serve per i **repository**. `inRollback` non è
+estendibile a loro: un `SupabaseClient` parla HTTP a PostgREST, che prende una
+connessione dal pool a ogni richiesta, quindi non esiste sessione in cui un
+`BEGIN` possa vivere e non c'è nulla da annullare. L'isolamento è per id
+tracciati — `traccia()`, `pulisci()`, `conPulizia()` — e la pulizia rilegge le
+righe cancellate prima di dichiararsi riuscita, perché una `delete` che non
+trova nulla riesce in silenzio. `clientPerRuolo` crea un utente Auth vero e lo
+autentica con `signInWithPassword`: un JWT firmato a mano col `JWT_SECRET`
+locale sarebbe più veloce, ma sarebbe un secondo modo di produrre un token, e i
+test continuerebbero a passare su un percorso che l'applicazione non usa più.
+
+**Mai `delete().neq()` in un test.** Svuota una tabella condivisa con il seed e
+con le altre suite, e il fallimento emerge in un file che non l'ha toccata.
+
+**I test che dipendono da `current_date` chiedono la data al database**, non a
+Node: le view la confrontano col fuso del server, il processo di test ha quello
+della macchina, e vicino a mezzanotte i due differiscono di un giorno.
 
 ## Convenzioni
 
@@ -168,21 +210,14 @@ Postgres.
 
 ## Debito noto
 
-**L'harness dei test non copre i repository, ed è il primo task della fase 2.**
-`inRollback` avvolge un `pg.Client` grezzo. I repository usano un
-`SupabaseClient`, che parla HTTP a PostgREST: quello prende una connessione dal
-pool per richiesta, quindi non esiste sessione in cui un `BEGIN` possa vivere e
-non c'è transazione da annullare. **`inRollback` non è estendibile** — chi prova
-perde una giornata a scoprirlo.
+**Nessuna gestione degli utenti applicativi dal backoffice.** I profili si creano
+con `seed:dev` o a mano sul database. Serve prima del cutover.
 
-Serve un harness *diverso*: un client che impersona un ruolo via JWT firmato col
-`JWT_SECRET` locale, più pulizia per id tracciati invece di `delete()`. Entrambe
-le metà hanno già un precedente funzionante nel repo (`sessione.test.ts`).
+**Nessun export CSV delle statistiche.** Il piano 2 lo dava per facoltativo.
 
-Perché prima di scrivere un nuovo repository: le fasi 2-4 ne aggiungono nove, e
-col pattern attuale ognuno vuole un `beforeEach` che svuota le tabelle in ordine
-topologico. Otto copie di quello non sono un costo di manutenzione, sono una
-fabbrica di fallimenti che puntano al file sbagliato.
+**`components/quote/PannelloQuota.tsx` è il componente più grosso (~180 righe)**:
+dentro ci sono un riepilogo, un registro di versamenti e un form. Si divide
+quando qualcuno dovrà toccarlo, non prima.
 
 Gli altri finding differiti sono nel ledger, sezione per task.
 

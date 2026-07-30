@@ -59,6 +59,7 @@ async function main() {
   // oltre quella soglia il controllo "esiste già?" qui sotto non troverebbe
   // un utente già creato e proverebbe a ricrearlo, fallendo sull'email duplicata.
   const { data: esistenti } = await db.auth.admin.listUsers({ perPage: 200 })
+  let misterPersonaId: string | null = null
   for (const utente of UTENTI) {
     let id = esistenti.users.find((u) => u.email === utente.email)?.id
     if (!id) {
@@ -81,10 +82,81 @@ async function main() {
     }
 
     await db.from('profili').upsert({ id, ruolo: utente.ruolo, persona_id: personaId })
+    if (utente.ruolo === 'allenatore') misterPersonaId = personaId
     console.log(`profilo pronto: ${utente.email} (${utente.ruolo})`)
   }
+
+  // Due squadre e due tesserati, uno per squadra, con il mister incaricato su
+  // una sola. Senza questo, l'allenatore non ha nessuna squadra: le sue policy
+  // partono da profili.persona_id e passano per incarichi_staff, quindi ogni
+  // elenco gli risulta vuoto e un E2E che verifica "vede solo i suoi" sarebbe
+  // verde anche se le RLS lasciassero passare tutto.
+  const squadre = new Map<string, string>()
+  for (const nome of ['Pulcini A', 'Pulcini B']) {
+    const { data, error } = await db
+      .from('squadre')
+      .upsert(
+        { stagione_id: stagioneId, nome, categoria: 'Pulcini', annata: 2015 },
+        { onConflict: 'stagione_id,nome' },
+      )
+      .select('id')
+      .single()
+    if (error) throw error
+    squadre.set(nome, data.id)
+  }
+
+  const GIOCATORI = [
+    { nome: 'Uno', cognome: 'Giocatore', email: 'giocatore.uno@virpol.test', squadra: 'Pulcini A', maglia: 10 },
+    { nome: 'Due', cognome: 'Giocatore', email: 'giocatore.due@virpol.test', squadra: 'Pulcini B', maglia: 7 },
+  ]
+  for (const giocatore of GIOCATORI) {
+    const { data: esistente } = await db
+      .from('persone').select('id').eq('email', giocatore.email).maybeSingle()
+    let personaId = esistente?.id
+    if (!personaId) {
+      const { data, error } = await db
+        .from('persone')
+        .insert({
+          nome: giocatore.nome,
+          cognome: giocatore.cognome,
+          data_nascita: '2015-04-10',
+          email: giocatore.email,
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+      personaId = data.id
+    }
+
+    const { error } = await db.from('tesseramenti').upsert(
+      {
+        persona_id: personaId,
+        stagione_id: stagioneId,
+        squadra_id: squadre.get(giocatore.squadra)!,
+        numero_maglia: giocatore.maglia,
+      },
+      { onConflict: 'persona_id,stagione_id' },
+    )
+    if (error) throw error
+  }
+
+  if (misterPersonaId) {
+    const { error } = await db.from('incarichi_staff').upsert(
+      {
+        persona_id: misterPersonaId,
+        stagione_id: stagioneId,
+        squadra_id: squadre.get('Pulcini A')!,
+        ruolo: 'allenatore',
+      },
+      { onConflict: 'persona_id,squadra_id,ruolo' },
+    )
+    if (error) throw error
+  }
+
   console.log(`stagione pronta: 2026-27 (${stagioneId})`)
   console.log('stagione pronta: 2025-26 (chiusa)')
+  console.log('squadre pronte: Pulcini A (col mister), Pulcini B')
+  console.log('tesserati pronti: Giocatore Uno (A), Giocatore Due (B)')
   console.log(`password per tutti: ${PASSWORD}`)
 }
 
