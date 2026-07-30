@@ -4,7 +4,8 @@ Le decisioni strutturali e il perché. Il *cosa* si legge dal codice; qui c'è
 quello che il codice non può dire.
 
 Lo spec completo, con le alternative scartate e i loro motivi, è in
-`~/Progetti/virpolcampogalliano/docs/superpowers/specs/2026-07-29-gestionale-sportivo-rewrite-design.md`.
+`docs/superpowers/specs/2026-07-29-gestionale-sportivo-rewrite-design.md`, qui in
+questo repo. I piani di implementazione stanno in `docs/superpowers/plans/`.
 
 ## Modello dati
 
