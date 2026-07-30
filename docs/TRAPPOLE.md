@@ -139,11 +139,15 @@ fra le due lingue nello stesso file, non fra giusto e sbagliato.
 
 Verificato su build di produzione: file a livello `(app)/` → status 200; file a livello `[stagione]/` → status 404. Stesso contenuto reso, solo lo status diverso.
 
-**Come è chiuso.** Il file sta in `app/(app)/[stagione]/loading.tsx`, **fratello** del layout che fa il controllo, quindi avvolge solo la pagina.
+**Come è chiuso, primo tentativo.** Il file è stato spostato in `app/(app)/[stagione]/loading.tsx`, fratello del layout che fa il controllo. Il test sul codice stagione inesistente è tornato 404, e da lì la regola scritta qui era: `notFound()` nel `layout.tsx` del segmento di dettaglio, non nella sua `page.tsx`.
 
-**Cosa portarne via, e riguarda il lavoro futuro.** La trappola non è scomparsa, è scesa di un livello: qualunque `notFound()` in una **pagina** sotto quel confine restituisce 200 — provato con una pagina sonda. Le rotte di dettaglio dei piani successivi (`squadre/[id]`, `tesseramenti/[id]`) sono il posto naturale per un `notFound()` e lo perderebbero in silenzio.
+**Quella regola era sbagliata, e il piano 2 l'ha scoperto al primo uso.** `/2025-26/squadre/<id-di-una-squadra-di-un'altra-stagione>` rispondeva **200** pur avendo il controllo in `squadre/[squadraId]/layout.tsx`. Il confine Suspense di `loading.tsx` non avvolge "la pagina fratello": avvolge **tutto ciò che sta sotto il suo segmento**, layout annidati compresi. Un layout più in basso è dentro il confine esattamente quanto una pagina, e la distinzione layout/page non c'entra nulla.
 
-Regola: `notFound()` nel `layout.tsx` del segmento di dettaglio, non nella sua `page.tsx`. E il test E2E di ogni rotta nuova asserisce `response.status()`, non solo che il contenuto della not-found compaia: è l'unica assertion che distingue 404 da 200.
+Ciò che conta è una sola cosa: **fra il `notFound()` e la radice non deve esserci nessun `loading.tsx`.**
+
+**Come è chiuso davvero.** Il cruscotto e il suo `loading.tsx` stanno in un gruppo di rotta, `app/(app)/[stagione]/(cruscotto)/`. Un gruppo non aggiunge segmenti all'URL — `/2026-27` resta `/2026-27` — ma limita il confine a ciò che contiene, quindi `squadre/` e le rotte sorelle ne restano fuori.
+
+**Cosa portarne via.** Nessun `loading.tsx` su un segmento che abbia sotto di sé una rotta di dettaglio con `notFound()`; se serve uno scheletro, lo si racchiude in un gruppo di rotta insieme alla sola pagina che lo usa. E il test E2E di ogni rotta di dettaglio nuova asserisce `response.status()`, non solo che il contenuto della not-found compaia: è l'unica assertion che distingue 404 da 200, ed è ciò che ha fatto emergere l'errore invece di lasciarlo in produzione.
 
 ## 8. `[auth.email] enable_signup` non è un interruttore per le registrazioni
 

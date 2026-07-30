@@ -309,6 +309,58 @@ export async function creaTesseramento(dati: {
   return traccia('tesseramenti', data.id)
 }
 
+export async function creaSeduta(dati: {
+  squadraId: string
+  stagioneId: string
+  data?: string
+  oraInizio?: string | null
+}): Promise<string> {
+  const { data, error } = await clientServizio()
+    .from('sedute_allenamento')
+    .insert({
+      squadra_id: dati.squadraId,
+      stagione_id: dati.stagioneId,
+      data: dati.data ?? '2026-10-01',
+      ora_inizio: dati.oraInizio ?? null,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return traccia('sedute_allenamento', data.id)
+}
+
+/**
+ * `squadra_id` si ricava dalla seduta, come deve fare anche il repository: la
+ * colonna è denormalizzata e chiederla al chiamante è il modo di scriverci
+ * dentro la squadra sbagliata.
+ */
+export async function creaPresenza(dati: {
+  sedutaId: string
+  tesseramentoId: string
+  stato: Database['public']['Enums']['stato_presenza']
+}): Promise<string> {
+  const servizio = clientServizio()
+  const { data: seduta, error: erroreSeduta } = await servizio
+    .from('sedute_allenamento')
+    .select('squadra_id')
+    .eq('id', dati.sedutaId)
+    .single()
+  if (erroreSeduta) throw erroreSeduta
+
+  const { data, error } = await servizio
+    .from('presenze')
+    .insert({
+      seduta_id: dati.sedutaId,
+      tesseramento_id: dati.tesseramentoId,
+      squadra_id: seduta.squadra_id,
+      stato: dati.stato,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return traccia('presenze', data.id)
+}
+
 export async function creaIncarico(dati: {
   personaId: string
   stagioneId: string

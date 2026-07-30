@@ -1,21 +1,9 @@
 import { z } from 'zod'
+import { facoltativo } from '@/lib/validation/comune'
 
-/**
- * Campo facoltativo: la stringa vuota che arriva da un input HTML diventa
- * `null`, mai `''`.
- *
- * Non è una finezza. `persone.codice_fiscale` è UNIQUE e nullable: Postgres
- * considera due NULL distinti ma due stringhe vuote uguali, quindi il secondo
- * minore senza codice fiscale — la maggioranza dell'anagrafica — verrebbe
- * respinto da un vincolo di unicità che non c'entra nulla con lui.
- */
-function facoltativo<T extends z.ZodType<string>>(schema: T, maiuscolo = false) {
-  return z.preprocess((v) => {
-    if (typeof v !== 'string') return v ?? null
-    const pulito = maiuscolo ? v.trim().toUpperCase() : v.trim()
-    return pulito === '' ? null : pulito
-  }, schema.nullable())
-}
+// `codice_fiscale` è la ragione per cui `facoltativo` esiste: la colonna è
+// UNIQUE e nullable, e il secondo minore senza codice fiscale — la
+// maggioranza dell'anagrafica — collide con il primo se si salva ''.
 
 /**
  * Il codice fiscale si controlla solo nella lunghezza e nell'alfabeto, non con
