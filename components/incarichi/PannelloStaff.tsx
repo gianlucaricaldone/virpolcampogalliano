@@ -2,7 +2,8 @@
 
 import { useActionState, useState, useTransition } from 'react'
 import type { Risultato } from '@/lib/azioni'
-import { RUOLI_STAFF, type Incarico } from '@/lib/repos/incarichi'
+import { RUOLI_STAFF } from '@/lib/costanti'
+import type { Incarico } from '@/lib/repos/incarichi'
 import type { Persona } from '@/lib/repos/persone'
 
 type Azione = (

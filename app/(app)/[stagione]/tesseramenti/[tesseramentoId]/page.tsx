@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { PannelloQuota } from '@/components/quote/PannelloQuota'
 import { RigaImporto } from '@/components/quote/RigaImporto'
 import { PannelloAssegnazione } from '@/components/tesseramenti/PannelloAssegnazione'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import {
   elencaPagamenti,
   importoTesseramento,
@@ -33,26 +33,33 @@ export default async function PaginaTesseramento({
   params: Promise<{ stagione: string; tesseramentoId: string }>
 }) {
   const { stagione: codice, tesseramentoId } = await params
-  const stagione = await stagioneRichiesta(codice)
-  // Il layout ha già deciso il 404: qui si legge dalla cache di richiesta.
-  const tesserato = await caricaTesserato(tesseramentoId)
+  // Layout e pagina condividono queste tre letture attraverso React.cache:
+  // qui sono già risolte.
+  const [stagione, tesserato, db, sessione] = await Promise.all([
+    stagioneRichiesta(codice),
+    caricaTesserato(tesseramentoId),
+    supabaseServer(),
+    sessioneCorrente(),
+  ])
   if (!tesserato) notFound()
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
   const staff = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
   const puoScrivere = staff && stagione.stato === 'aperta'
-  const squadre = puoScrivere ? await elencaSquadre(db, stagione.id) : []
-
-  // L'allenatore non vede nulla di finanziario: non gli si chiede il dato,
-  // invece di chiederlo e nasconderlo.
-  const quota = staff ? await quotaPerTesseramento(db, tesseramentoId) : null
-  const pagamenti = staff ? await elencaPagamenti(db, tesseramentoId) : []
-  const override = staff ? await importoTesseramento(db, tesseramentoId) : null
   const oggi = new Date().toISOString().slice(0, 10)
-  // La visita la vede anche l'allenatore: è il dato che gli dice chi può
-  // scendere in campo, e le sue policy su tesseramenti glielo consentono.
-  const visita = await visitaPerTesseramento(db, tesseramentoId)
+
+  // Cinque letture indipendenti fra loro: in serie erano cinque round trip in
+  // fila, e su Vercel con il database in un'altra region è il costo dominante
+  // di questa pagina. L'allenatore non vede nulla di finanziario, e i dati
+  // finanziari non gli vengono chiesti — non chiesti e poi nascosti.
+  const [squadre, quota, pagamenti, override, visita] = await Promise.all([
+    puoScrivere ? elencaSquadre(db, stagione.id) : [],
+    staff ? quotaPerTesseramento(db, tesseramentoId) : null,
+    staff ? elencaPagamenti(db, tesseramentoId) : [],
+    staff ? importoTesseramento(db, tesseramentoId) : null,
+    // La visita la vede anche l'allenatore: è il dato che gli dice chi può
+    // scendere in campo, e le sue policy su tesseramenti glielo consentono.
+    visitaPerTesseramento(db, tesseramentoId),
+  ])
 
   return (
     <section className="space-y-6">

@@ -6,12 +6,9 @@ type Db = SupabaseClient<Database>
 
 export type StatoPresenza = Database['public']['Enums']['stato_presenza']
 
-export const STATI_PRESENZA: { valore: StatoPresenza; etichetta: string; breve: string }[] = [
-  { valore: 'presente', etichetta: 'Presente', breve: 'P' },
-  { valore: 'assente', etichetta: 'Assente', breve: 'A' },
-  { valore: 'giustificato', etichetta: 'Giustificato', breve: 'G' },
-  { valore: 'infortunato', etichetta: 'Infortunato', breve: 'I' },
-]
+// STATI_PRESENZA sta in `lib/costanti.ts`: lo legge il foglio presenze, che è
+// un componente client, e da qui si porterebbe dietro `lib/azioni` e tutto ciò
+// che ne consegue.
 
 export type Seduta = {
   id: string

@@ -1,16 +1,14 @@
 import { redirect } from 'next/navigation'
 import { FormStagione } from '@/components/stagioni/FormStagione'
 import { TabellaStagioni } from '@/components/stagioni/TabellaStagioni'
-import { getSessione } from '@/lib/auth/session'
-import { elencaStagioni } from '@/lib/repos/stagioni'
-import { supabaseServer } from '@/lib/supabase/server'
+import { sessioneCorrente } from '@/lib/auth/corrente'
+import { caricaStagioni } from '../../dati'
 
 export default async function PaginaStagioni() {
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  // `caricaStagioni` è già stata risolta dal layout del backoffice per la
+  // barra di navigazione: qui non costa una query in più.
+  const [sessione, stagioni] = await Promise.all([sessioneCorrente(), caricaStagioni()])
   if (sessione?.ruolo !== 'admin') redirect('/gestione')
-
-  const stagioni = await elencaStagioni(db)
 
   return (
     <section className="space-y-4">

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { FormTesseramento } from '@/components/tesseramenti/FormTesseramento'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaPersone } from '@/lib/repos/persone'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { elencaTesseramenti } from '@/lib/repos/tesseramenti'
@@ -20,20 +20,22 @@ export default async function PaginaNuovoTesseramento({
   const { q } = await searchParams
   const stagione = await stagioneRichiesta(codice)
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const [db, sessione] = await Promise.all([supabaseServer(), sessioneCorrente()])
   const puoScrivere =
     (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&
     stagione.stato === 'aperta'
   if (!puoScrivere) redirect(`/${codice}/tesseramenti`)
 
-  const squadre = await elencaSquadre(db, stagione.id)
+  // Tre letture indipendenti: la sottrazione fra chi è stato trovato e chi è
+  // già tesserato si fa in memoria, dopo.
   // Si cerca prima di elencare: senza una ricerca l'anagrafica intera finirebbe
   // in una lista di radio button, e nessuno la scorre.
-  const trovate = q ? await elencaPersone(db, { cognome: q, soloAttive: true }) : []
-  const giaTesserati = new Set(
-    q ? (await elencaTesseramenti(db, stagione.id)).map((t) => t.persona.id) : [],
-  )
+  const [squadre, trovate, tesserati] = await Promise.all([
+    elencaSquadre(db, stagione.id),
+    q ? elencaPersone(db, { cognome: q, soloAttive: true }) : [],
+    q ? elencaTesseramenti(db, stagione.id) : [],
+  ])
+  const giaTesserati = new Set(tesserati.map((t) => t.persona.id))
   const candidati = trovate.filter((p) => !giaTesserati.has(p.id))
 
   return (

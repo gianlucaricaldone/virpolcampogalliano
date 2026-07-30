@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import { NavBackoffice } from '@/components/layout/NavBackoffice'
-import { getSessione } from '@/lib/auth/session'
-import { elencaStagioni } from '@/lib/repos/stagioni'
-import { supabaseServer } from '@/lib/supabase/server'
+import { sessioneCorrente } from '@/lib/auth/corrente'
+import { caricaStagioni } from './dati'
 
 export default async function LayoutBackoffice({ children }: { children: React.ReactNode }) {
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  // Le due letture non dipendono l'una dall'altra: in serie sarebbero due
+  // round trip in fila prima ancora che la pagina cominci a caricare i suoi.
+  const [sessione, stagioni] = await Promise.all([sessioneCorrente(), caricaStagioni()])
+
   // Non solo '/login': un utente qui arriva sempre con un cookie di sessione
   // Supabase Auth valido (il middleware ha già respinto chi ne è privo), ma
   // getSessione torna null se il profilo è stato disattivato o cancellato.
@@ -14,8 +15,6 @@ export default async function LayoutBackoffice({ children }: { children: React.R
   // su /login e rimbalzerebbe verso /gestione, che rimbalza di nuovo qui:
   // ERR_TOO_MANY_REDIRECTS, senza modo di raggiungere il form di accesso.
   if (!sessione) redirect('/login?sessione=terminata')
-
-  const stagioni = await elencaStagioni(db)
 
   return (
     <div className="min-h-dvh bg-neutral-50">

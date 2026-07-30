@@ -4,7 +4,7 @@ import { useActionState, useState, useTransition } from 'react'
 import type { Risultato } from '@/lib/azioni'
 import { formattaEuro } from '@/lib/domain/denaro'
 import type { Pagamento, RigaQuota } from '@/lib/repos/quote'
-import { METODI } from '@/lib/validation/quota'
+import { METODI } from '@/lib/costanti'
 
 type Azione = (
   precedente: Risultato<null> | null,

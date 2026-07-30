@@ -4,7 +4,7 @@ import { PannelloStaff } from '@/components/incarichi/PannelloStaff'
 import { FormSquadra } from '@/components/squadre/FormSquadra'
 import { PulsanteEliminaSquadra } from '@/components/squadre/PulsanteEliminaSquadra'
 import { TabellaTesserati } from '@/components/tesseramenti/TabellaTesserati'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaIncarichi } from '@/lib/repos/incarichi'
 import { elencaPersone } from '@/lib/repos/persone'
 import { elencaTesseramenti } from '@/lib/repos/tesseramenti'
@@ -22,28 +22,31 @@ export default async function PaginaSquadra({
 }) {
   const { stagione: codice, squadraId } = await params
   const { staff } = await searchParams
-  const stagione = await stagioneRichiesta(codice)
-  // Il layout ha già deciso il 404: qui la lettura arriva dalla cache.
-  const squadra = await caricaSquadra(squadraId)
+  // Il layout ha già risolto stagione e squadra: React.cache le restituisce
+  // senza rifare le query.
+  const [stagione, squadra, db, sessione] = await Promise.all([
+    stagioneRichiesta(codice),
+    caricaSquadra(squadraId),
+    supabaseServer(),
+    sessioneCorrente(),
+  ])
   if (!squadra) notFound()
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
   const puoScrivere =
     (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&
     stagione.stato === 'aperta'
 
-  const rosa = await elencaTesseramenti(db, stagione.id, { squadraId: squadra.id })
-  const incarichi = await elencaIncarichi(db, squadra.id)
+  // Rosa, staff e candidati non dipendono l'uno dall'altro: la sottrazione fra
+  // candidati e staff già assegnato si fa dopo, in memoria.
   // La ricerca precede l'elenco: l'anagrafica intera in una lista di radio
   // button non la scorre nessuno.
+  const [rosa, incarichi, trovate] = await Promise.all([
+    elencaTesseramenti(db, stagione.id, { squadraId: squadra.id }),
+    elencaIncarichi(db, squadra.id),
+    puoScrivere && staff ? elencaPersone(db, { cognome: staff, soloAttive: true }) : [],
+  ])
   const giaStaff = new Set(incarichi.map((i) => i.persona.id))
-  const candidati =
-    puoScrivere && staff
-      ? (await elencaPersone(db, { cognome: staff, soloAttive: true })).filter(
-          (p) => !giaStaff.has(p.id),
-        )
-      : []
+  const candidati = trovate.filter((p) => !giaStaff.has(p.id))
 
   return (
     <section className="space-y-6">

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { TabellaTesserati } from '@/components/tesseramenti/TabellaTesserati'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { elencaTesseramenti } from '@/lib/repos/tesseramenti'
 import { supabaseServer } from '@/lib/supabase/server'
@@ -17,14 +17,17 @@ export default async function PaginaTesseramenti({
   const { squadra, senza } = await searchParams
   const stagione = await stagioneRichiesta(codice)
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
-  const squadre = await elencaSquadre(db, stagione.id)
+  const [db, sessione] = await Promise.all([supabaseServer(), sessioneCorrente()])
   const senzaSquadra = senza === '1'
-  const tesserati = await elencaTesseramenti(db, stagione.id, {
-    squadraId: senzaSquadra ? undefined : squadra || undefined,
-    senzaSquadra,
-  })
+  // Il menù delle squadre e l'elenco dei tesserati non dipendono l'uno
+  // dall'altro.
+  const [squadre, tesserati] = await Promise.all([
+    elencaSquadre(db, stagione.id),
+    elencaTesseramenti(db, stagione.id, {
+      squadraId: senzaSquadra ? undefined : squadra || undefined,
+      senzaSquadra,
+    }),
+  ])
 
   const puoScrivere =
     (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&

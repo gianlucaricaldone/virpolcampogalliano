@@ -15,13 +15,21 @@ export default async function PaginaSeduteSquadra({
   params: Promise<{ stagione: string; squadraId: string }>
 }) {
   const { stagione: codice, squadraId } = await params
-  const stagione = await stagioneRichiesta(codice)
-  const squadra = await caricaSquadra(squadraId)
+  // Stagione e squadra le ha già risolte il layout: React.cache le restituisce
+  // senza rifare le query.
+  const [stagione, squadra, db] = await Promise.all([
+    stagioneRichiesta(codice),
+    caricaSquadra(squadraId),
+    supabaseServer(),
+  ])
   if (!squadra) notFound()
 
-  const db = await supabaseServer()
-  const sedute = await elencaSedute(db, squadraId)
-  const rosa = await elencaTesseramenti(db, stagione.id, { squadraId })
+  // Sedute e rosa sono indipendenti: la seconda serve solo come denominatore
+  // di "quante compilate".
+  const [sedute, rosa] = await Promise.all([
+    elencaSedute(db, squadraId),
+    elencaTesseramenti(db, stagione.id, { squadraId }),
+  ])
   const modificabile = stagione.stato === 'aperta'
 
   return (

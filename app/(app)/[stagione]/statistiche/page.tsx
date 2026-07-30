@@ -1,6 +1,6 @@
 import { RiepilogoSquadre } from '@/components/statistiche/RiepilogoSquadre'
 import { TabellaStatistiche } from '@/components/statistiche/TabellaStatistiche'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { squadreDiStaff } from '@/lib/repos/incarichi'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { statistichePerGiocatore, statistichePerSquadra } from '@/lib/repos/statistiche'
@@ -16,22 +16,24 @@ export default async function PaginaStatistiche({
 }) {
   const { stagione: codice } = await params
   const { squadra } = await searchParams
-  const stagione = await stagioneRichiesta(codice)
-
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const [stagione, db, sessione] = await Promise.all([
+    stagioneRichiesta(codice),
+    supabaseServer(),
+    sessioneCorrente(),
+  ])
 
   // Come nelle presenze: `squadre_sel` è `using (true)`, quindi senza filtrare
   // un allenatore avrebbe nel menù squadre che poi risultano vuote.
-  const squadre =
+  // Tre letture indipendenti: l'elenco delle squadre serve solo a filtrare
+  // quelle di squadra a valle, non a costruire le altre due query.
+  const [squadre, giocatori, tutteLeSquadre] = await Promise.all([
     sessione?.ruolo === 'allenatore' && sessione.personaId
-      ? await squadreDiStaff(db, sessione.personaId, stagione.id)
-      : await elencaSquadre(db, stagione.id)
-
-  const giocatori = await statistichePerGiocatore(db, stagione.id, {
-    squadraId: squadra || undefined,
-  })
-  const perSquadra = (await statistichePerSquadra(db, stagione.id)).filter(
+      ? squadreDiStaff(db, sessione.personaId, stagione.id)
+      : elencaSquadre(db, stagione.id),
+    statistichePerGiocatore(db, stagione.id, { squadraId: squadra || undefined }),
+    statistichePerSquadra(db, stagione.id),
+  ])
+  const perSquadra = tutteLeSquadre.filter(
     (r) =>
       squadre.some((s) => s.id === r.squadraId) && (!squadra || r.squadraId === squadra),
   )

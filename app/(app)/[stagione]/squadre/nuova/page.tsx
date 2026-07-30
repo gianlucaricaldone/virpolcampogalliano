@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { FormSquadra } from '@/components/squadre/FormSquadra'
-import { getSessione } from '@/lib/auth/session'
-import { supabaseServer } from '@/lib/supabase/server'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { stagioneRichiesta } from '../../dati'
 import { creaSquadraAzione } from '../actions'
 
@@ -13,8 +12,7 @@ export default async function PaginaNuovaSquadra({
   const { stagione: codice } = await params
   const stagione = await stagioneRichiesta(codice)
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const sessione = await sessioneCorrente()
   const puoScrivere =
     (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&
     stagione.stato === 'aperta'

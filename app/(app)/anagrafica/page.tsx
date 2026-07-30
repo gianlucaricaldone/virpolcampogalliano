@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { TabellaPersone } from '@/components/persone/TabellaPersone'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaPersone } from '@/lib/repos/persone'
 import { supabaseServer } from '@/lib/supabase/server'
 
@@ -10,8 +10,7 @@ export default async function PaginaAnagrafica({
   searchParams: Promise<{ q?: string; archiviate?: string }>
 }) {
   const { q, archiviate } = await searchParams
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const [db, sessione] = await Promise.all([supabaseServer(), sessioneCorrente()])
   const puoScrivere = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
 
   const persone = await elencaPersone(db, {

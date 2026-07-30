@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { TabellaSquadre } from '@/components/squadre/TabellaSquadre'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { supabaseServer } from '@/lib/supabase/server'
 import { stagioneRichiesta } from '../dati'
@@ -13,8 +13,7 @@ export default async function PaginaSquadre({
   const { stagione: codice } = await params
   const stagione = await stagioneRichiesta(codice)
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const [db, sessione] = await Promise.all([supabaseServer(), sessioneCorrente()])
   const squadre = await elencaSquadre(db, stagione.id)
 
   // Le policy negano comunque la scrittura su stagione chiusa. Qui si evita

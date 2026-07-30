@@ -1,6 +1,6 @@
 import { RiquadroQuote } from '@/components/scadenze/RiquadroQuote'
 import { RiquadroVisite } from '@/components/scadenze/RiquadroVisite'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { scadenzeStagione } from '@/lib/repos/scadenze'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { supabaseServer } from '@/lib/supabase/server'
@@ -15,19 +15,23 @@ export default async function Cruscotto({
 }) {
   const { stagione: codice } = await params
   const { squadra } = await searchParams
-  const stagione = await stagioneRichiesta(codice)
+  const [stagione, db, sessione] = await Promise.all([
+    stagioneRichiesta(codice),
+    supabaseServer(),
+    sessioneCorrente(),
+  ])
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
-  const squadre = await elencaSquadre(db, stagione.id)
-
+  // Il menù a tendina e i due riquadri sono indipendenti.
   // All'allenatore le quote non si nascondono via interfaccia: non si
   // chiedono. Non ha policy sulle tabelle finanziarie, quindi leggerebbe zeri
   // — cifre finte presentate come vere, che è peggio di non mostrarle.
-  const { quote, visite } = await scadenzeStagione(db, stagione.id, {
-    squadraId: squadra || undefined,
-    includiQuote: sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente',
-  })
+  const [squadre, { quote, visite }] = await Promise.all([
+    elencaSquadre(db, stagione.id),
+    scadenzeStagione(db, stagione.id, {
+      squadraId: squadra || undefined,
+      includiQuote: sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente',
+    }),
+  ])
 
   return (
     <section className="space-y-6">

@@ -40,8 +40,5 @@ export const schemaLivello = z
     'Un importo si riferisce a un solo livello',
   )
 
-export const METODI = [
-  { valore: 'contanti', etichetta: 'Contanti' },
-  { valore: 'bonifico', etichetta: 'Bonifico' },
-  { valore: 'altro', etichetta: 'Altro' },
-] as const
+// METODI sta in `lib/costanti.ts`: lo legge anche il pannello dei versamenti,
+// che è un componente client, e importarlo da qui gli farebbe scaricare zod.

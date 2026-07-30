@@ -11,11 +11,8 @@ export type Incarico = {
   persona: { id: string; cognome: string; nome: string }
 }
 
-export const RUOLI_STAFF: { valore: RuoloStaff; etichetta: string }[] = [
-  { valore: 'allenatore', etichetta: 'Allenatore' },
-  { valore: 'vice_allenatore', etichetta: 'Vice allenatore' },
-  { valore: 'dirigente_squadra', etichetta: 'Dirigente di squadra' },
-]
+// RUOLI_STAFF sta in `lib/costanti.ts`: lo legge un componente client, e da
+// qui si trascinerebbe dietro il repository.
 
 const CAMPI = `
   id, ruolo,

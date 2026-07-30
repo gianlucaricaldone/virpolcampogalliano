@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { squadreDiStaff } from '@/lib/repos/incarichi'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { supabaseServer } from '@/lib/supabase/server'
@@ -13,8 +13,7 @@ export default async function PaginaPresenze({
   const { stagione: codice } = await params
   const stagione = await stagioneRichiesta(codice)
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const [db, sessione] = await Promise.all([supabaseServer(), sessioneCorrente()])
 
   // `squadre_sel` è `using (true)`: senza filtrare, un allenatore vedrebbe
   // tutte le squadre e finirebbe su elenchi di sedute vuoti, senza capire se

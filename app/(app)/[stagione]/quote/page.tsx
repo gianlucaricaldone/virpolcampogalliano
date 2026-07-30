@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { PannelloImporti } from '@/components/quote/PannelloImporti'
 import { TabellaQuote } from '@/components/quote/TabellaQuote'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { formattaEuro } from '@/lib/domain/denaro'
 import { importiPerSquadra, importoStagione, statoQuote } from '@/lib/repos/quote'
 import { elencaSquadre } from '@/lib/repos/squadre'
@@ -18,19 +18,29 @@ export default async function PaginaQuote({
 }) {
   const { stagione: codice } = await params
   const { squadra, aperte } = await searchParams
-  const stagione = await stagioneRichiesta(codice)
-
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
+  const [stagione, db, sessione] = await Promise.all([
+    stagioneRichiesta(codice),
+    supabaseServer(),
+    sessioneCorrente(),
+  ])
   // Le due tabelle finanziarie non hanno policy per l'allenatore: leggerebbe
   // zeri ovunque. Meglio non mostrargli affatto una pagina di sole cifre finte.
   if (sessione?.ruolo !== 'admin' && sessione?.ruolo !== 'dirigente') redirect(`/${codice}`)
 
-  const squadre = await elencaSquadre(db, stagione.id)
-  const righe = await statoQuote(db, stagione.id, {
-    squadraId: squadra || undefined,
-    soloNonSaldate: aperte === '1',
-  })
+  // Tre letture indipendenti, insieme. `importiPerSquadra` resta fuori perché
+  // ha bisogno degli id delle squadre: è l'unica vera dipendenza qui, quindi
+  // due ondate invece di cinque round trip in fila.
+  const [squadre, righe, importoDiStagione] = await Promise.all([
+    elencaSquadre(db, stagione.id),
+    statoQuote(db, stagione.id, {
+      squadraId: squadra || undefined,
+      soloNonSaldate: aperte === '1',
+    }),
+    importoStagione(db, stagione.id),
+  ])
+  const importiSquadre = Object.fromEntries(
+    await importiPerSquadra(db, squadre.map((s) => s.id)),
+  )
   const modificabile = stagione.stato === 'aperta'
 
   const totali = righe.reduce(
@@ -49,10 +59,8 @@ export default async function PaginaQuote({
       <PannelloImporti
         etichettaStagione={stagione.etichetta}
         squadre={squadre}
-        importoStagione={await importoStagione(db, stagione.id)}
-        importiSquadre={Object.fromEntries(
-          await importiPerSquadra(db, squadre.map((s) => s.id)),
-        )}
+        importoStagione={importoDiStagione}
+        importiSquadre={importiSquadre}
         azioneStagione={impostaImportoAzione.bind(null, codice, { stagioneId: stagione.id })}
         azioniSquadre={Object.fromEntries(
           squadre.map((s) => [s.id, impostaImportoAzione.bind(null, codice, { squadraId: s.id })]),

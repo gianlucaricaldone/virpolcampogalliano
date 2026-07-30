@@ -2,7 +2,8 @@
 
 import { useOptimistic, useState, useTransition } from 'react'
 import type { Risultato } from '@/lib/azioni'
-import { STATI_PRESENZA, type RigaPresenza, type StatoPresenza } from '@/lib/repos/presenze'
+import { STATI_PRESENZA } from '@/lib/costanti'
+import type { RigaPresenza, StatoPresenza } from '@/lib/repos/presenze'
 
 type Modifica = { tesseramentoId: string; stato: StatoPresenza | null }
 

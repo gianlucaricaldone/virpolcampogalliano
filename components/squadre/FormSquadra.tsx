@@ -3,7 +3,7 @@
 import { useActionState } from 'react'
 import type { Risultato } from '@/lib/azioni'
 import type { Squadra } from '@/lib/repos/squadre'
-import { CATEGORIE } from '@/lib/validation/squadra'
+import { CATEGORIE } from '@/lib/costanti'
 
 type Azione = (
   precedente: Risultato<null> | null,

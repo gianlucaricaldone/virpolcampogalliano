@@ -1,17 +1,8 @@
 import { z } from 'zod'
 import { facoltativo, facoltativoIntero } from '@/lib/validation/comune'
 
-/** Categorie federali, come suggerimento: la colonna resta testo libero. */
-export const CATEGORIE = [
-  'Piccoli Amici',
-  'Primi Calci',
-  'Pulcini',
-  'Esordienti',
-  'Giovanissimi',
-  'Allievi',
-  'Juniores',
-  'Prima squadra',
-] as const
+// CATEGORIE sta in `lib/costanti.ts`: la legge anche un form client, e
+// importarla da qui gli farebbe scaricare zod.
 
 export const schemaSquadra = z.object({
   nome: z.string().trim().min(1, 'Il nome è obbligatorio'),

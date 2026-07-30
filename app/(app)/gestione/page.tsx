@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
-import { getSessione } from '@/lib/auth/session'
-import { stagioneCorrente } from '@/lib/repos/stagioni'
-import { supabaseServer } from '@/lib/supabase/server'
+import { sessioneCorrente } from '@/lib/auth/corrente'
+import { stagioneCorrenteDa } from '@/lib/domain/stagione'
+import { caricaStagioni } from '../dati'
 
 /**
  * Punto di ingresso del backoffice. Non può stare in `(app)/page.tsx`:
@@ -15,11 +15,13 @@ import { supabaseServer } from '@/lib/supabase/server'
  * dovrebbe poter creare una stagione.
  */
 export default async function IngressoBackoffice() {
-  const db = await supabaseServer()
-  const corrente = await stagioneCorrente(db)
+  // `caricaStagioni` l'ha già chiesta il layout: la regola della stagione
+  // corrente si applica a quell'elenco invece di rifare la query. Resta
+  // l'unica implementazione, `stagioneCorrenteDa`.
+  const [stagioni, sessione] = await Promise.all([caricaStagioni(), sessioneCorrente()])
+  const corrente = stagioneCorrenteDa(stagioni)
   if (corrente) redirect(`/${corrente.codice}`)
 
-  const sessione = await getSessione(db)
   if (sessione?.ruolo === 'admin') redirect('/admin/stagioni')
 
   return (

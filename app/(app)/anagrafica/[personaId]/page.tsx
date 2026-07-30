@@ -4,7 +4,7 @@ import { DettagliPersona } from '@/components/persone/DettagliPersona'
 import { FormPersona } from '@/components/persone/FormPersona'
 import { PulsanteArchiviazione } from '@/components/persone/PulsanteArchiviazione'
 import { StoricoPersona } from '@/components/persone/StoricoPersona'
-import { getSessione } from '@/lib/auth/session'
+import { sessioneCorrente } from '@/lib/auth/corrente'
 import { storicoPersona } from '@/lib/repos/persone'
 import { supabaseServer } from '@/lib/supabase/server'
 import { aggiornaPersonaAzione } from '../actions'
@@ -18,13 +18,16 @@ export default async function PaginaPersona({
   const { personaId } = await params
   // Il layout ha già deciso il 404: qui la rilettura viene dalla cache di
   // richiesta e serve solo a restringere il tipo.
-  const persona = await caricaPersona(personaId)
+  // Lo storico non dipende dalla persona: gli basta l'id, che è nell'URL.
+  const db = await supabaseServer()
+  const [persona, sessione, storico] = await Promise.all([
+    caricaPersona(personaId),
+    sessioneCorrente(),
+    storicoPersona(db, personaId),
+  ])
   if (!persona) notFound()
 
-  const db = await supabaseServer()
-  const sessione = await getSessione(db)
   const puoScrivere = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
-  const storico = await storicoPersona(db, personaId)
 
   return (
     <section className="space-y-6">
