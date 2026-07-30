@@ -43,6 +43,34 @@ export async function elencaIncarichi(db: Db, squadraId: string): Promise<Incari
     )
 }
 
+/**
+ * Le squadre in cui una persona ha un incarico, nella stagione data.
+ *
+ * È l'equivalente applicativo di `app.mie_squadre()`, che vive nello schema
+ * `app` e non è raggiungibile da PostgREST. Serve alle pagine che devono
+ * mostrare a un allenatore le sue squadre e non tutte: `squadre_sel` è
+ * `using (true)` — i nomi delle squadre servono al sito pubblico — quindi
+ * senza questo filtro un allenatore vedrebbe elenchi su cui non può fare
+ * nulla.
+ */
+export async function squadreDiStaff(
+  db: Db,
+  personaId: string,
+  stagioneId: string,
+): Promise<{ id: string; nome: string }[]> {
+  const { data, error } = await db
+    .from('incarichi_staff')
+    .select('squadra:squadre!incarichi_squadra_di_stagione (id, nome)')
+    .eq('persona_id', personaId)
+    .eq('stagione_id', stagioneId)
+  if (error) throw error
+
+  // Una persona può avere più incarichi sulla stessa squadra (allenatore e
+  // dirigente di squadra): l'elenco va reso distinto.
+  const perId = new Map(data.map((r) => [r.squadra.id, r.squadra]))
+  return [...perId.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+}
+
 export async function creaIncarico(
   db: Db,
   dati: { personaId: string; stagioneId: string; squadraId: string; ruolo: RuoloStaff },
