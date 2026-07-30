@@ -136,6 +136,13 @@ export type Database = {
             referencedRelation: "v_quote"
             referencedColumns: ["tesseramento_id"]
           },
+          {
+            foreignKeyName: "pagamenti_quota_tesseramento_id_fkey"
+            columns: ["tesseramento_id"]
+            isOneToOne: false
+            referencedRelation: "v_visite"
+            referencedColumns: ["tesseramento_id"]
+          },
         ]
       }
       persone: {
@@ -245,6 +252,13 @@ export type Database = {
             referencedRelation: "v_quote"
             referencedColumns: ["tesseramento_id", "squadra_id"]
           },
+          {
+            foreignKeyName: "presenze_tesseramento_di_squadra"
+            columns: ["tesseramento_id", "squadra_id"]
+            isOneToOne: false
+            referencedRelation: "v_visite"
+            referencedColumns: ["tesseramento_id", "squadra_id"]
+          },
         ]
       }
       profili: {
@@ -347,6 +361,13 @@ export type Database = {
             columns: ["tesseramento_id"]
             isOneToOne: true
             referencedRelation: "v_quote"
+            referencedColumns: ["tesseramento_id"]
+          },
+          {
+            foreignKeyName: "quote_importi_tesseramento_id_fkey"
+            columns: ["tesseramento_id"]
+            isOneToOne: true
+            referencedRelation: "v_visite"
             referencedColumns: ["tesseramento_id"]
           },
         ]
@@ -563,6 +584,61 @@ export type Database = {
           stagione_id: string | null
           stato: string | null
           tesseramento_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tesseramenti_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "persone"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "squadre"
+            referencedColumns: ["id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_stagione_id_fkey"
+            columns: ["stagione_id"]
+            isOneToOne: false
+            referencedRelation: "stagioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_visite: {
+        Row: {
+          giorni_alla_scadenza: number | null
+          persona_id: string | null
+          squadra_id: string | null
+          stagione_id: string | null
+          stato_visita: string | null
+          tesseramento_id: string | null
+          visita_consegnata_il: string | null
+          visita_scadenza: string | null
+        }
+        Insert: {
+          giorni_alla_scadenza?: never
+          persona_id?: string | null
+          squadra_id?: string | null
+          stagione_id?: string | null
+          stato_visita?: never
+          tesseramento_id?: string | null
+          visita_consegnata_il?: string | null
+          visita_scadenza?: string | null
+        }
+        Update: {
+          giorni_alla_scadenza?: never
+          persona_id?: string | null
+          squadra_id?: string | null
+          stagione_id?: string | null
+          stato_visita?: never
+          tesseramento_id?: string | null
+          visita_consegnata_il?: string | null
+          visita_scadenza?: string | null
         }
         Relationships: [
           {

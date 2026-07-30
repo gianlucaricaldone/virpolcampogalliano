@@ -9,7 +9,9 @@ import {
   importoTesseramento,
   quotaPerTesseramento,
 } from '@/lib/repos/quote'
+import { PannelloVisita } from '@/components/visite/PannelloVisita'
 import { elencaSquadre } from '@/lib/repos/squadre'
+import { visitaPerTesseramento } from '@/lib/repos/visite'
 import { supabaseServer } from '@/lib/supabase/server'
 import {
   annullaPagamentoAzione,
@@ -18,7 +20,11 @@ import {
   rimuoviImportoAzione,
 } from '../../quote/actions'
 import { stagioneRichiesta } from '../../dati'
-import { aggiornaAssegnazioneAzione, rimuoviTesseramentoAzione } from '../actions'
+import {
+  aggiornaAssegnazioneAzione,
+  impostaVisitaAzione,
+  rimuoviTesseramentoAzione,
+} from '../actions'
 import { caricaTesserato } from './dati'
 
 export default async function PaginaTesseramento({
@@ -44,6 +50,9 @@ export default async function PaginaTesseramento({
   const pagamenti = staff ? await elencaPagamenti(db, tesseramentoId) : []
   const override = staff ? await importoTesseramento(db, tesseramentoId) : null
   const oggi = new Date().toISOString().slice(0, 10)
+  // La visita la vede anche l'allenatore: è il dato che gli dice chi può
+  // scendere in campo, e le sue policy su tesseramenti glielo consentono.
+  const visita = await visitaPerTesseramento(db, tesseramentoId)
 
   return (
     <section className="space-y-6">
@@ -83,6 +92,17 @@ export default async function PaginaTesseramento({
           </p>
         )}
       </div>
+
+      {visita && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">Visita medica</h2>
+          <PannelloVisita
+            visita={visita}
+            azione={impostaVisitaAzione.bind(null, codice, tesseramentoId)}
+            modificabile={puoScrivere}
+          />
+        </div>
+      )}
 
       {staff && quota && (
         <div className="space-y-3">

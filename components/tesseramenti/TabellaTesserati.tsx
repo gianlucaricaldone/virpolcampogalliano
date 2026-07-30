@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formattaData } from '@/lib/domain/data'
 import type { Tesserato } from '@/lib/repos/tesseramenti'
 
 export function TabellaTesserati({
@@ -36,7 +37,7 @@ export function TabellaTesserati({
                 {t.persona.cognome} {t.persona.nome}
               </Link>
             </td>
-            <td className="p-2 text-neutral-600">{t.persona.dataNascita}</td>
+            <td className="p-2 text-neutral-600">{formattaData(t.persona.dataNascita)}</td>
             {mostraSquadra && (
               <td className="p-2 text-neutral-600">
                 {t.squadra ? (

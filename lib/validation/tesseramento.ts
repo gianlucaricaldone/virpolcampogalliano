@@ -18,6 +18,15 @@ export const schemaTesseramento = z.object({
 /** Solo i campi modificabili dalla scheda: la persona e la stagione non cambiano. */
 export const schemaAssegnazione = schemaTesseramento.omit({ personaId: true })
 
+/**
+ * Le due date della visita. Entrambe facoltative: svuotare la scadenza è il
+ * modo di dire "questa visita non c'è più", e va ammesso.
+ */
+export const schemaVisita = z.object({
+  scadenza: facoltativo(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data non valida')),
+  consegnataIl: facoltativo(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data non valida')),
+})
+
 export const schemaIncarico = z.object({
   personaId: z.uuid('Scegli una persona dall\'anagrafica'),
   ruolo: z.enum(['allenatore', 'vice_allenatore', 'dirigente_squadra'], {

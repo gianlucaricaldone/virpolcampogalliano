@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formattaData } from '@/lib/domain/data'
 import type { Persona } from '@/lib/repos/persone'
 
 export function TabellaPersone({ persone }: { persone: Persona[] }) {
@@ -29,7 +30,7 @@ export function TabellaPersone({ persone }: { persone: Persona[] }) {
                 {p.cognome} {p.nome}
               </Link>
             </td>
-            <td className="p-2 text-neutral-600">{p.dataNascita}</td>
+            <td className="p-2 text-neutral-600">{formattaData(p.dataNascita)}</td>
             <td className="p-2 text-neutral-600">{p.codiceFiscale ?? '—'}</td>
             <td className="p-2 text-neutral-600">{p.telefono ?? p.email ?? '—'}</td>
             <td className="p-2">
