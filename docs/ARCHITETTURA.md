@@ -114,13 +114,26 @@ chiamabile via RPC.
 
 ### Il limite noto delle view
 
-`v_quote` e `v_presenze` sono `security_invoker = true`, quindi le RLS delle
-tabelle sottostanti valgono per il chiamante. Un allenatore non ha policy sulle due
-tabelle finanziarie, quindi legge zeri e `stato = 'saldato'` — dati fuorvianti, non
-un leak. Non è correggibile: non si può distinguere "nessun override configurato"
-da "non visibile a me". La guardia vera è il layer dei repository, che rifiuta la
-chiamata per i ruoli non autorizzati, e un test asserisce esplicitamente il
-comportamento a zeri.
+Le quattro view — `v_quote`, `v_visite`, `v_presenze`, `v_presenze_squadra` —
+sono `security_invoker = true`, quindi le RLS delle tabelle sottostanti valgono
+per il chiamante.
+
+Su `v_quote` questo ha una conseguenza: un allenatore non ha policy sulle due
+tabelle finanziarie, quindi legge zeri e `stato = 'saldato'` — dati fuorvianti,
+non un leak. Non è correggibile dentro la view: non si può distinguere "nessun
+override configurato" da "non visibile a me". La guardia è a monte, e non
+consiste nel filtrare le righe dopo averle chieste: **le pagine finanziarie non
+chiedono affatto il dato** a chi non può vederlo. `/[stagione]/quote` rimanda
+indietro l'allenatore, la scheda del tesserato non interroga `v_quote` per lui,
+e `scadenzeStagione` restituisce `null` — non un elenco vuoto — quando le quote
+non sono state richieste, così la pagina non scrive "nessuna quota aperta" a chi
+semplicemente non le vede. Un test asserisce comunque il comportamento a zeri,
+perché è ciò che accadrebbe se una pagina futura dimenticasse la guardia.
+
+È anche il motivo per cui lo stato della visita medica sta in una view sua e non
+in una colonna di `v_quote`: appoggiandosi alle tabelle finanziarie, un
+allenatore smetterebbe di vedere le visite dei propri giocatori — cioè il dato
+che gli dice chi può scendere in campo.
 
 ## Applicazione
 
@@ -146,8 +159,11 @@ aveva uno su un matcher che puntava ai percorsi sbagliati, quindi non scattava m
 e nulla lo segnalava. I ruoli si verificano nelle Server Action e nelle RLS.
 
 **I repository ricevono il client come primo argomento.** Non è stile: è ciò che
-permette di eseguire la stessa funzione come tre ruoli diversi nei test. Vedi il
-debito noto in `CLAUDE.md` — oggi quella capacità non è ancora sfruttata.
+permette di eseguire la stessa funzione come tre ruoli diversi nei test, ed è il
+modo in cui si verifica che un allenatore non legga le quote passando dal
+repository. `tests/db/harness-repo.ts` è ciò che rende usabile quella capacità:
+crea utenti Auth veri, li autentica con `signInWithPassword` e pulisce per id
+tracciati.
 
 **Le Server Action restituiscono `Risultato<T>`.** I fallimenti previsti diventano
 valori, i bug veri propagano a `error.tsx`. La distinzione conta: un bug che
@@ -159,7 +175,7 @@ Ora solo `invalid_credentials` diventa quel messaggio.
 
 ## Migration
 
-Sei file, un baseline unico. Il sistema vecchio ne aveva 47 con nove numeri
+Sette file, un baseline unico. Il sistema vecchio ne aveva 47 con nove numeri
 duplicati, cioè un ordine di applicazione ambiguo e uno schema non riproducibile.
 
 Finché il baseline non è deployato le correzioni si fanno **in place**: una
