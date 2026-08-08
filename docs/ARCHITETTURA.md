@@ -112,6 +112,13 @@ somiglia a niente.
 Lo schema `app` **non** è esposto nell'API, quindi nessuna di quelle funzioni è
 chiamabile via RPC.
 
+`public.elenco_utenti()` è l'unica funzione `SECURITY DEFINER` esposta
+nell'API. Il controllo del ruolo è dentro di lei e usa `is distinct from`:
+`app.mio_ruolo()` è NULL senza sessione, e con `<>` il confronto darebbe NULL,
+l'IF non scatterebbe e la funzione restituirebbe l'elenco intero. La revoca
+dell'EXECUTE che Postgres concede a PUBLIC è ciò che tiene fuori `anon`, e ha
+un test suo.
+
 ### Il limite noto delle view
 
 Le quattro view — `v_quote`, `v_visite`, `v_presenze`, `v_presenze_squadra` —

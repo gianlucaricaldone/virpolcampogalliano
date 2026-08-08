@@ -121,6 +121,12 @@ policy. Una regola ESLint vieta di importare `lib/supabase/admin` **e**
 `scripts/env` da `app/`, `components/` e `lib/repos/`, con fixture sotto test —
 se la regola smette di scattare, un test diventa rosso.
 
+L'unica eccezione è `app/(app)/admin/utenti/actions.ts`, che crea gli account
+in `auth.users` — cosa che la chiave anon non può fare. È un file solo, non una
+cartella, così un `'use client'` vicino non può trascinare la chiave nel
+bundle. Su Vercel serve quindi `SUPABASE_SERVICE_ROLE_KEY` fra le variabili
+d'ambiente.
+
 ## Architettura
 
 **Si legge nei Server Component, si scrive nelle Server Action.** Il browser non
@@ -209,9 +215,6 @@ della macchina, e vicino a mezzanotte i due differiscono di un giorno.
   vecchio.
 
 ## Debito noto
-
-**Nessuna gestione degli utenti applicativi dal backoffice.** I profili si creano
-con `seed:dev` o a mano sul database. Serve prima del cutover.
 
 **Nessun export CSV delle statistiche.** Il piano 2 lo dava per facoltativo.
 
