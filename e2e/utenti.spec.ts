@@ -100,6 +100,10 @@ test('l\'admin non può disattivare sé stesso', async ({ page }) => {
   await accedi(page, 'admin@virpol.test')
   await page.goto('/admin/utenti')
   const propria = page.getByRole('row').filter({ hasText: 'admin@virpol.test' })
+  // Senza questa, una regressione che manda la pagina altrove (login, 404,
+  // 500) lascerebbe "propria" a zero righe: il conteggio sotto sarebbe zero
+  // comunque, e il test direbbe verde senza aver controllato nulla.
+  await expect(propria).toBeVisible()
   await expect(propria.getByRole('button', { name: 'Disattiva' })).toHaveCount(0)
 })
 

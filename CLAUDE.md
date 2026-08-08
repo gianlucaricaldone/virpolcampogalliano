@@ -22,22 +22,26 @@ Documenti di riferimento, in quell'altro repo:
 
 Se una decisione qui ti sembra arbitraria, la ragione è in uno di quei tre.
 
-## Stato: fondamenta e funzionalità cardine, complete
+## Stato: fondamenta, funzionalità cardine e gestione utenti, complete
 
 La fase 1 ha costruito le fondamenta — schema, autorizzazione, autenticazione,
 shell del backoffice. Il piano 2 (`docs/superpowers/plans/2026-07-29-funzionalita-cardine.md`)
-ha portato a schermo le sette funzionalità richieste. Quel che resta:
+ha portato a schermo le sette funzionalità richieste. Il piano
+`docs/superpowers/plans/2026-07-30-gestione-utenti.md` ha aggiunto la
+schermata `/admin/utenti`: un admin crea, disattiva e reimposta la password
+degli utenti applicativi dal backoffice, senza toccare il database a mano.
+Quel che resta:
 
 | Fase | Contenuto | Stato |
 |---|---|---|
 | 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
-| — | admin utenti (creazione profili dal backoffice) | non fatta |
+| — | admin utenti (creazione profili dal backoffice) | fatta, piano `gestione-utenti` |
 | 5 | sito pubblico | da fare |
 | 6 | script di migrazione dati e cutover | da fare |
 
-Le sette funzionalità richieste sono a schermo. Resta fuori dal piano 2 la
-gestione degli utenti applicativi dal backoffice: i profili si creano con
-`seed:dev` o a mano.
+Le sette funzionalità richieste e la gestione utenti dal backoffice sono a
+schermo. Restano da fare il sito pubblico e lo script di migrazione con il
+cutover (fasi 5 e 6).
 
 ## Stack
 
