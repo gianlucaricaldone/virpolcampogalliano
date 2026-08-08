@@ -20,8 +20,20 @@ describe('elenco_utenti', () => {
   it('nega a un dirigente e a un allenatore', () =>
     inRollback(async (c) => {
       const dirigente = await creaUtenteAuth(c, { ruolo: 'dirigente' })
+      // Un savepoint attorno al primo diniego: la funzione lo respinge con una
+      // RAISE EXCEPTION che aborta la transazione, e senza risalire fin qui il
+      // secondo controllo (allenatore) troverebbe "current transaction is
+      // aborted" invece del diniego che sta verificando.
+      await c.query('savepoint diniego_dirigente')
       await expect(
         asUser(c, dirigente, () => c.query('select * from public.elenco_utenti()')),
+      ).rejects.toThrow(/amministratore/i)
+      await c.query('rollback to savepoint diniego_dirigente')
+
+      const persona = await creaPersona(c, { nome: 'Allenatore', cognome: 'Prova' })
+      const allenatore = await creaUtenteAuth(c, { ruolo: 'allenatore', personaId: persona })
+      await expect(
+        asUser(c, allenatore, () => c.query('select * from public.elenco_utenti()')),
       ).rejects.toThrow(/amministratore/i)
     }))
 
