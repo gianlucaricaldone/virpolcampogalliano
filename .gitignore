@@ -50,3 +50,6 @@ next-env.d.ts
 /.claude/skills/
 # Permessi e preferenze della singola macchina, non del progetto.
 /.claude/settings.local.json
+
+# worktree di Claude Code
+.claude/worktrees/
