@@ -770,7 +770,19 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      elenco_utenti: {
+        Args: never
+        Returns: {
+          attivo: boolean
+          created_at: string
+          email: string
+          id: string
+          persona_cognome: string
+          persona_id: string
+          persona_nome: string
+          ruolo: Database["public"]["Enums"]["ruolo_app"]
+        }[]
+      }
     }
     Enums: {
       metodo_pagamento: "contanti" | "bonifico" | "altro"
