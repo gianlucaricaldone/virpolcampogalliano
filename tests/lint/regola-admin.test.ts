@@ -64,4 +64,16 @@ describe('regola sul client service role', () => {
     expect(esito.codice).not.toBe(0)
     expect(esito.output).toMatch(/service role/i)
   }, TIMEOUT_SPAWN)
+
+  it('rifiuta un import di lib/supabase/servizio sotto app/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/app/importa-servizio.tsx')
+    expect(esito.codice).not.toBe(0)
+    expect(esito.output).toMatch(/service role/i)
+  }, TIMEOUT_SPAWN)
+
+  it('rifiuta un import relativo di supabase/servizio dentro lib/repos/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/lib/repos/importa-servizio.ts')
+    expect(esito.codice).not.toBe(0)
+    expect(esito.output).toMatch(/service role/i)
+  }, TIMEOUT_SPAWN)
 })

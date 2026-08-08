@@ -18,6 +18,11 @@ const messaggioEnvScript =
   'scripts/, altrimenti produce un client che ignora ogni RLS quanto ' +
   'lib/supabase/admin.'
 
+const messaggioServizio =
+  'lib/supabase/servizio usa la chiave service role e ignora ogni RLS: ' +
+  'può essere importato solo da app/(app)/admin/utenti/actions.ts, che crea ' +
+  'gli utenti applicativi.'
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
@@ -44,7 +49,28 @@ const eslintConfig = [
         }, {
           regex: '(^|/)scripts/env$',
           message: messaggioEnvScript,
+        }, {
+          regex: '(^|/)supabase/servizio$',
+          message: messaggioServizio,
         }],
+      }],
+    },
+  },
+  {
+    // Unica eccezione al divieto, e la più stretta possibile: un file solo,
+    // non una cartella. Un 'use client' dentro app/(app)/admin/utenti/ che
+    // importasse il client di servizio spedirebbe la chiave nel bundle del
+    // browser; con l'eccezione su questo singolo percorso non può accadere.
+    // Il lato permesso non ha una fixture: lo dimostra il file vero, perché
+    // se l'eccezione smettesse di funzionare `npm run lint` fallirebbe su di
+    // lui. Vedi docs/superpowers/specs/2026-07-30-gestione-utenti-design.md.
+    files: ['app/(app)/admin/utenti/actions.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { regex: '(^|/)supabase/admin$', message: messaggioAdmin },
+          { regex: '(^|/)scripts/env$', message: messaggioEnvScript },
+        ],
       }],
     },
   },
