@@ -25,6 +25,10 @@ export async function elencaUtenti(db: Db): Promise<Utente[]> {
     email: r.email,
     ruolo: r.ruolo,
     attivo: r.attivo,
+    // I tipi generati da elenco_utenti() dichiarano questi tre campi non
+    // nullable, ma la RPC li produce con un left join: per un profilo senza
+    // persona arrivano NULL a runtime nonostante il tipo. È un limite del
+    // codegen, non un'informazione su cui affidarsi: la guardia resta.
     persona:
       r.persona_id && r.persona_cognome && r.persona_nome
         ? { id: r.persona_id, cognome: r.persona_cognome, nome: r.persona_nome }

@@ -56,8 +56,18 @@ export async function creaUtenteAzione(
     } catch (e) {
       // Compensazione. Un profilo rifiutato lascerebbe in auth.users un utente
       // che non può entrare ma tiene occupata l'email: il secondo tentativo
-      // fallirebbe con "email già registrata" e nessuno capirebbe perché.
-      await servizio.auth.admin.deleteUser(creato.user.id)
+      // fallirebbe con "email già registrata" e nessuno capirebbe perché. Se
+      // anche la compensazione fallisce, l'errore originale di creaProfilo è
+      // comunque quello utile all'admin: si registra il guasto di deleteUser
+      // (l'utente fantasma va rimosso a mano) e si rilancia `e`, non il nuovo.
+      try {
+        await servizio.auth.admin.deleteUser(creato.user.id)
+      } catch (erroreCompensazione) {
+        console.error(
+          `utenti.crea: compensazione fallita, utente fantasma in auth.users id=${creato.user.id}`,
+          erroreCompensazione,
+        )
+      }
       throw e
     }
 
