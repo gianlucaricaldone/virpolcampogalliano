@@ -31,6 +31,7 @@ export function NavBackoffice({ ruolo, stagioni }: { ruolo: RuoloApp; stagioni: 
         )}
         <Link href="/anagrafica">Anagrafica</Link>
         {ruolo === 'admin' && <Link href="/admin/stagioni">Stagioni</Link>}
+        {ruolo === 'admin' && <Link href="/admin/utenti">Utenti</Link>}
         <form action="/logout" method="post" className="ml-auto">
           <button type="submit" className="text-neutral-600 underline">Esci</button>
         </form>
