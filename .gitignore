@@ -53,3 +53,6 @@ next-env.d.ts
 
 # worktree di Claude Code
 .claude/worktrees/
+
+# Il report di migrazione contiene nomi veri e password iniziali.
+/scripts/report-migrazione.md

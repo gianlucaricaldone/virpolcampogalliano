@@ -37,11 +37,14 @@ Quel che resta:
 | 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
 | — | admin utenti (creazione profili dal backoffice) | fatta, piano `gestione-utenti` |
 | 5 | sito pubblico | da fare |
-| 6 | script di migrazione dati e cutover | da fare |
+| 6 | script di migrazione dati e cutover | script fatto e provato in dry-run; cutover dopo la fase 5 |
 
 Le sette funzionalità richieste e la gestione utenti dal backoffice sono a
-schermo. Restano da fare il sito pubblico e lo script di migrazione con il
-cutover (fasi 5 e 6).
+schermo. Resta da fare il sito pubblico (fase 5). Lo script di migrazione
+(`npm run migra`) è scritto, provato in dry-run e in esecuzione reale contro
+il database locale (due volte, per l'idempotenza) — vedi Debito noto per un
+difetto vero trovato nei dati del vecchio sistema, non nello script, che
+riguarda il cutover.
 
 ## Stack
 
@@ -60,6 +63,7 @@ sembra funzionante e non protegge nulla.
 npx supabase start          # richiede Docker attivo
 npm run db:reset            # applica le 7 migration da zero
 npm run seed:dev            # 3 utenti + stagioni di prova
+npm run migra -- --quota 2024-25=350   # dry-run; --esegui per scrivere. Vedi la spec di migrazione.
 npm run dev                 # http://localhost:3000
 ```
 
@@ -219,6 +223,22 @@ della macchina, e vicino a mezzanotte i due differiscono di un giorno.
   vecchio.
 
 ## Debito noto
+
+**Nel vecchio sistema, nessun tesserato ha una data di nascita.** Il
+dry-run e il run reale contro i dati veri (188 tesserati, 3067 presenze) lo
+mostrano senza ambiguità: `data_nascita` e `codice_fiscale` sono `null` per
+tutti i 188, in ogni categoria. `persone.data_nascita` è `NOT NULL` nel nuovo
+schema e questo script non inventa mai una data (stesso principio già
+applicato agli allenatori senza persona corrispondente): il risultato è che
+**nessuna persona, tesseramento, pagamento, seduta o presenza migra** finché
+quel campo resta vuoto nel vecchio sistema — solo stagioni, quote, squadre e
+gli account staff che non richiedono una persona (6 su 25, tutti admin)
+migrano oggi. È una decisione per la società, non per lo script: prima del
+cutover va deciso se backfillare le date di nascita nel vecchio sistema (la
+sola via che non inventa nulla) o accettare che l'anagrafica si ricostruisca
+a mano dal backoffice nuovo. Il report (`scripts/report-migrazione.md`,
+gitignorato) elenca ogni tesserato coinvolto con l'anomalia
+`tesserato_senza_data_nascita`.
 
 **Nessun export CSV delle statistiche.** Il piano 2 lo dava per facoltativo.
 

@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > lib/db/types.ts",
-    "seed:dev": "npx tsx scripts/seed-dev.ts"
+    "seed:dev": "npx tsx scripts/seed-dev.ts",
+    "migra": "npx tsx scripts/migra.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
