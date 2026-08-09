@@ -8,6 +8,7 @@ import {
   fondiTesseramenti,
   NOTA_RICOSTRUITO,
   ricostruisciPagamenti,
+  raggruppaPresenze,
 } from '@/scripts/migrazione/trasforma'
 
 const STAGIONE = {
@@ -323,5 +324,81 @@ describe('ricostruisciPagamenti', () => {
 
   it('la nota fissa è esportata: il chiamante la scrive su ogni pagamento', () => {
     expect(NOTA_RICOSTRUITO).toBe('importo ricostruito dalla migrazione')
+  })
+})
+
+const PRESENZA = {
+  id: 'p-1',
+  tesserato_id: 't-1',
+  squadra_id: 'sq-1',
+  stagione_id: 'st-1',
+  data: '2024-10-07',
+  tipo: 'allenamento',
+  presente: true,
+  note: null,
+}
+const STAGIONE_PER_SQUADRA = new Map([['sq-1', 'st-1']])
+
+describe('raggruppaPresenze', () => {
+  it('stessa squadra e stessa data diventano una seduta con le sue presenze', () => {
+    const seconda = { ...PRESENZA, id: 'p-2', tesserato_id: 't-1b', presente: false }
+    const perId = new Map([['t-1', 'cf:A'], ['t-1b', 'cf:B']])
+    const { sedute, anomalie } = raggruppaPresenze([PRESENZA, seconda], perId, STAGIONE_PER_SQUADRA)
+    expect(anomalie).toEqual([])
+    expect(sedute).toEqual([{
+      squadraVecchiaId: 'sq-1',
+      stagioneVecchiaId: 'st-1',
+      data: '2024-10-07',
+      presenze: [
+        { personaChiave: 'cf:A', stato: 'presente', note: null },
+        { personaChiave: 'cf:B', stato: 'assente', note: null },
+      ],
+    }])
+  })
+
+  it('date diverse danno sedute diverse', () => {
+    const altra = { ...PRESENZA, id: 'p-2', data: '2024-10-09' }
+    const perId = new Map([['t-1', 'cf:A']])
+    const { sedute } = raggruppaPresenze([PRESENZA, altra], perId, STAGIONE_PER_SQUADRA)
+    expect(sedute).toHaveLength(2)
+  })
+
+  it('partite, tornei ed eventi sono scartati e contati, senza anomalia', () => {
+    const partita = { ...PRESENZA, id: 'p-2', tipo: 'partita' }
+    const perId = new Map([['t-1', 'cf:A']])
+    const { sedute, scartateNonAllenamento } = raggruppaPresenze(
+      [PRESENZA, partita], perId, STAGIONE_PER_SQUADRA,
+    )
+    expect(sedute).toHaveLength(1)
+    expect(scartateNonAllenamento).toBe(1)
+  })
+
+  it('una presenza senza squadra è anomalia: non esiste seduta a cui darla', () => {
+    const orfana = { ...PRESENZA, id: 'p-3', squadra_id: null }
+    const perId = new Map([['t-1', 'cf:A']])
+    const { sedute, anomalie } = raggruppaPresenze([orfana], perId, STAGIONE_PER_SQUADRA)
+    expect(sedute).toEqual([])
+    expect(anomalie[0].tipo).toBe('presenza_senza_squadra')
+  })
+
+  it('una presenza la cui squadra non è migrata è anomalia', () => {
+    const perId = new Map([['t-1', 'cf:A']])
+    const { anomalie } = raggruppaPresenze([PRESENZA], perId, new Map())
+    expect(anomalie[0].tipo).toBe('presenza_squadra_non_migrata')
+  })
+
+  it('duplicati stesso tesserato/seduta: vince la prima riga, la seconda è anomalia', () => {
+    const doppione = { ...PRESENZA, id: 'p-2', presente: false }
+    const perId = new Map([['t-1', 'cf:A']])
+    const { sedute, anomalie } = raggruppaPresenze([PRESENZA, doppione], perId, STAGIONE_PER_SQUADRA)
+    expect(sedute[0].presenze).toHaveLength(1)
+    expect(sedute[0].presenze[0].stato).toBe('presente')
+    expect(anomalie[0].tipo).toBe('presenza_duplicata')
+  })
+
+  it('presenze di tesserati non migrati sono ignorate: hanno già la loro anomalia', () => {
+    const { sedute, anomalie } = raggruppaPresenze([PRESENZA], new Map(), STAGIONE_PER_SQUADRA)
+    expect(sedute).toEqual([])
+    expect(anomalie).toEqual([])
   })
 })

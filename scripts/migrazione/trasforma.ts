@@ -1,4 +1,4 @@
-import type { Anomalia, VecchiaStagione, VecchioTesserato, VecchioUtente, VecchiDatiStagionali, VecchioTesseramentoSquadra } from './tipi'
+import type { Anomalia, VecchiaStagione, VecchioTesserato, VecchioUtente, VecchiDatiStagionali, VecchioTesseramentoSquadra, VecchiaPresenza } from './tipi'
 
 /**
  * '2024/2025' → '2024-25'. Solo nomi nella forma AAAA/AAAA con anni
@@ -369,4 +369,77 @@ export function ricostruisciPagamenti(
     })
   }
   return { pagamenti, anomalie }
+}
+
+export type NuovaSeduta = {
+  squadraVecchiaId: string
+  stagioneVecchiaId: string
+  data: string
+  presenze: { personaChiave: string; stato: 'presente' | 'assente'; note: string | null }[]
+}
+
+/**
+ * Il vecchio schema ha presenze sciolte; il nuovo ha la seduta come entità.
+ * (squadra, data) → una seduta. La stagione arriva dalla squadra migrata,
+ * non dalla stagione_id della presenza, che è nullable e a volte manca.
+ */
+export function raggruppaPresenze(
+  presenze: VecchiaPresenza[],
+  tesseratiPerId: Map<string, string>,
+  stagionePerSquadraVecchia: Map<string, string>,
+): { sedute: NuovaSeduta[]; scartateNonAllenamento: number; anomalie: Anomalia[] } {
+  const anomalie: Anomalia[] = []
+  let scartateNonAllenamento = 0
+  const perSeduta = new Map<string, NuovaSeduta>()
+
+  for (const p of presenze) {
+    if (p.tipo !== 'allenamento') {
+      scartateNonAllenamento += 1
+      continue
+    }
+    const personaChiave = tesseratiPerId.get(p.tesserato_id)
+    if (!personaChiave) continue // tesserato già anomalo o scartato altrove
+    if (!p.squadra_id) {
+      anomalie.push({
+        tipo: 'presenza_senza_squadra',
+        id: p.id,
+        chiave: `${personaChiave} @ ${p.data}`,
+        dettaglio: 'presenza di allenamento senza squadra: nessuna seduta possibile, sistemare o accettare la perdita',
+      })
+      continue
+    }
+    const stagioneVecchiaId = stagionePerSquadraVecchia.get(p.squadra_id)
+    if (!stagioneVecchiaId) {
+      anomalie.push({
+        tipo: 'presenza_squadra_non_migrata',
+        id: p.id,
+        chiave: `${personaChiave} @ ${p.data}`,
+        dettaglio: `la squadra '${p.squadra_id}' non è fra quelle migrate`,
+      })
+      continue
+    }
+
+    const chiaveSeduta = `${p.squadra_id}|${p.data}`
+    let seduta = perSeduta.get(chiaveSeduta)
+    if (!seduta) {
+      seduta = { squadraVecchiaId: p.squadra_id, stagioneVecchiaId, data: p.data, presenze: [] }
+      perSeduta.set(chiaveSeduta, seduta)
+    }
+    if (seduta.presenze.some((r) => r.personaChiave === personaChiave)) {
+      anomalie.push({
+        tipo: 'presenza_duplicata',
+        id: p.id,
+        chiave: `${personaChiave} @ ${p.data}`,
+        dettaglio: 'due righe per lo stesso tesserato nella stessa seduta: tenuta la prima',
+      })
+      continue
+    }
+    seduta.presenze.push({
+      personaChiave,
+      stato: p.presente ? 'presente' : 'assente',
+      note: p.note,
+    })
+  }
+
+  return { sedute: [...perSeduta.values()], scartateNonAllenamento, anomalie }
 }
