@@ -10,7 +10,7 @@ export type Tesserato = {
   visitaScadenza: string | null
   visitaConsegnataIl: string | null
   note: string | null
-  persona: { id: string; cognome: string; nome: string; dataNascita: string }
+  persona: { id: string; cognome: string; nome: string; dataNascita: string | null }
   squadra: { id: string; nome: string } | null
 }
 
@@ -29,7 +29,7 @@ type Riga = {
   visita_scadenza: string | null
   visita_consegnata_il: string | null
   note: string | null
-  persona: { id: string; cognome: string; nome: string; data_nascita: string }
+  persona: { id: string; cognome: string; nome: string; data_nascita: string | null }
   squadra: { id: string; nome: string } | null
 }
 

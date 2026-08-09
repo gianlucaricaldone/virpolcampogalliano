@@ -16,9 +16,11 @@ const CODICE_FISCALE = /^[A-Z0-9]{16}$/
 export const schemaPersona = z.object({
   nome: z.string().trim().min(1, 'Il nome è obbligatorio'),
   cognome: z.string().trim().min(1, 'Il cognome è obbligatorio'),
-  dataNascita: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'La data di nascita è obbligatoria'),
+  // Facoltativa (decisione del committente, 2026-08-09): lo storico reale
+  // non la porta sempre — si completa col tempo dal backoffice.
+  dataNascita: facoltativo(
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato data non valido'),
+  ),
   codiceFiscale: facoltativo(
     z.string().regex(CODICE_FISCALE, 'Il codice fiscale ha 16 caratteri'),
     true,

@@ -91,7 +91,6 @@ export function FormPersona({
           tipo="date"
           valore={persona?.dataNascita}
           errore={campi?.dataNascita}
-          obbligatorio
           ampiezza="sm:col-span-2"
         />
         <Campo

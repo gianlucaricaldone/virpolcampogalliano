@@ -160,7 +160,7 @@ export type Database = {
           codice_fiscale: string | null
           cognome: string
           created_at: string
-          data_nascita: string
+          data_nascita: string | null
           email: string | null
           id: string
           indirizzo: string | null
@@ -177,7 +177,7 @@ export type Database = {
           codice_fiscale?: string | null
           cognome: string
           created_at?: string
-          data_nascita: string
+          data_nascita?: string | null
           email?: string | null
           id?: string
           indirizzo?: string | null
@@ -194,7 +194,7 @@ export type Database = {
           codice_fiscale?: string | null
           cognome?: string
           created_at?: string
-          data_nascita?: string
+          data_nascita?: string | null
           email?: string | null
           id?: string
           indirizzo?: string | null

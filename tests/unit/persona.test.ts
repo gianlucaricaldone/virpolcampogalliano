@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { schemaPersona } from '@/lib/validation/persona'
 
-const minimo = { nome: 'Mario', cognome: 'Rossi', dataNascita: '2012-05-14' }
+const minimo = { nome: 'Mario', cognome: 'Rossi' }
 
 function analizza(dati: Record<string, unknown>) {
   return schemaPersona.safeParse({ ...minimo, ...dati })
@@ -11,7 +11,7 @@ describe('schemaPersona', () => {
   it('accetta i soli campi obbligatori', () => {
     const esito = analizza({})
     expect(esito.success).toBe(true)
-    expect(esito.data).toMatchObject({ nome: 'Mario', cognome: 'Rossi' })
+    expect(esito.data).toMatchObject({ nome: 'Mario', cognome: 'Rossi', dataNascita: null })
   })
 
   it('rifiuta nome e cognome vuoti', () => {
@@ -19,8 +19,11 @@ describe('schemaPersona', () => {
     expect(analizza({ cognome: '' }).success).toBe(false)
   })
 
-  it('rifiuta una data di nascita assente o malformata', () => {
-    expect(analizza({ dataNascita: '' }).success).toBe(false)
+  it('accetta la data di nascita assente (facoltativa), ma rifiuta una malformata', () => {
+    const vuota = analizza({ dataNascita: '' })
+    expect(vuota.success).toBe(true)
+    expect(vuota.data?.dataNascita).toBeNull()
+    expect(analizza({ dataNascita: '2012-05-14' }).data?.dataNascita).toBe('2012-05-14')
     expect(analizza({ dataNascita: '14/05/2012' }).success).toBe(false)
   })
 
