@@ -28,7 +28,7 @@ export function FormStagione() {
         {campi?.dataFine && <p role="alert" className="mt-1 text-sm text-red-700">{campi.dataFine}</p>}
       </div>
       <button type="submit" disabled={inCorso}
-              className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60">
+              className="bottone">
         {inCorso ? 'Creazione…' : 'Crea stagione'}
       </button>
       {esito && !esito.ok && !campi && (

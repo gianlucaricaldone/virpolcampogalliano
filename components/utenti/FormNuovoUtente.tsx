@@ -84,7 +84,7 @@ export function FormNuovoUtente({
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={inCorso}
-                  className="rounded bg-neutral-900 px-3 py-2 text-sm text-white disabled:opacity-60">
+                  className="bottone">
             {inCorso ? 'Creazione…' : 'Crea utente'}
           </button>
           {esito && !esito.ok && !campi && (

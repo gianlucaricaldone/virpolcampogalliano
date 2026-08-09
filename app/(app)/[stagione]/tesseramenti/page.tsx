@@ -40,7 +40,7 @@ export default async function PaginaTesseramenti({
         {puoScrivere && (
           <Link
             href={`/${codice}/tesseramenti/nuovo`}
-            className="inline-flex min-h-10 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700"
+            className="bottone"
           >
             Tessera una persona
           </Link>

@@ -25,7 +25,7 @@ export default async function PaginaAnagrafica({
         {puoScrivere && (
           <Link
             href="/anagrafica/nuova"
-            className="inline-flex min-h-10 items-center rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700"
+            className="bottone"
           >
             Nuova persona
           </Link>

@@ -1,8 +1,51 @@
 @import "tailwindcss";
 
+/*
+ * I colori sono quelli dello stemma in public/images/home/virpol-logo.png, non
+ * un blu e un giallo scelti a occhio: giallo limone, blu ardesia desaturato,
+ * contorni neri spessi. Il blu della società NON è un royal blue — è un
+ * periwinkle spento, e prenderlo saturo tradirebbe il marchio.
+ */
+@theme {
+  --colore-giallo: #f4ec1c;
+  --colore-giallo-cupo: #d9d20f;
+  --colore-blu: #4c5a9c;
+  --colore-blu-scuro: #3b4780;
+  --colore-nero: #14141a;
+
+  /*
+   * La scala neutra di Tailwind è rimappata invece di essere sostituita nei
+   * componenti: `text-neutral-600` compare 101 volte, `bg-neutral-900` 18,
+   * `border` 54. Ridefinire il significato dei token che il codice già usa
+   * riveste l'intero backoffice da un punto solo, e lascia i componenti a
+   * parlare di gerarchia (primario, secondario, tenue) invece di colori.
+   *
+   * Tutta la scala vira al caldo sulla carta e al blu sull'inchiostro: due
+   * grigi neutri accanto al giallo dello stemma lo fanno sembrare sporco.
+   */
+  --color-neutral-50: #faf7ef;
+  --color-neutral-100: #f2ecdf;
+  --color-neutral-200: #ded6c6;
+  --color-neutral-300: #c2b9a6;
+  --color-neutral-400: #8b8674;
+  --color-neutral-500: #6b6a5c;
+  --color-neutral-600: #4a4f6b;
+  --color-neutral-700: #2b3460;
+  --color-neutral-800: #252d52;
+  --color-neutral-900: #3b4780;
+
+  /* Spigoli quasi vivi: lo stemma non ha un angolo morbido. */
+  --radius-sm: 2px;
+  --radius: 3px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 5px;
+}
+
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-archivo);
+  --font-display: var(--font-archivo-black);
+  --font-mono: ui-monospace, "SFMono-Regular", monospace;
 }
 
 /*
@@ -13,17 +56,21 @@
  *
  * Il tema chiaro non è un default preso per abitudine, è la scena d'uso: questo
  * backoffice si compila a bordo campo, col telefono in mano e il sole addosso,
- * dove uno sfondo chiaro si legge e uno scuro riflette. Prima c'era un blocco
- * `prefers-color-scheme: dark` che scuriva il solo body: dentro lo shell non si
- * vedeva, perché le pagine impongono `bg-neutral-50`, ma sulla home pubblica e
- * su error.tsx — che sfondo non ne mettono — lasciava testi `neutral-600` su
- * nero. Una dichiarazione che non copriva nulla e rompeva le due pagine
- * scoperte.
+ * dove uno sfondo chiaro si legge e uno scuro riflette. Per la stessa ragione
+ * la trama della carta qui sotto è appena percettibile: una texture che si
+ * vede in ufficio diventa sporco illeggibile sotto il sole.
  */
 body {
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  background: #ffffff;
-  color: #171717;
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  background-color: var(--color-neutral-50);
+  color: var(--colore-nero);
+  /* Reticolo diagonale da carta da disegno, 2% di nero: dà superficie senza
+     togliere contrasto al testo. */
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(20, 20, 26, 0.022) 0 1px,
+    transparent 1px 7px
+  );
 }
 
 @layer base {
@@ -31,11 +78,11 @@ body {
    * IL difetto grafico di questo progetto, e si vedeva ovunque.
    *
    * Tailwind 4 ha cambiato il reset: `border: 0 solid` senza colore, quindi
-   * ogni bordo eredita `currentColor` — il colore del testo, qui #171717. In
-   * Tailwind 3 la stessa classe `border` dava gray-200. Il codice è scritto
-   * con le abitudini della 3, e il risultato era che card, campi, tabelle e
-   * pulsanti avevano tutti un bordo nero pieno: nessuna gerarchia, e il bordo
-   * di un campo vuoto pesava quanto il pulsante primario.
+   * ogni bordo eredita `currentColor` — il colore del testo. In Tailwind 3 la
+   * stessa classe `border` dava gray-200. Il codice è scritto con le abitudini
+   * della 3, e il risultato era che card, campi, tabelle e pulsanti avevano
+   * tutti un bordo nero pieno: nessuna gerarchia, e il bordo di un campo vuoto
+   * pesava quanto il pulsante primario.
    */
   *,
   ::after,
@@ -56,10 +103,136 @@ body {
   textarea {
     background-color: #fff;
     min-height: 2.5rem;
+    /* Contorno più marcato del divisorio: un campo è una cosa in cui si
+       scrive, e deve sembrarlo prima di essere toccato. */
+    border-width: 1.5px;
+    border-color: var(--color-neutral-300);
+  }
+
+  input:not([type='checkbox']):not([type='radio']):hover,
+  select:hover,
+  textarea:hover {
+    border-color: var(--colore-blu);
   }
 
   textarea {
     min-height: 4.5rem;
+  }
+
+  /*
+   * I titoli sono la voce dello stemma: condensati, maiuscoli, spaziati come
+   * la scritta VIRPOL sull'arco superiore. La barra gialla a sinistra è il
+   * segnaposto della pagina — un solo accento per schermata, così conta — e
+   * riprende la divisione verticale dello scudetto, giallo a sinistra e blu a
+   * destra.
+   *
+   * A sinistra e non sottolineata: come sottolineatura si infilava fra il
+   * titolo e il sottotitolo delle pagine di dettaglio ("2013/2014" seguito da
+   * "Esordienti U13 · annata 2025"), separando due righe che vanno lette
+   * insieme. Un accento verticale non dipende da cosa segue il titolo.
+   */
+  h1 {
+    font-family: var(--font-archivo-black), var(--font-archivo), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: var(--colore-nero);
+    line-height: 1.15;
+    padding-left: 0.7rem;
+    border-left: 9px solid var(--colore-giallo);
+  }
+
+  h2,
+  h3 {
+    font-family: var(--font-archivo-black), var(--font-archivo), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.045em;
+    color: var(--colore-blu-scuro);
+  }
+
+  /*
+   * Intestazioni di tabella da tabellone: maiuscoletto spaziato su filetto
+   * nero. Il filetto spesso sotto l'header separa i dati dalle etichette molto
+   * meglio del grigio chiaro di prima, che a bordo campo sparisce.
+   */
+  thead th {
+    font-family: var(--font-archivo-black), var(--font-archivo), sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--colore-blu-scuro);
+    background-color: var(--color-neutral-100);
+    border-bottom: 2px solid var(--colore-nero);
+  }
+
+  /*
+   * Righe alternate sul tono della carta. Non è decorazione: gli elenchi qui
+   * sono lunghi 186 righe e si leggono in piedi, a bordo campo, dove tenere
+   * l'occhio sulla riga giusta scorrendo con il dito è il gesto più frequente
+   * di tutta l'applicazione.
+   */
+  tbody tr:nth-child(even) {
+    background-color: color-mix(in srgb, var(--color-neutral-50) 70%, #fff);
+  }
+
+  /* Le cifre incolonnano: importi, numeri di maglia, percentuali. */
+  td,
+  th,
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /*
+   * L'azione primaria. Campitura piatta, contorno nero, ombra dura senza
+   * sfocatura: un decal appoggiato sulla pagina, non un elemento che galleggia
+   * su un'ombra morbida. Premendolo scende sull'ombra, che è l'unica
+   * animazione dell'interfaccia — un backoffice che si compila in fretta non
+   * vuole cose che si muovono.
+   */
+  .bottone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding-inline: 1rem;
+    font-family: var(--font-archivo-black), var(--font-archivo), sans-serif;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background-color: var(--colore-blu);
+    border: 2px solid var(--colore-nero);
+    border-radius: 3px;
+    box-shadow: 3px 3px 0 0 var(--colore-nero);
+    transition: transform 90ms ease-out, box-shadow 90ms ease-out,
+      background-color 90ms ease-out;
+  }
+
+  .bottone:hover:not(:disabled) {
+    background-color: var(--colore-blu-scuro);
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 0 var(--colore-nero);
+  }
+
+  .bottone:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--colore-nero);
+  }
+
+  .bottone:disabled {
+    opacity: 0.55;
+    box-shadow: 3px 3px 0 0 var(--color-neutral-300);
+  }
+
+  /* Variante gialla per l'azione che chiude un flusso: un solo giallo per
+     schermata, quindi non si usa accanto a un altro `.bottone`. */
+  .bottone-giallo {
+    color: var(--colore-nero);
+    background-color: var(--colore-giallo);
+  }
+
+  .bottone-giallo:hover:not(:disabled) {
+    background-color: var(--colore-giallo-cupo);
   }
 }
 
@@ -67,9 +240,14 @@ body {
  * Un anello di focus visibile ovunque, e solo da tastiera. Prima i campi si
  * affidavano all'outline di default del browser e i pulsanti resi come link
  * non mostravano nulla: chi naviga con il tab non sapeva dove si trovava.
+ *
+ * Doppio anello, giallo dentro e nero fuori: il giallo si vede sulla barra blu
+ * e sui pulsanti blu, il nero sulla carta e sul giallo. Un anello di un colore
+ * solo sparirebbe su metà delle superfici di questa interfaccia.
  */
 :focus-visible {
-  outline: 2px solid #171717;
+  outline: 2px solid var(--colore-nero);
   outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--colore-giallo);
   border-radius: 2px;
 }

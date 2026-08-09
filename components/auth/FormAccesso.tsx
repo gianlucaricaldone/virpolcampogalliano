@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useActionState } from 'react'
 import { accedi } from '@/app/(auth)/login/actions'
 
@@ -14,10 +15,21 @@ export function FormAccesso({ messaggio }: { messaggio?: string }) {
     // di che applicazione si trattasse.
     <main className="flex min-h-dvh flex-col justify-center bg-neutral-50 p-6">
       <div className="mx-auto w-full max-w-sm">
-        <p className="text-sm font-semibold tracking-wide text-neutral-500">
+        {/* Lo stemma sulla porta d'ingresso: è la prima schermata che si vede,
+            e finché c'era solo il nome scritto poteva essere il backoffice di
+            qualunque cosa. */}
+        <Image
+          src="/images/home/virpol-logo.png"
+          alt="Virpol Campogalliano"
+          width={64}
+          height={64}
+          priority
+          className="mb-4 h-16 w-16 object-contain"
+        />
+        <p className="font-[family-name:var(--font-archivo-black)] text-[0.6875rem] uppercase tracking-[0.16em] text-neutral-500">
           Virpol Campogalliano
         </p>
-        <h1 className="mt-1 text-2xl font-semibold">Accesso</h1>
+        <h1 className="mt-1.5 text-2xl">Accesso</h1>
         {messaggio && (
           <p role="status" className="mt-4 rounded bg-amber-100 px-3 py-2 text-sm text-amber-900">
             {messaggio}
@@ -41,7 +53,7 @@ export function FormAccesso({ messaggio }: { messaggio?: string }) {
           <p role="alert" className="text-sm text-red-700">{esito.errore}</p>
         )}
         <button type="submit" disabled={inCorso}
-                className="min-h-11 w-full rounded-md bg-neutral-900 px-3 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60">
+                className="bottone min-h-11 w-full">
           {inCorso ? 'Accesso in corso…' : 'Entra'}
         </button>
         </form>

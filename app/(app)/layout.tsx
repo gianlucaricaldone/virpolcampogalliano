@@ -17,9 +17,11 @@ export default async function LayoutBackoffice({ children }: { children: React.R
   if (!sessione) redirect('/login?sessione=terminata')
 
   return (
-    <div className="min-h-dvh bg-neutral-50">
+    // Nessuno sfondo qui: la carta e il suo reticolo diagonale li dipinge il
+    // body in globals.css, e un `bg-neutral-50` su questo div li coprirebbe.
+    <div className="min-h-dvh">
       <NavBackoffice ruolo={sessione.ruolo} stagioni={stagioni} />
-      <main className="mx-auto max-w-6xl p-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
     </div>
   )
 }

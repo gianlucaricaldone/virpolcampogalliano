@@ -98,7 +98,7 @@ export function PannelloStaff({
             <button
               type="submit"
               disabled={inCorso}
-              className="min-h-10 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
+              className="bottone"
             >
               {inCorso ? 'Aggiunta…' : 'Aggiungi'}
             </button>
