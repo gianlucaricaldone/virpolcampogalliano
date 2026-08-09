@@ -57,7 +57,7 @@ export default async function PaginaNuovoTesseramento({
             className="mt-1.5 rounded-md border px-3 text-sm"
           />
         </div>
-        <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Cerca</button>
+        <button type="submit" className="bottone-secondario">Cerca</button>
       </form>
 
       {q && candidati.length === 0 && (

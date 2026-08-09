@@ -67,7 +67,7 @@ export function RigaImporto({
       <button
         type="submit"
         disabled={inCorso}
-        className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50 disabled:opacity-60"
+        className="bottone-secondario"
       >
         {inCorso ? 'Salvataggio…' : 'Salva'}
       </button>

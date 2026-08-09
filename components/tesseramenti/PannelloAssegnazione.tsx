@@ -102,14 +102,14 @@ export function PannelloAssegnazione({
                     if (!risultato.ok) setErroreRimozione(risultato.errore)
                   })
                 }}
-                className="rounded bg-red-700 px-3 py-2 text-sm text-white disabled:opacity-60"
+                className="bottone-pericolo-forte"
               >
                 {rimozioneInCorso ? 'Rimozione…' : 'Rimuovi definitivamente'}
               </button>
               <button
                 type="button"
                 onClick={() => setConferma(false)}
-                className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50"
+                className="bottone-secondario"
               >
                 Annulla
               </button>
@@ -119,7 +119,7 @@ export function PannelloAssegnazione({
           <button
             type="button"
             onClick={() => setConferma(true)}
-            className="rounded border border-red-300 px-3 py-2 text-sm text-red-700"
+            className="bottone-pericolo"
           >
             Rimuovi il tesseramento
           </button>

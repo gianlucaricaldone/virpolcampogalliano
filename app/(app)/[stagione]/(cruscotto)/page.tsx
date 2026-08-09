@@ -53,7 +53,7 @@ export default async function Cruscotto({
               ))}
             </select>
           </div>
-          <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Filtra</button>
+          <button type="submit" className="bottone-secondario">Filtra</button>
         </form>
       )}
 

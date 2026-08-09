@@ -234,6 +234,76 @@ body {
   .bottone-giallo:hover:not(:disabled) {
     background-color: var(--colore-giallo-cupo);
   }
+
+  /*
+   * Le tre varianti condividono forma, altezza e lettering del primario, e si
+   * distinguono solo per campitura e colore del contorno. Prima ogni famiglia
+   * aveva anche misure e maiuscole proprie — "Elimina squadra" era un rettangolo
+   * rosso pallido, minuscolo e sottile accanto a un decal blu maiuscolo — e due
+   * pulsanti nella stessa riga non stavano nemmeno sulla stessa linea di base.
+   */
+  .bottone-secondario,
+  .bottone-pericolo,
+  .bottone-pericolo-forte {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding-inline: 1rem;
+    font-family: var(--font-archivo-black), var(--font-archivo), sans-serif;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 3px;
+    transition: transform 90ms ease-out, box-shadow 90ms ease-out,
+      background-color 90ms ease-out;
+  }
+
+  /* Azione di supporto: nessuna ombra, così nella stessa riga il primario resta
+     l'unico elemento che si stacca dalla pagina. */
+  .bottone-secondario {
+    color: var(--colore-blu-scuro);
+    background-color: #fff;
+    border-color: var(--colore-nero);
+  }
+
+  .bottone-secondario:hover:not(:disabled) {
+    background-color: var(--color-neutral-100);
+  }
+
+  /* Il contorno rosso è l'unico segnale: l'azione distruttiva non deve invitare
+     con una campitura piena finché non è confermata. */
+  .bottone-pericolo {
+    color: #9f1239;
+    background-color: #fff;
+    border-color: #9f1239;
+  }
+
+  .bottone-pericolo:hover:not(:disabled) {
+    background-color: #fff1f2;
+  }
+
+  /* Solo per la conferma, quando la conseguenza è già scritta accanto. */
+  .bottone-pericolo-forte {
+    color: #fff;
+    background-color: #9f1239;
+    border-color: var(--colore-nero);
+    box-shadow: 3px 3px 0 0 var(--colore-nero);
+  }
+
+  .bottone-pericolo-forte:hover:not(:disabled) {
+    background-color: #881337;
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 0 var(--colore-nero);
+  }
+
+  .bottone-secondario:disabled,
+  .bottone-pericolo:disabled,
+  .bottone-pericolo-forte:disabled {
+    opacity: 0.55;
+  }
 }
 
 /*

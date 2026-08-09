@@ -153,7 +153,7 @@ export function PannelloQuota({
               <button
                 type="button"
                 onClick={() => setImporto(meta)}
-                className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50"
+                className="bottone-secondario"
               >
                 Metà quota ({formattaEuro(Number(meta))})
               </button>
@@ -162,7 +162,7 @@ export function PannelloQuota({
               <button
                 type="button"
                 onClick={() => setImporto(residuo)}
-                className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50"
+                className="bottone-secondario"
               >
                 Saldo ({formattaEuro(Number(residuo))})
               </button>

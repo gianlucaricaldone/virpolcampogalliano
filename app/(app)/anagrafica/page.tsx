@@ -50,7 +50,7 @@ export default async function PaginaAnagrafica({
           <input type="checkbox" name="archiviate" value="1" defaultChecked={archiviate === '1'} />
           Mostra anche le archiviate
         </label>
-        <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Cerca</button>
+        <button type="submit" className="bottone-secondario">Cerca</button>
       </form>
 
       {sessione?.ruolo === 'allenatore' && (

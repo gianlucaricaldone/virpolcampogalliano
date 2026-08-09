@@ -93,7 +93,7 @@ export default async function PaginaQuote({
           <input type="checkbox" name="aperte" value="1" defaultChecked={aperte === '1'} />
           Solo chi non ha saldato
         </label>
-        <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Filtra</button>
+        <button type="submit" className="bottone-secondario">Filtra</button>
       </form>
 
       <p className="text-sm text-neutral-600">
