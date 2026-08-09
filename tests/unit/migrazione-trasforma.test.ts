@@ -126,6 +126,24 @@ describe('trasformaTesserati', () => {
     expect(anomalie).toHaveLength(2)
     expect(anomalie[0].tipo).toBe('tesserato_terna_duplicata')
   })
+
+  it('senza data di nascita è anomalia, nessuna data si inventa: persone.data_nascita è NOT NULL', () => {
+    const senzaData = { ...TESSERATO, codice_fiscale: null, data_nascita: null }
+    const { persone, anomalie } = trasformaTesserati([senzaData])
+    expect(persone).toEqual([])
+    expect(anomalie).toHaveLength(1)
+    expect(anomalie[0]).toMatchObject({
+      tipo: 'tesserato_senza_data_nascita',
+      id: 't-1',
+    })
+  })
+
+  it('con codice fiscale ma senza data di nascita è comunque anomalia: il vincolo è sulla colonna, non sulla chiave', () => {
+    const conCfSenzaData = { ...TESSERATO, data_nascita: null }
+    const { persone, anomalie } = trasformaTesserati([conCfSenzaData])
+    expect(persone).toEqual([])
+    expect(anomalie[0].tipo).toBe('tesserato_senza_data_nascita')
+  })
 })
 
 describe('trasformaStaff', () => {

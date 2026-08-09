@@ -36,7 +36,12 @@ export type VecchioTesserato = {
   id: string
   nome: string
   cognome: string
-  data_nascita: string
+  /**
+   * Nullable per davvero: nei dati reali (non nei fixture di test) l'intera
+   * tabella storica non ha mai avuto questo campo popolato. `trasformaTesserati`
+   * tratta l'assenza come anomalia, mai come '' o una data inventata.
+   */
+  data_nascita: string | null
   codice_fiscale: string | null
   email: string | null
   telefono: string | null

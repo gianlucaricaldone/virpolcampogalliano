@@ -37,13 +37,14 @@ Quel che resta:
 | 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
 | — | admin utenti (creazione profili dal backoffice) | fatta, piano `gestione-utenti` |
 | 5 | sito pubblico | da fare |
-| 6 | script di migrazione dati e cutover | script pronto e verificato (lint, type-check, build, suite); dry-run contro i dati veri bloccato, vedi Debito noto |
+| 6 | script di migrazione dati e cutover | script fatto e provato in dry-run; cutover dopo la fase 5 |
 
 Le sette funzionalità richieste e la gestione utenti dal backoffice sono a
 schermo. Resta da fare il sito pubblico (fase 5). Lo script di migrazione
-(`npm run migra`) è scritto e passa lint/type-check/build e l'intera suite,
-ma non è ancora stato eseguito contro i dati veri del progetto vecchio: vedi
-Debito noto.
+(`npm run migra`) è scritto, provato in dry-run e in esecuzione reale contro
+il database locale (due volte, per l'idempotenza) — vedi Debito noto per un
+difetto vero trovato nei dati del vecchio sistema, non nello script, che
+riguarda il cutover.
 
 ## Stack
 
@@ -223,18 +224,21 @@ della macchina, e vicino a mezzanotte i due differiscono di un giorno.
 
 ## Debito noto
 
-**Il dry-run della migrazione contro i dati veri non è stato eseguito.** Lo
-script (`scripts/migra.ts`, `scripts/migrazione/vecchio.ts`) è completo,
-passa lint, type-check, build e l'intera suite (`test:db`, `test:unit`,
-`test:e2e`), ma il progetto Supabase VECCHIO (`ctrsnztrfslewkpbfxei.supabase.co`,
-da `~/Progetti/virpolcampogalliano/.env.local.example`) non risolve più in
-DNS — `NXDOMAIN` da tre resolver indipendenti (locale, 8.8.8.8, 1.1.1.1),
-incluso il server autoritativo di `supabase.co`, segno che il record non
-esiste più lì, non di un blocco di rete locale. Prima del cutover: verificare
-se il progetto è stato sospeso/eliminato (i progetti Supabase free-tier
-inattivi vengono archiviati) e, se serve, ripristinarlo o procurarsi
-URL/chiave aggiornati. Finché non risolve, il dry-run e la prova di
-idempotenza (Step 5–6 del piano di migrazione) restano da fare.
+**Nel vecchio sistema, nessun tesserato ha una data di nascita.** Il
+dry-run e il run reale contro i dati veri (188 tesserati, 3067 presenze) lo
+mostrano senza ambiguità: `data_nascita` e `codice_fiscale` sono `null` per
+tutti i 188, in ogni categoria. `persone.data_nascita` è `NOT NULL` nel nuovo
+schema e questo script non inventa mai una data (stesso principio già
+applicato agli allenatori senza persona corrispondente): il risultato è che
+**nessuna persona, tesseramento, pagamento, seduta o presenza migra** finché
+quel campo resta vuoto nel vecchio sistema — solo stagioni, quote, squadre e
+gli account staff che non richiedono una persona (6 su 25, tutti admin)
+migrano oggi. È una decisione per la società, non per lo script: prima del
+cutover va deciso se backfillare le date di nascita nel vecchio sistema (la
+sola via che non inventa nulla) o accettare che l'anagrafica si ricostruisca
+a mano dal backoffice nuovo. Il report (`scripts/report-migrazione.md`,
+gitignorato) elenca ogni tesserato coinvolto con l'anomalia
+`tesserato_senza_data_nascita`.
 
 **Nessun export CSV delle statistiche.** Il piano 2 lo dava per facoltativo.
 
