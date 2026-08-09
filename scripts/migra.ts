@@ -281,7 +281,16 @@ async function main() {
       persona_id: a.personaChiave ? (personaIdPerChiave.get(a.personaChiave) ?? null) : null,
     })
     if (eProfilo) {
-      await db.auth.admin.deleteUser(creato.user.id).catch(() => {})
+      // Compensazione, come in app/(app)/admin/utenti/actions.ts: se anche
+      // deleteUser fallisce non si perde traccia, altrimenti resta un utente
+      // fantasma in auth.users che tiene occupata l'email e nessuno saprebbe
+      // perché il prossimo tentativo dice "email già registrata".
+      await db.auth.admin.deleteUser(creato.user.id).catch((erroreCompensazione) => {
+        console.error(
+          `migra: compensazione fallita, utente fantasma in auth.users id=${creato.user.id}`,
+          erroreCompensazione,
+        )
+      })
       accountFalliti += 1
       anomalie.push({
         tipo: 'account_non_creato', id: a.email, chiave: a.email,
@@ -332,9 +341,13 @@ async function main() {
     motivoScarti: 'senza stagione: vedi anomalie',
   }
 
-  // Tesseramenti. Chiave: persona + stagione (id del target).
-  const tessEsistentiChiavi = new Set(
-    (tessEsistenti ?? []).map((t) => `${t.persona_id}|${t.stagione_id}`),
+  // Tesseramenti. Chiave: persona + stagione (id del target). L'indice
+  // dell'esistente mappa alla riga, non solo alla presenza: un run
+  // successivo deve poter risolvere l'id anche per un tesseramento creato
+  // in un run precedente, altrimenti le presenze di una seduta nuova che lo
+  // referenziano non trovano l'id e scompaiono in silenzio (vedi sotto).
+  const tessEsistentiPerChiave = new Map(
+    (tessEsistenti ?? []).map((t) => [`${t.persona_id}|${t.stagione_id}`, t.id]),
   )
   const tesseramentoIdPerChiave = new Map<string, string>()
   const tesseramentiCreati = new Set<string>()
@@ -346,7 +359,16 @@ async function main() {
     const stagioneId = stagioneIdPerVecchia.get(t.stagioneVecchiaId)
     if (!personaId || !stagioneId) { tessScartati += 1; continue } // persona o stagione già anomala
     const chiave = `${t.personaChiave}|${t.stagioneVecchiaId}`
-    if (tessEsistentiChiavi.has(`${personaId}|${stagioneId}`)) { tessPresenti += 1; continue }
+    const idEsistente = tessEsistentiPerChiave.get(`${personaId}|${stagioneId}`)
+    if (idEsistente) {
+      // Già presente: NON va in tesseramentiCreati (i pagamenti ricostruiti
+      // restano solo per i tesseramenti nuovi di questo run), ma l'id serve
+      // comunque a chi consulta tesseramentoIdPerChiave più sotto (presenze
+      // di una seduta nuova su un tesseramento vecchio).
+      tesseramentoIdPerChiave.set(chiave, idEsistente)
+      tessPresenti += 1
+      continue
+    }
     tessNuovi += 1
     tesseramentiCreati.add(chiave)
     if (dryRun) { tesseramentoIdPerChiave.set(chiave, `dry:${chiave}`); continue }
