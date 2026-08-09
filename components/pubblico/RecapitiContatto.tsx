@@ -38,10 +38,14 @@ export function RecapitiContatto() {
   return (
     <section className="bg-neutral-50 py-20">
       <div className="mx-auto max-w-6xl px-4">
-        <h2 className="mb-10 text-center text-3xl font-bold text-neutral-900">
+        <h2 className="text-center text-3xl font-bold text-neutral-900">
           Le Nostre <span className="text-blue-600">Informazioni</span>
         </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-neutral-600">
+          Contatta direttamente il reparto di tuo interesse per ricevere
+          informazioni specifiche e dettagliate
+        </p>
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {CONTATTI.map((c) => (
             <div key={c.nome} className="rounded-lg border bg-white p-6 text-center shadow-sm">
               <p className="font-semibold text-neutral-900">{c.nome}</p>

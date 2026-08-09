@@ -53,10 +53,14 @@ export function ComeRaggiungerci() {
   return (
     <section className="bg-white py-20">
       <div className="mx-auto max-w-6xl px-4">
-        <h2 className="mb-10 text-center text-3xl font-bold text-neutral-900">
+        <h2 className="text-center text-3xl font-bold text-neutral-900">
           Come <span className="text-blue-600">Raggiungerci</span>
         </h2>
-        <div className="grid gap-6 md:grid-cols-3">
+        <p className="mx-auto mt-4 max-w-3xl text-center text-lg text-neutral-600">
+          Diverse opzioni di trasporto per arrivare comodamente al nostro
+          centro sportivo
+        </p>
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
           {MODALITA.map((m) => (
             <div key={m.titolo} className="rounded-lg border bg-white p-6 shadow-sm">
               <p className="font-semibold text-neutral-900">{m.titolo}</p>
