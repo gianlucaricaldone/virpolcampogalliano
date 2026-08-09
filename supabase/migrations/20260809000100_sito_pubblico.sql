@@ -26,6 +26,6 @@ comment on view public.v_squadre_pubbliche is
 
 grant select on public.v_squadre_pubbliche to anon, authenticated;
 
--- La view serve anon: revoca l'accesso diretto alle tabelle, che veniva
--- consentito con uno scopo diverso (API). Ora anon legge solo la vetrina.
+-- La view serve anon: revoca l'accesso diretto alle tabelle, che era stato
+-- concesso per il sito pubblico ma ora ristretto a questa sola vista.
 revoke select on public.stagioni, public.squadre from anon;

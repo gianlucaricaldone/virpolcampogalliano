@@ -409,13 +409,12 @@ describe('utente anonimo', () => {
       ).rejects.toThrow(/permission denied/)
     }))
 
-  it('NON scrive squadre, che invece legge', () =>
+  it('NON scrive né legge squadre direttamente', () =>
     inRollback(async (c) => {
       const { stagione } = await dueSquadre(c)
-      // Oggi a rifiutare è il privilegio di tabella (anon ha solo select su
-      // squadre, non insert), non una policy: la stessa riga con la policy
-      // sola direbbe row-level security. Entrambe restano nella regex perché
-      // è la barriera che fa scattare per prima a decidere il messaggio.
+      // Dopo la revoca del privilegio di tabella, anon non ha nemmeno il diritto
+      // di fare insert su squadre: il rifiuto arriva dal privilegio, non dalla
+      // policy. La regex accetta entrambi i messaggi per robustezza.
       await expect(
         asAnon(c, () =>
           c.query(
@@ -436,6 +435,13 @@ describe('utente anonimo', () => {
       // Le policies su squadre e stagioni per anon rimangono dal RLS: la vista
       // le rende irraggiungibili perché anon non ha più il privilegio di tabella.
       // Due barriere: il privilegio revocato blocca prima della policy.
+      const { rows: policy } = await c.query(
+        `select tablename, policyname from pg_policies
+         where schemaname = 'public' and 'anon' = any(roles) order by 1`)
+      expect(policy).toEqual([
+        { tablename: 'squadre', policyname: 'squadre_sel' },
+        { tablename: 'stagioni', policyname: 'stagioni_sel' },
+      ])
     }))
 })
 
@@ -456,7 +462,7 @@ describe('privilegi di tabella per authenticated', () => {
   // v_squadre_pubbliche è la vetrina per il sito pubblico: anon la legge, non le tabelle.
   const VISTE = ['v_presenze', 'v_presenze_squadra', 'v_quote', 'v_squadre_pubbliche', 'v_visite']
 
-  it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle quattro viste', () =>
+  it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle cinque viste', () =>
     inRollback(async (c) => {
       const privilegi = await privilegiTabella(c, 'authenticated')
       const atteso = [
