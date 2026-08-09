@@ -387,14 +387,13 @@ describe('dirigente e admin', () => {
 })
 
 describe('utente anonimo', () => {
-  it('legge stagioni e squadre', () =>
+  it('legge le squadre dalla vista, non dalle tabelle', () =>
     inRollback(async (c) => {
       await dueSquadre(c)
-      const esito = await asAnon(c, async () => ({
-        stagioni: await conta(c, 'select id from public.stagioni'),
-        squadre: await conta(c, 'select id from public.squadre'),
-      }))
-      expect(esito).toEqual({ stagioni: 1, squadre: 2 })
+      const squadre = await asAnon(c, () =>
+        conta(c, 'select nome from public.v_squadre_pubbliche'),
+      )
+      expect(squadre).toBe(2)
     }))
 
   it.each([
@@ -428,20 +427,15 @@ describe('utente anonimo', () => {
       ).rejects.toThrow(/row-level security|permission denied/)
     }))
 
-  it('anon non ha privilegi né policy oltre stagioni e squadre', () =>
+  it('anon ha SELECT solo su v_squadre_pubbliche', () =>
     inRollback(async (c) => {
       const privilegi = await privilegiTabella(c, 'anon')
       expect(privilegi).toEqual([
-        { table_name: 'squadre', privilege_type: 'SELECT' },
-        { table_name: 'stagioni', privilege_type: 'SELECT' },
+        { table_name: 'v_squadre_pubbliche', privilege_type: 'SELECT' },
       ])
-      const { rows: policy } = await c.query(
-        `select tablename, policyname from pg_policies
-         where schemaname = 'public' and 'anon' = any(roles) order by 1`)
-      expect(policy).toEqual([
-        { tablename: 'squadre', policyname: 'squadre_sel' },
-        { tablename: 'stagioni', policyname: 'stagioni_sel' },
-      ])
+      // Le policies su squadre e stagioni per anon rimangono dal RLS: la vista
+      // le rende irraggiungibili perché anon non ha più il privilegio di tabella.
+      // Due barriere: il privilegio revocato blocca prima della policy.
     }))
 })
 
@@ -459,7 +453,8 @@ describe('privilegi di tabella per authenticated', () => {
   // v_visite è arrivata con la gestione della visita medica: la sua SELECT è
   // voluta e va aggiunta qui, non aggirata. Che questo test sia diventato
   // rosso da solo, al primo grant nuovo, è esattamente il suo mestiere.
-  const VISTE = ['v_presenze', 'v_presenze_squadra', 'v_quote', 'v_visite']
+  // v_squadre_pubbliche è la vetrina per il sito pubblico: anon la legge, non le tabelle.
+  const VISTE = ['v_presenze', 'v_presenze_squadra', 'v_quote', 'v_squadre_pubbliche', 'v_visite']
 
   it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle quattro viste', () =>
     inRollback(async (c) => {

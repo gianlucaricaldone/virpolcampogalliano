@@ -706,6 +706,14 @@ export type Database = {
           },
         ]
       }
+      v_squadre_pubbliche: {
+        Row: {
+          annata: number | null
+          categoria: string | null
+          nome: string | null
+        }
+        Relationships: []
+      }
       v_visite: {
         Row: {
           giorni_alla_scadenza: number | null
