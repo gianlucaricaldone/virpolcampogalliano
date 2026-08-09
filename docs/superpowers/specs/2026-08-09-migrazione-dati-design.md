@@ -26,6 +26,14 @@ in brainstorming; dove i due divergono, vale questo.
   `passwordIniziale(nome)`, la stessa convenzione della creazione dal
   backoffice. Il report elenca gli account creati; le password si comunicano
   a voce.
+- **La data di nascita diventa facoltativa** (decisione del committente,
+  2026-08-09). Il primo dry-run sui dati veri ha mostrato che tutti i 188
+  tesserati del vecchio sistema hanno `data_nascita` e `codice_fiscale`
+  nulli: con `persone.data_nascita NOT NULL` migrerebbe solo lo scheletro.
+  Il vincolo cade dal baseline (non ancora deployato, si corregge in place),
+  il campo diventa facoltativo anche nel form dell'anagrafica, e un
+  tesserato senza data migra con il campo vuoto — da completare col tempo
+  dal backoffice. Il codice fiscale era già facoltativo ovunque.
 - **Approccio: supabase-js su entrambi i lati.** Lettura dal vecchio con
   service role via PostgREST, scrittura nel nuovo col client admin già
   esistente in `scripts/`. Gli account passano comunque da
@@ -102,10 +110,12 @@ Dal design generale §9, verificato contro lo schema vecchio reale
   cognome+nome normalizzati) riusa quella persona. Admin e dirigente senza
   corrispondenza nascono con profilo senza persona, com'è normale nel
   backoffice nuovo. Un **allenatore senza corrispondenza è un'anomalia**:
-  il vincolo `profili_allenatore_ha_persona` esige la persona, `persone.
-  data_nascita` è NOT NULL e il vecchio `users` non ha date di nascita —
-  inventarne una violerebbe il principio di questo script. Nessun account
-  creato; si sistema a mano dal backoffice dopo la migrazione.
+  il vincolo `profili_allenatore_ha_persona` esige la persona, e creare una
+  persona-fantasma con la sola coppia cognome+nome sarebbe inventare
+  un'anagrafica che non esiste. Nessun account creato; si sistema a mano
+  dal backoffice dopo la migrazione. Due persone migrate con lo stesso
+  cognome+nome rendono la corrispondenza ambigua: nessun collegamento
+  silenzioso, l'allenatore finisce nella stessa anomalia.
 - `stagioni_sportive` → `stagioni`. Nome `'2024/2025'` → codice `'2024-25'`
   più etichetta; `archiviata` → stato `chiusa`, altrimenti `aperta`.
 - `squadre` → `squadre`, per stagione.
