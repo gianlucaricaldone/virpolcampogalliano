@@ -88,18 +88,34 @@ report tutto «già presente»: è anche il test di integrazione dello script.
 Dal design generale §9, verificato contro lo schema vecchio reale
 (47 migration in `~/Progetti/virpolcampogalliano/supabase/migrations`):
 
-- `tesserati` → `persone`; `stato` → `attiva`.
-- `users` staff → `persone` + `auth.users` + `profili`. Ruoli:
+- `tesserati` → `persone`, tutte con `attiva = true`: il vecchio schema non
+  ha uno stato sull'anagrafica (l'archiviazione soft è un concetto del
+  sistema nuovo), quindi non c'è nulla da mappare.
+- `users` staff → `auth.users` + `profili`. Ruoli: se `roles` (array) è
+  popolato si prende il più alto per privilegio, altrimenti `role`;
   `admin` → `admin`, `dirigente` → `dirigente`, `allenatore` e
   `vice_allenatore` → `allenatore`. `tesserato` e `genitore` scartati, nessun
-  account. Email: quella del vecchio sistema. Un utente staff che corrisponde
-  a un tesserato già migrato (stesso codice fiscale o stessa terna
-  cognome+nome+nascita) riusa quella persona invece di crearne una seconda.
+  account. Email: quella del vecchio sistema.
+  **La persona si collega solo se esiste**: un utente staff che corrisponde a
+  un tesserato migrato (stessa terna cognome+nome, senza data di nascita nel
+  vecchio `users` il codice fiscale non c'è — il confronto è su
+  cognome+nome normalizzati) riusa quella persona. Admin e dirigente senza
+  corrispondenza nascono con profilo senza persona, com'è normale nel
+  backoffice nuovo. Un **allenatore senza corrispondenza è un'anomalia**:
+  il vincolo `profili_allenatore_ha_persona` esige la persona, `persone.
+  data_nascita` è NOT NULL e il vecchio `users` non ha date di nascita —
+  inventarne una violerebbe il principio di questo script. Nessun account
+  creato; si sistema a mano dal backoffice dopo la migrazione.
 - `stagioni_sportive` → `stagioni`. Nome `'2024/2025'` → codice `'2024-25'`
   più etichetta; `archiviata` → stato `chiusa`, altrimenti `aperta`.
 - `squadre` → `squadre`, per stagione.
 - `tesserati_squadre_stagioni` fusi con `tesserati_dati_stagionali` sulla
-  stessa riga → `tesseramenti` (incluso `numero_maglia`).
+  stessa riga → `tesseramenti` (incluso `numero_maglia`). Il vecchio schema
+  ammette lo stesso tesserato in più squadre nella stessa stagione; il nuovo
+  ha `unique (persona_id, stagione_id)`: più righe per la stessa coppia →
+  **anomalia**, nessun tesseramento migrato per quella coppia, si decide a
+  mano. Dati stagionali senza riga squadra → tesseramento senza squadra
+  (ammesso dal nuovo schema).
 - `presenze` di tipo allenamento, raggruppate per (squadra, data) → una
   `seduta_allenamento` con le sue `presenze`; il booleano `presente` →
   `presente` | `assente`.
@@ -127,7 +143,9 @@ a ogni run, in tre parti:
 2. **Anomalie**, ciascuna con id e chiave naturale, da decidere caso per caso
    nel vecchio sistema — lo script non ripara mai: presenze con squadra
    nulla, squadre senza stagione, visite `true` senza scadenza, email
-   duplicate fra staff, codici fiscali mancanti o duplicati fra tesserati.
+   duplicate fra staff, terne cognome+nome+nascita duplicate fra tesserati
+   senza codice fiscale, tesserati in più squadre nella stessa stagione,
+   allenatori staff senza persona corrispondente in anagrafica.
 3. **Account creati** (solo con `--esegui`): email e password iniziale, da
    comunicare a voce.
 
