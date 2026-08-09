@@ -2,19 +2,17 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { daErroreZod, ErroreDominio, eseguiAzione, type Risultato } from '@/lib/azioni'
-import { conMagliaParlante } from '@/lib/azioni-maglia'
+import { daErroreZod, eseguiAzione, type Risultato } from '@/lib/azioni'
 import { stagioneModificabile } from '@/lib/azioni-stagione'
 import { richiediRuolo } from '@/lib/auth/session'
-import { creaIncarico, rimuoviIncarico } from '@/lib/repos/incarichi'
-import { creaPersona, eliminaPersona } from '@/lib/repos/persone'
+import { creaIncarico, elencaIncarichi, rimuoviIncarico } from '@/lib/repos/incarichi'
+import { creaPersona, elencaPersone, eliminaPersona, type Persona } from '@/lib/repos/persone'
 import { aggiornaSquadra, creaSquadra, eliminaSquadra } from '@/lib/repos/squadre'
-import { chiHaLaMaglia, creaTesseramento } from '@/lib/repos/tesseramenti'
+import { creaTesseramento, elencaTesseramenti } from '@/lib/repos/tesseramenti'
 import { supabaseServer } from '@/lib/supabase/server'
 import { campiSquadra, schemaSquadra } from '@/lib/validation/squadra'
 import {
   campiNuovoGiocatore,
-  campiTesseramento,
   schemaIncarico,
   schemaNuovoGiocatore,
   schemaTesseraInSquadra,
@@ -133,6 +131,10 @@ export async function rimuoviIncaricoAzione(
  * Nessun redirect, al contrario di creaTesseramentoAzione: chi sta componendo
  * una rosa ne aggiunge dieci di fila, e finire ogni volta sulla scheda del
  * tesserato appena creato costringerebbe a tornare indietro dieci volte.
+ *
+ * Nessun numero di maglia da qui: non si chiede più nel form, quindi non c'è
+ * l'indice unico per squadra da far scattare e non serve `conMagliaParlante`.
+ * La maglia si imposta dalla scheda del tesserato, dove quel messaggio vive.
  */
 export async function tesseraNellaSquadraAzione(
   codice: string,
@@ -140,16 +142,16 @@ export async function tesseraNellaSquadraAzione(
   _precedente: Risultato<null> | null,
   form: FormData,
 ): Promise<Risultato<null>> {
-  const campi = schemaTesseraInSquadra.safeParse(campiTesseramento(form))
+  const campi = schemaTesseraInSquadra.safeParse({ personaId: form.get('personaId') })
   if (!campi.success) return daErroreZod(campi.error)
 
   const esito = await eseguiAzione('tesseramenti.creaInSquadra', async () => {
     const db = await supabaseServer()
     await richiediRuolo(db, [...SCRITTURA])
     const stagione = await stagioneModificabile(db, codice)
-    await conMagliaParlante(db, squadraId, campi.data.numeroMaglia, () =>
-      creaTesseramento(db, { ...campi.data, squadraId, stagioneId: stagione.id }),
-    )
+    await creaTesseramento(db, {
+      personaId: campi.data.personaId, squadraId, stagioneId: stagione.id, numeroMaglia: null,
+    })
     return null
   })
 
@@ -171,11 +173,12 @@ export async function tesseraNellaSquadraAzione(
  * Il tesseramento è la ragione del gesto, non un effetto collaterale: la
  * persona da sola non comparirebbe in nessuna rosa.
  *
- * Il numero di maglia si verifica PRIMA di creare la persona. Non è
- * un'ottimizzazione: è l'unico fallimento probabile di questa sequenza, e
- * arrivando dopo la creazione lascerebbe una persona da cancellare — cosa che
- * `persone_del` concede al solo admin, quindi un dirigente si ritroverebbe in
- * anagrafica un giocatore mai tesserato e nessun modo di togliercelo.
+ * La compensazione conta più di quanto sembri: `persone_del` è concessa al solo
+ * admin, quindi se il tesseramento fallisse dopo la creazione un dirigente si
+ * ritroverebbe in anagrafica un giocatore mai tesserato e nessun modo di
+ * togliercelo. Da quando il numero di maglia non si chiede più, il caso è
+ * remoto — la persona è appena nata, quindi non può già essere tesserata in
+ * questa stagione, che è l'unico altro vincolo — ma la rete resta.
  */
 export async function creaGiocatoreNellaSquadraAzione(
   codice: string,
@@ -185,17 +188,12 @@ export async function creaGiocatoreNellaSquadraAzione(
 ): Promise<Risultato<null>> {
   const campi = schemaNuovoGiocatore.safeParse(campiNuovoGiocatore(form))
   if (!campi.success) return daErroreZod(campi.error)
-  const { numeroMaglia, ...persona } = campi.data
+  const persona = campi.data
 
   const esito = await eseguiAzione('tesseramenti.creaGiocatore', async () => {
     const db = await supabaseServer()
     await richiediRuolo(db, [...SCRITTURA])
     const stagione = await stagioneModificabile(db, codice)
-
-    if (numeroMaglia !== null) {
-      const chi = await chiHaLaMaglia(db, squadraId, numeroMaglia)
-      if (chi) throw new ErroreDominio(`Il numero ${numeroMaglia} è già di ${chi}`)
-    }
 
     const creata = await creaPersona(db, {
       ...persona,
@@ -205,7 +203,7 @@ export async function creaGiocatoreNellaSquadraAzione(
 
     try {
       await creaTesseramento(db, {
-        personaId: creata.id, squadraId, stagioneId: stagione.id, numeroMaglia,
+        personaId: creata.id, squadraId, stagioneId: stagione.id, numeroMaglia: null,
       })
     } catch (e) {
       // Compensazione, con la stessa regola di utenti.crea: se anche la
@@ -230,4 +228,45 @@ export async function creaGiocatoreNellaSquadraAzione(
     revalidatePath('/anagrafica')
   }
   return esito
+}
+
+/**
+ * Candidati per gli autocomplete della scheda squadra. Non è una scrittura, ma
+ * sta fra le Server Action per la stessa ragione per cui ci stanno le altre: il
+ * browser non parla mai direttamente a Supabase per dati di dominio. Passando da
+ * qui la query gira col client del server, con la sessione dell'utente, e le RLS
+ * decidono cosa può vedere — una chiamata dal client con la chiave anon sarebbe
+ * una seconda strada verso l'anagrafica, da sorvegliare a parte.
+ *
+ * L'esclusione di chi è già dentro si fa qui e non nel componente: se
+ * arrivassero al browser anche i già tesserati, l'elenco dell'anagrafica
+ * finirebbe comunque nel client, solo con qualche riga barrata.
+ */
+export async function cercaCandidatiAzione(
+  codice: string,
+  squadraId: string,
+  ambito: 'rosa' | 'staff',
+  testo: string,
+): Promise<Risultato<Persona[]>> {
+  return eseguiAzione('squadre.cercaCandidati', async () => {
+    const db = await supabaseServer()
+    await richiediRuolo(db, [...SCRITTURA])
+    // `stagioneModificabile` e non una semplice lettura: i candidati servono a
+    // scrivere, e su una stagione chiusa non c'è nulla da proporre.
+    const stagione = await stagioneModificabile(db, codice)
+
+    // Due caratteri: con uno solo la prima lettera dell'alfabeto restituisce
+    // mezza anagrafica a ogni battuta, e nessuno sceglie da un elenco così.
+    const cercato = testo.trim()
+    if (cercato.length < 2) return []
+
+    const trovate = await elencaPersone(db, { cognome: cercato, soloAttive: true })
+    const esclusi = ambito === 'rosa'
+      ? new Set((await elencaTesseramenti(db, stagione.id)).map((t) => t.persona.id))
+      : new Set((await elencaIncarichi(db, squadraId)).map((i) => i.persona.id))
+
+    // Dieci righe: oltre, l'elenco a tendina diventa una pagina da scorrere e
+    // conviene scrivere una lettera in più.
+    return trovate.filter((p) => !esclusi.has(p.id)).slice(0, 10)
+  })
 }

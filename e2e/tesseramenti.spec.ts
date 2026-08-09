@@ -156,8 +156,12 @@ test('lo staff si aggiunge e si toglie dalla scheda squadra', async ({ page }) =
   const db = clientServizio()
   const { data: squadra } = await db.from('squadre').select('id').eq('nome', 'Pulcini B').single()
 
-  await page.goto(`/2026-27/squadre/${squadra!.id}?staff=${COGNOME}`)
-  await page.getByRole('radio', { name: new RegExp(`${COGNOME} Delta`) }).check()
+  await page.goto(`/2026-27/squadre/${squadra!.id}`)
+  // La ricerca non è più un parametro nell'URL: si scrive nell'autocomplete e
+  // si sceglie dall'elenco che si apre.
+  const form = page.locator('form', { hasText: 'Aggiungi allo staff' })
+  await form.getByLabel('Cerca in anagrafica').fill(COGNOME)
+  await form.getByRole('option', { name: new RegExp(`${COGNOME} Delta`) }).click()
   await page.getByLabel('Ruolo').selectOption('vice_allenatore')
   await page.getByRole('button', { name: 'Aggiungi' }).click()
 

@@ -23,8 +23,13 @@ export const schemaAssegnazione = schemaTesseramento.omit({ personaId: true })
  * Tesseramento fatto dalla scheda di una squadra: la squadra viene dall'URL,
  * non dal form. Un `squadraId` inviato dal browser sarebbe un modo per
  * tesserare in una squadra diversa da quella che si sta guardando.
+ *
+ * Niente numero di maglia: la società non lo usa, e dalla scheda squadra non si
+ * chiede. La colonna resta — c'è chi l'ha compilata in passato e l'indice unico
+ * per squadra la protegge — e si imposta dalla scheda del tesserato, dove serve
+ * anche per spostarlo.
  */
-export const schemaTesseraInSquadra = schemaTesseramento.omit({ squadraId: true })
+export const schemaTesseraInSquadra = schemaTesseramento.pick({ personaId: true })
 
 /**
  * Giocatore nuovo creato dalla scheda squadra: la persona non esiste ancora in
@@ -38,16 +43,17 @@ export const schemaTesseraInSquadra = schemaTesseramento.omit({ squadraId: true 
  * un modulo di dodici campi dentro la scheda squadra non lo compila nessuno a
  * bordo campo.
  */
-export const schemaNuovoGiocatore = schemaPersona
-  .pick({ nome: true, cognome: true, dataNascita: true })
-  .extend({ numeroMaglia: schemaTesseramento.shape.numeroMaglia })
+export const schemaNuovoGiocatore = schemaPersona.pick({
+  nome: true,
+  cognome: true,
+  dataNascita: true,
+})
 
 export function campiNuovoGiocatore(form: FormData): Record<string, unknown> {
   return {
     nome: form.get('nome'),
     cognome: form.get('cognome'),
     dataNascita: form.get('dataNascita'),
-    numeroMaglia: form.get('numeroMaglia'),
   }
 }
 

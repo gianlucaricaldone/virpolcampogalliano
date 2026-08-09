@@ -29,6 +29,14 @@ async function rimuoviProve() {
   if (ids.length > 0) {
     const { error: eTess } = await db.from('tesseramenti').delete().in('persona_id', ids)
     if (eTess) throw eTess
+    // Anche gli incarichi: una persona può essere tesserata E nello staff — c'è
+    // un test che lo verifica di proposito, e nella rosa reale sono sei — e
+    // `incarichi_staff.persona_id` è `on delete restrict`. Senza questa riga la
+    // delete su `persone` fallisce con 23503 dentro `beforeAll`, e l'intero file
+    // non parte: un errore che sembra della prima squadra creata e viene invece
+    // dalla pulizia del giro precedente.
+    const { error: eInc } = await db.from('incarichi_staff').delete().in('persona_id', ids)
+    if (eInc) throw eInc
     const { error: ePers } = await db.from('persone').delete().in('id', ids)
     if (ePers) throw ePers
   }
@@ -140,7 +148,7 @@ test('una squadra di un\'altra stagione dà 404 sotto questo codice', async ({ p
   expect(inesistente?.status()).toBe(404)
 })
 
-test('un dirigente tessera dalla scheda squadra, senza passare dall\'elenco', async ({ page }) => {
+test('un dirigente tessera dalla scheda squadra, scegliendo dall\'autocomplete', async ({ page }) => {
   const db = clientServizio()
   const { error } = await db.from('persone').insert({
     nome: 'Aspirante', cognome: `${PREFISSO}rosa`,
@@ -152,45 +160,49 @@ test('un dirigente tessera dalla scheda squadra, senza passare dall\'elenco', as
   await expect(page.getByRole('heading', { name: `${PREFISSO} Rosa` })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rosa (0)' })).toBeVisible()
 
-  // La ricerca sta nell'URL: senza, il tesseramento riuscito ricarica la
-  // pagina e la lista dei candidati sparirebbe.
-  await page.getByLabel('Cerca in anagrafica').first().fill(`${PREFISSO}rosa`)
-  await page.getByRole('button', { name: 'Cerca' }).first().click()
-
-  await page.getByRole('radio', { name: `${PREFISSO}rosa Aspirante` }).check()
-  await page.getByLabel('Numero di maglia').fill('17')
+  const form = page.locator('form', { hasText: 'Tessera in questa squadra' })
+  await form.getByLabel('Cerca in anagrafica').fill(`${PREFISSO}rosa`)
+  await form.getByRole('option', { name: `${PREFISSO}rosa Aspirante` }).click()
   await page.getByRole('button', { name: 'Tessera' }).click()
 
   await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
   await expect(page.getByRole('link', { name: `${PREFISSO}rosa Aspirante` })).toBeVisible()
 })
 
-test('un numero di maglia occupato dice chi ce l\'ha, dalla scheda squadra', async ({ page }) => {
+// Il filtro sta nella Server Action, non nel componente: se arrivassero al
+// browser anche i già dentro, l'anagrafica finirebbe nel client con qualche riga
+// barrata. Questo test guarda l'unica cosa osservabile — che non compaiano.
+test('l\'autocomplete non propone chi è già in rosa né chi è già nello staff', async ({ page }) => {
   const db = clientServizio()
-  const { error } = await db.from('persone').insert([
-    { nome: 'Primo', cognome: `${PREFISSO}maglia` },
-    { nome: 'Secondo', cognome: `${PREFISSO}maglia` },
-  ])
+  const { error } = await db.from('persone').insert({
+    nome: 'Unico', cognome: `${PREFISSO}doppio`,
+  })
   if (error) throw error
 
   await accedi(page, 'dirigente@virpol.test')
-  await crea(page, `${PREFISSO} Maglia`)
+  await crea(page, `${PREFISSO} Doppio`)
 
-  for (const nome of ['Primo', 'Secondo']) {
-    await page.getByLabel('Cerca in anagrafica').first().fill(`${PREFISSO}maglia`)
-    await page.getByRole('button', { name: 'Cerca' }).first().click()
-    await page.getByRole('radio', { name: `${PREFISSO}maglia ${nome}` }).check()
-    await page.getByLabel('Numero di maglia').fill('9')
-    await page.getByRole('button', { name: 'Tessera' }).click()
-    if (nome === 'Primo') await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
-  }
-
-  // `filter`: getByRole('alert') pesca anche l'annunciatore di rotta di Next,
-  // che è un alert vuoto sempre presente nel documento.
-  const avviso = page.getByRole('alert').filter({ hasText: /Il numero 9/ })
-  await expect(avviso).toBeVisible()
-  await expect(avviso).toContainText(`${PREFISSO}maglia Primo`)
+  const rosa = page.locator('form', { hasText: 'Tessera in questa squadra' })
+  await rosa.getByLabel('Cerca in anagrafica').fill(`${PREFISSO}doppio`)
+  await rosa.getByRole('option', { name: `${PREFISSO}doppio Unico` }).click()
+  await page.getByRole('button', { name: 'Tessera' }).click()
   await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+
+  // Tesserato: non è più un candidato per nessuna rosa della stagione.
+  await rosa.getByLabel('Cerca in anagrafica').fill(`${PREFISSO}doppio`)
+  await expect(rosa.getByText('Nessuna persona disponibile con questo cognome.')).toBeVisible()
+
+  // Ma per lo staff sì: essere tesserato non impedisce di allenare — nella
+  // rosa reale ci sono sei tesserati che allenano una squadra.
+  const staff = page.locator('form', { hasText: 'Aggiungi allo staff' })
+  await staff.getByLabel('Cerca in anagrafica').fill(`${PREFISSO}doppio`)
+  await staff.getByRole('option', { name: `${PREFISSO}doppio Unico` }).click()
+  await page.getByRole('button', { name: 'Aggiungi' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: `${PREFISSO}doppio Unico` })).toBeVisible()
+
+  // Ora è già staff di QUESTA squadra, quindi sparisce anche da lì.
+  await staff.getByLabel('Cerca in anagrafica').fill(`${PREFISSO}doppio`)
+  await expect(staff.getByText('Nessuna persona disponibile con questo cognome.')).toBeVisible()
 })
 
 test('un allenatore non vede il modo di tesserare nella propria squadra', async ({ page }) => {
@@ -199,6 +211,7 @@ test('un allenatore non vede il modo di tesserare nella propria squadra', async 
   await page.getByRole('link', { name: 'Pulcini A' }).click()
   await expect(page.getByRole('heading', { name: /^Rosa \(/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Tessera' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Crea e tessera' })).toHaveCount(0)
 })
 
 test('un giocatore nuovo si crea dalla scheda squadra e conta come tesseramento', async ({ page }) => {
@@ -206,16 +219,11 @@ test('un giocatore nuovo si crea dalla scheda squadra e conta come tesseramento'
   await crea(page, `${PREFISSO} Nuovi`)
   await expect(page.getByRole('heading', { name: 'Rosa (0)' })).toBeVisible()
 
-  // Circoscritto al riquadro: in pagina ci sono anche il campo Nome della
-  // squadra e il campo Cognome della ricerca, e `getByLabel('Nome')` non
-  // distingue né un'etichetta contenuta in un'altra ("Cognome") né due campi
-  // con la stessa etichetta in form diversi.
   const nuovo = riquadroNuovoGiocatore(page)
   await nuovo.getByText('Aggiungi un giocatore nuovo').click()
   await nuovo.getByLabel('Nome', { exact: true }).fill('Nuovo')
   await nuovo.getByLabel('Cognome', { exact: true }).fill(`${PREFISSO}creato`)
   await nuovo.getByLabel('Data di nascita').fill('2014-05-09')
-  await nuovo.getByLabel('Maglia', { exact: true }).fill('23')
   await nuovo.getByRole('button', { name: 'Crea e tessera' }).click()
 
   // Il tesseramento è la ragione del gesto: la rosa deve crescere, non solo
@@ -226,38 +234,4 @@ test('un giocatore nuovo si crea dalla scheda squadra e conta come tesseramento'
   // E la persona esiste davvero in anagrafica, con la data che le è stata data.
   await page.goto('/anagrafica?q=' + `${PREFISSO}creato`)
   await expect(page.getByRole('link', { name: `${PREFISSO}creato Nuovo` })).toBeVisible()
-})
-
-test('una maglia occupata non lascia in anagrafica un giocatore mai tesserato', async ({ page }) => {
-  const db = clientServizio()
-  const { error } = await db.from('persone').insert({ nome: 'Primo', cognome: `${PREFISSO}occupa` })
-  if (error) throw error
-
-  await accedi(page, 'dirigente@virpol.test')
-  await crea(page, `${PREFISSO} Occupata`)
-  await page.getByLabel('Cerca in anagrafica').first().fill(`${PREFISSO}occupa`)
-  await page.getByRole('button', { name: 'Cerca' }).first().click()
-  await page.getByRole('radio', { name: `${PREFISSO}occupa Primo` }).check()
-  await page.getByLabel('Numero di maglia').fill('23')
-  await page.getByRole('button', { name: 'Tessera' }).click()
-  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
-
-  // Stessa maglia, ma per un giocatore che non esiste ancora: il numero si
-  // verifica PRIMA di creare la persona, quindi l'anagrafica non deve
-  // guadagnare una riga che nessuno potrebbe più togliere — persone_del è
-  // concessa al solo admin.
-  const nuovo = riquadroNuovoGiocatore(page)
-  await nuovo.getByText('Aggiungi un giocatore nuovo').click()
-  await nuovo.getByLabel('Nome', { exact: true }).fill('Secondo')
-  await nuovo.getByLabel('Cognome', { exact: true }).fill(`${PREFISSO}scartato`)
-  await nuovo.getByLabel('Maglia', { exact: true }).fill('23')
-  await nuovo.getByRole('button', { name: 'Crea e tessera' }).click()
-
-  const avviso = page.getByRole('alert').filter({ hasText: /Il numero 23/ })
-  await expect(avviso).toBeVisible()
-  await expect(avviso).toContainText(`${PREFISSO}occupa Primo`)
-  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
-
-  const { data: orfani } = await db.from('persone').select('id').eq('cognome', `${PREFISSO}scartato`)
-  expect(orfani).toEqual([])
 })

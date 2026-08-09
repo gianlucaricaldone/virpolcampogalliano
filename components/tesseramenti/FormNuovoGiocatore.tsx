@@ -9,10 +9,13 @@ type Azione = (
 ) => Promise<Risultato<null>>
 
 /**
- * Giocatore nuovo, creato e tesserato dalla scheda squadra. Quattro campi e non
+ * Giocatore nuovo, creato e tesserato dalla scheda squadra. Tre campi e non
  * dodici: il resto dell'anagrafica — codice fiscale, contatti, indirizzo — si
  * completa dalla scheda della persona, con calma. Qui conta mettere un nome in
  * rosa mentre si ha l'elenco in mano.
+ *
+ * Nessun numero di maglia: la società non lo usa, e un campo che nessuno legge
+ * è solo una casella in più fra il nome e la rosa.
  *
  * `<details>` chiuso per default: la strada normale è cercare in anagrafica chi
  * c'è già, e un modulo di creazione sempre aperto invita a duplicare una persona
@@ -52,14 +55,6 @@ export function FormNuovoGiocatore({ azione }: { azione: Azione }) {
                    className="mt-1.5 rounded-md border px-3 text-sm" />
             {campi?.dataNascita && (
               <p role="alert" className="mt-1 text-sm text-red-700">{campi.dataNascita}</p>
-            )}
-          </div>
-          <div className="flex flex-col">
-            <label htmlFor="nuovo-maglia" className="text-sm font-medium">Maglia</label>
-            <input id="nuovo-maglia" name="numeroMaglia" type="number" min={1} max={99}
-                   inputMode="numeric" className="mt-1.5 w-24 rounded-md border px-3 text-sm" />
-            {campi?.numeroMaglia && (
-              <p role="alert" className="mt-1 text-sm text-red-700">{campi.numeroMaglia}</p>
             )}
           </div>
         </div>

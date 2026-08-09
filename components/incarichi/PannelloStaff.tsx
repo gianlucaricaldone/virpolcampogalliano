@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, useState, useTransition } from 'react'
+import { useEffect, useActionState, useState, useTransition } from 'react'
+import { RicercaPersona } from '@/components/persone/RicercaPersona'
 import type { Risultato } from '@/lib/azioni'
 import { RUOLI_STAFF } from '@/lib/costanti'
 import type { Incarico } from '@/lib/repos/incarichi'
@@ -17,19 +18,27 @@ function etichettaRuolo(ruolo: string): string {
 
 export function PannelloStaff({
   incarichi,
-  candidati,
+  cerca,
   aggiungi,
   rimuovi,
   modificabile,
 }: {
   incarichi: Incarico[]
-  candidati: Persona[]
+  cerca: (testo: string) => Promise<Risultato<Persona[]>>
   aggiungi: Azione
   rimuovi: (id: string) => Promise<Risultato<null>>
   modificabile: boolean
 }) {
   const [esito, invia, inCorso] = useActionState(aggiungi, null)
+  const [scelta, setScelta] = useState<Persona | null>(null)
   const campi = esito && !esito.ok ? esito.campi : undefined
+
+  // Azzerare la scelta a operazione riuscita non è cosmetico: finché il nome
+  // resta selezionato l'autocomplete mostra il riquadro giallo invece del campo,
+  // e chi sta aggiungendo dieci persone di fila deve premere "Cambia" ogni volta.
+  useEffect(() => {
+    if (esito?.ok) setScelta(null)
+  }, [esito])
   const [erroreRimozione, setErroreRimozione] = useState<string | null>(null)
   const [rimozioneInCorso, avviaRimozione] = useTransition()
 
@@ -69,22 +78,19 @@ export function PannelloStaff({
       )}
       {erroreRimozione && <p role="alert" className="text-sm text-red-700">{erroreRimozione}</p>}
 
-      {modificabile && candidati.length > 0 && (
+      {modificabile && (
         <form action={invia} className="space-y-3 rounded-lg border bg-white p-4">
-          <fieldset>
-            <legend className="text-sm font-medium">Aggiungi allo staff</legend>
-            {campi?.personaId && (
-              <p role="alert" className="mt-1 text-sm text-red-700">{campi.personaId}</p>
-            )}
-            <div className="mt-2 max-h-56 space-y-1 overflow-y-auto">
-              {candidati.map((p) => (
-                <label key={p.id} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-neutral-50">
-                  <input type="radio" name="personaId" value={p.id} required />
-                  <span className="text-sm">{p.cognome} {p.nome}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <p className="text-sm font-medium">Aggiungi allo staff</p>
+          <RicercaPersona
+            cerca={cerca}
+            etichetta="Cerca in anagrafica"
+            scelta={scelta}
+            onScelta={setScelta}
+          />
+          {scelta && <input type="hidden" name="personaId" value={scelta.id} />}
+          {campi?.personaId && (
+            <p role="alert" className="text-sm text-red-700">{campi.personaId}</p>
+          )}
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col">
@@ -95,11 +101,7 @@ export function PannelloStaff({
                 ))}
               </select>
             </div>
-            <button
-              type="submit"
-              disabled={inCorso}
-              className="bottone"
-            >
+            <button type="submit" disabled={inCorso || !scelta} className="bottone">
               {inCorso ? 'Aggiunta…' : 'Aggiungi'}
             </button>
             {esito && !esito.ok && !campi && (
