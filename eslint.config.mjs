@@ -23,6 +23,12 @@ const messaggioServizio =
   'può essere importato solo da app/(app)/admin/utenti/actions.ts, che crea ' +
   'gli utenti applicativi.'
 
+const messaggioVecchio =
+  'scripts/migrazione/vecchio usa la chiave service role del progetto ' +
+  'VECCHIO di produzione: read-only per contratto (espone solo leggiTutto, ' +
+  'che fa solo select), ma la chiave stessa può scrivere. Importabile solo ' +
+  'dagli script di migrazione.'
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
@@ -52,6 +58,9 @@ const eslintConfig = [
         }, {
           regex: '(^|/)supabase/servizio$',
           message: messaggioServizio,
+        }, {
+          regex: '(^|/)migrazione/vecchio$',
+          message: messaggioVecchio,
         }],
       }],
     },
