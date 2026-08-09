@@ -313,6 +313,14 @@ describe('ricostruisciPagamenti', () => {
     expect(anomalie[0].tipo).toBe('stato_pagamento_sconosciuto')
   })
 
+  it('con quota zero non genera pagamenti nemmeno per i pagati', () => {
+    const { pagamenti, anomalie } = ricostruisciPagamenti(
+      [DATI], PER_ID, new Map([['st-1', 0]]),
+    )
+    expect(pagamenti).toEqual([])
+    expect(anomalie).toEqual([])
+  })
+
   it('la nota fissa è esportata: il chiamante la scrive su ogni pagamento', () => {
     expect(NOTA_RICOSTRUITO).toBe('importo ricostruito dalla migrazione')
   })
