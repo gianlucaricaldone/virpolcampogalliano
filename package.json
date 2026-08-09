@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:produzione": "sh -c 'set -a; . ./.env.cutover; set +a; NEXT_DIST_DIR=.next-produzione NEXT_PUBLIC_SUPABASE_URL=$CUTOVER_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY=$CUTOVER_ANON_KEY SUPABASE_SERVICE_ROLE_KEY=$CUTOVER_SERVICE_ROLE_KEY next dev'",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ignore-pattern 'tests/lint/fixtures/**'",

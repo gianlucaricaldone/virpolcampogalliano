@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
   // presente nella home directory dell'utente altrimenti confonde l'inferenza
   // automatica di Next.js.
   outputFileTracingRoot: path.join(__dirname),
+
+  // Due `next dev` sullo stesso checkout condividono `.next` e si sovrascrivono
+  // le compilazioni a vicenda: il browser riceve la mappa dei moduli di una e
+  // il chunk di pagina dell'altra, e il runtime muore con "Cannot read
+  // properties of undefined (reading 'call')". Con una cartella per processo
+  // (vedi lo script `dev:produzione`) convivono. Inerte se la variabile manca.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
 };
 
 export default nextConfig;

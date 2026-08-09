@@ -96,10 +96,16 @@ const eslintConfig = [
     },
   },
   {
-    // supabase/.temp è generato da `supabase start` (bundle dell'edge
-    // runtime): non è tracciato da git (vedi supabase/.gitignore) ma
-    // ESLint non legge i .gitignore annidati, quindi va escluso qui.
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**", "lib/db/types.ts", "playwright-report/**", "supabase/.temp/**"],
+    // ESLint non legge nessun .gitignore: ogni cartella generata va elencata
+    // qui, anche se git la ignora già.
+    // - supabase/.temp: bundle dell'edge runtime, da `supabase start`.
+    // - .vercel/output: build prodotto da `vercel build`. Senza questa voce
+    //   `npm run lint` analizzava 160 file compilati e usciva con oltre 1400
+    //   errori che non riguardano il sorgente.
+    // - .next-*: distDir alternative dello script dev:produzione, che esiste
+    //   perché due `next dev` sulla stessa .next si sovrascrivono le
+    //   compilazioni (vedi next.config.ts).
+    ignores: [".next/**", ".next-*/**", ".vercel/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**", "lib/db/types.ts", "playwright-report/**", "supabase/.temp/**"],
   },
 ];
 

@@ -3,6 +3,7 @@
  * Uso: npm run seed:dev
  */
 import { loadEnvFile } from 'node:process'
+import { ambienteDa, riferimentoAmbiente } from '@/lib/domain/ambiente'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 // In locale le variabili arrivano da .env.local; in CI arrivano già
@@ -17,6 +18,19 @@ const UTENTI = [
 ]
 
 async function main() {
+  // Questo script semina dati inventati e fa upsert delle stagioni forzandone
+  // lo stato: puntato a un database remoto scriverebbe squadre e tesserati
+  // finti in produzione e chiuderebbe la stagione vera. Il bersaglio si
+  // verifica qui, non a memoria, perché la porta del server non dice nulla su
+  // quale database ci sia dietro.
+  const bersaglio = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  if (ambienteDa(bersaglio) === 'remoto') {
+    throw new Error(
+      `seed:dev rifiuta un database non locale: ${riferimentoAmbiente(bersaglio)}. ` +
+        'Serve NEXT_PUBLIC_SUPABASE_URL su 127.0.0.1.',
+    )
+  }
+
   const db = supabaseAdmin()
 
   // upsert su codice, non "select poi inserisci se manca": tests/db/repo-stagioni.test.ts
