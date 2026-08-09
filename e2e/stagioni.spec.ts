@@ -26,7 +26,11 @@ test('un codice stagione inesistente dà 404, non una pagina bianca', async ({ p
 test('il selettore mostra le stagioni chiuse come tali e ne cambia solo il segmento', async ({ page }) => {
   await accedi(page)
   await page.goto('/2026-27')
-  const selettore = page.getByRole('combobox')
+  // Non `getByRole('combobox')`: il cruscotto ha anche il filtro Squadra, e
+  // due combobox violano la modalità strict. Il selettore di stagione è
+  // l'unico etichettato "Stagione" — il nome accessibile include il testo
+  // delle opzioni, quindi la corrispondenza è per prefisso.
+  const selettore = page.getByLabel(/^Stagione/)
   await expect(selettore).toHaveValue('2026-27')
 
   // scripts/seed-dev.ts semina anche la 2025-26, chiusa: prima di questo il
