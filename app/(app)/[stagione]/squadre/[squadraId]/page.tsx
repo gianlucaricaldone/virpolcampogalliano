@@ -3,14 +3,19 @@ import { notFound } from 'next/navigation'
 import { PannelloStaff } from '@/components/incarichi/PannelloStaff'
 import { FormSquadra } from '@/components/squadre/FormSquadra'
 import { PulsanteEliminaSquadra } from '@/components/squadre/PulsanteEliminaSquadra'
-import { TabellaTesserati } from '@/components/tesseramenti/TabellaTesserati'
+import { SezioneRosa } from '@/components/tesseramenti/SezioneRosa'
 import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaIncarichi } from '@/lib/repos/incarichi'
 import { elencaPersone } from '@/lib/repos/persone'
 import { elencaTesseramenti } from '@/lib/repos/tesseramenti'
 import { supabaseServer } from '@/lib/supabase/server'
 import { stagioneRichiesta } from '../../dati'
-import { aggiornaSquadraAzione, creaIncaricoAzione, rimuoviIncaricoAzione } from '../actions'
+import {
+  aggiornaSquadraAzione,
+  creaIncaricoAzione,
+  rimuoviIncaricoAzione,
+  tesseraNellaSquadraAzione,
+} from '../actions'
 import { caricaSquadra } from './dati'
 
 export default async function PaginaSquadra({
@@ -18,10 +23,10 @@ export default async function PaginaSquadra({
   searchParams,
 }: {
   params: Promise<{ stagione: string; squadraId: string }>
-  searchParams: Promise<{ staff?: string }>
+  searchParams: Promise<{ staff?: string; rosa?: string }>
 }) {
   const { stagione: codice, squadraId } = await params
-  const { staff } = await searchParams
+  const { staff, rosa: ricercaRosa } = await searchParams
   // Il layout ha già risolto stagione e squadra: React.cache le restituisce
   // senza rifare le query.
   const [stagione, squadra, db, sessione] = await Promise.all([
@@ -40,13 +45,21 @@ export default async function PaginaSquadra({
   // candidati e staff già assegnato si fa dopo, in memoria.
   // La ricerca precede l'elenco: l'anagrafica intera in una lista di radio
   // button non la scorre nessuno.
-  const [rosa, incarichi, trovate] = await Promise.all([
+  // `tesseratiStagione` serve solo a sottrarre i candidati già tesserati: si
+  // legge unicamente quando c'è una ricerca in corso.
+  const [rosa, incarichi, trovateStaff, trovateRosa, tesseratiStagione] = await Promise.all([
     elencaTesseramenti(db, stagione.id, { squadraId: squadra.id }),
     elencaIncarichi(db, squadra.id),
     puoScrivere && staff ? elencaPersone(db, { cognome: staff, soloAttive: true }) : [],
+    puoScrivere && ricercaRosa ? elencaPersone(db, { cognome: ricercaRosa, soloAttive: true }) : [],
+    puoScrivere && ricercaRosa ? elencaTesseramenti(db, stagione.id) : [],
   ])
   const giaStaff = new Set(incarichi.map((i) => i.persona.id))
-  const candidati = trovate.filter((p) => !giaStaff.has(p.id))
+  const candidati = trovateStaff.filter((p) => !giaStaff.has(p.id))
+  // Il tesseramento è unico per persona e stagione, non per squadra: chi è già
+  // tesserato altrove non è un candidato, va spostato dalla sua scheda.
+  const giaTesserati = new Set(tesseratiStagione.map((t) => t.persona.id))
+  const candidatiRosa = trovateRosa.filter((p) => !giaTesserati.has(p.id))
 
   return (
     <section className="space-y-6">
@@ -63,10 +76,15 @@ export default async function PaginaSquadra({
         </Link>
       </div>
 
-      <div>
-        <h2 className="mb-2 text-lg font-semibold">Rosa ({rosa.length})</h2>
-        <TabellaTesserati tesserati={rosa} codiceStagione={codice} mostraSquadra={false} />
-      </div>
+      <SezioneRosa
+        rosa={rosa}
+        codiceStagione={codice}
+        ricerca={ricercaRosa}
+        trovate={trovateRosa}
+        candidati={candidatiRosa}
+        azione={tesseraNellaSquadraAzione.bind(null, codice, squadra.id)}
+        modificabile={puoScrivere}
+      />
 
       <div>
         <h2 className="mb-2 text-lg font-semibold">Staff</h2>

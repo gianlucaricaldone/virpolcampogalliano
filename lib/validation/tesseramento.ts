@@ -19,6 +19,13 @@ export const schemaTesseramento = z.object({
 export const schemaAssegnazione = schemaTesseramento.omit({ personaId: true })
 
 /**
+ * Tesseramento fatto dalla scheda di una squadra: la squadra viene dall'URL,
+ * non dal form. Un `squadraId` inviato dal browser sarebbe un modo per
+ * tesserare in una squadra diversa da quella che si sta guardando.
+ */
+export const schemaTesseraInSquadra = schemaTesseramento.omit({ squadraId: true })
+
+/**
  * Le due date della visita. Entrambe facoltative: svuotare la scadenza è il
  * modo di dire "questa visita non c'è più", e va ammesso.
  */

@@ -2,17 +2,17 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { daErroreZod, ErroreDominio, eseguiAzione, type Risultato } from '@/lib/azioni'
+import { daErroreZod, eseguiAzione, type Risultato } from '@/lib/azioni'
+import { conMagliaParlante } from '@/lib/azioni-maglia'
 import { stagioneModificabile } from '@/lib/azioni-stagione'
 import { richiediRuolo } from '@/lib/auth/session'
 import {
   aggiornaAssegnazione,
-  chiHaLaMaglia,
   creaTesseramento,
   rimuoviTesseramento,
 } from '@/lib/repos/tesseramenti'
 import { impostaVisita } from '@/lib/repos/visite'
-import { supabaseServer, type Db } from '@/lib/supabase/server'
+import { supabaseServer } from '@/lib/supabase/server'
 import {
   campiTesseramento,
   schemaAssegnazione,
@@ -21,35 +21,6 @@ import {
 } from '@/lib/validation/tesseramento'
 
 const SCRITTURA = ['admin', 'dirigente'] as const
-
-function eMagliaOccupata(e: unknown): boolean {
-  return (
-    typeof e === 'object' && e !== null &&
-    (e as { code?: string }).code === '23505' &&
-    String((e as { message?: string }).message).includes('tesseramenti_squadra_maglia_uidx')
-  )
-}
-
-/**
- * "Il numero 10 è già assegnato" costringe a cercare a mano chi ce l'ha, e chi
- * lo cerca a mano lo cerca ogni volta. La query in più vale il messaggio.
- */
-async function conMagliaParlante<T>(
-  db: Db,
-  squadraId: string | null,
-  numero: number | null,
-  corpo: () => Promise<T>,
-): Promise<T> {
-  try {
-    return await corpo()
-  } catch (e) {
-    if (eMagliaOccupata(e) && squadraId && numero !== null) {
-      const chi = await chiHaLaMaglia(db, squadraId, numero)
-      if (chi) throw new ErroreDominio(`Il numero ${numero} è già di ${chi}`)
-    }
-    throw e
-  }
-}
 
 export async function creaTesseramentoAzione(
   codice: string,

@@ -17,6 +17,21 @@ function clientServizio() {
 
 async function rimuoviProve() {
   const db = clientServizio()
+  // Prima i tesseramenti delle persone di prova, poi le persone, poi le
+  // squadre: `persone` è referenziata con `on delete restrict`, e
+  // `tesseramenti.squadra_id` con `on delete set null` — cancellare la squadra
+  // per prima lascerebbe il tesseramento orfano nel seed, e al giro dopo la
+  // persona non comparirebbe più fra i candidati.
+  const { data: persone, error: eSel } = await db
+    .from('persone').select('id').like('cognome', `${PREFISSO}%`)
+  if (eSel) throw eSel
+  const ids = (persone ?? []).map((p) => p.id)
+  if (ids.length > 0) {
+    const { error: eTess } = await db.from('tesseramenti').delete().in('persona_id', ids)
+    if (eTess) throw eTess
+    const { error: ePers } = await db.from('persone').delete().in('id', ids)
+    if (ePers) throw ePers
+  }
   const { error } = await db.from('squadre').delete().like('nome', `${PREFISSO}%`)
   if (error) throw error
 }
@@ -119,4 +134,65 @@ test('una squadra di un\'altra stagione dà 404 sotto questo codice', async ({ p
 
   const inesistente = await page.goto('/2026-27/squadre/00000000-0000-4000-8000-000000000000')
   expect(inesistente?.status()).toBe(404)
+})
+
+test('un dirigente tessera dalla scheda squadra, senza passare dall\'elenco', async ({ page }) => {
+  const db = clientServizio()
+  const { error } = await db.from('persone').insert({
+    nome: 'Aspirante', cognome: `${PREFISSO}rosa`,
+  })
+  if (error) throw error
+
+  await accedi(page, 'dirigente@virpol.test')
+  await crea(page, `${PREFISSO} Rosa`)
+  await expect(page.getByRole('heading', { name: `${PREFISSO} Rosa` })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Rosa (0)' })).toBeVisible()
+
+  // La ricerca sta nell'URL: senza, il tesseramento riuscito ricarica la
+  // pagina e la lista dei candidati sparirebbe.
+  await page.getByLabel('Cerca in anagrafica').first().fill(`${PREFISSO}rosa`)
+  await page.getByRole('button', { name: 'Cerca' }).first().click()
+
+  await page.getByRole('radio', { name: `${PREFISSO}rosa Aspirante` }).check()
+  await page.getByLabel('Numero di maglia').fill('17')
+  await page.getByRole('button', { name: 'Tessera' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+  await expect(page.getByRole('link', { name: `${PREFISSO}rosa Aspirante` })).toBeVisible()
+})
+
+test('un numero di maglia occupato dice chi ce l\'ha, dalla scheda squadra', async ({ page }) => {
+  const db = clientServizio()
+  const { error } = await db.from('persone').insert([
+    { nome: 'Primo', cognome: `${PREFISSO}maglia` },
+    { nome: 'Secondo', cognome: `${PREFISSO}maglia` },
+  ])
+  if (error) throw error
+
+  await accedi(page, 'dirigente@virpol.test')
+  await crea(page, `${PREFISSO} Maglia`)
+
+  for (const nome of ['Primo', 'Secondo']) {
+    await page.getByLabel('Cerca in anagrafica').first().fill(`${PREFISSO}maglia`)
+    await page.getByRole('button', { name: 'Cerca' }).first().click()
+    await page.getByRole('radio', { name: `${PREFISSO}maglia ${nome}` }).check()
+    await page.getByLabel('Numero di maglia').fill('9')
+    await page.getByRole('button', { name: 'Tessera' }).click()
+    if (nome === 'Primo') await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+  }
+
+  // `filter`: getByRole('alert') pesca anche l'annunciatore di rotta di Next,
+  // che è un alert vuoto sempre presente nel documento.
+  const avviso = page.getByRole('alert').filter({ hasText: /Il numero 9/ })
+  await expect(avviso).toBeVisible()
+  await expect(avviso).toContainText(`${PREFISSO}maglia Primo`)
+  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+})
+
+test('un allenatore non vede il modo di tesserare nella propria squadra', async ({ page }) => {
+  await accedi(page, 'mister@virpol.test')
+  await page.goto('/2026-27/squadre')
+  await page.getByRole('link', { name: 'Pulcini A' }).click()
+  await expect(page.getByRole('heading', { name: /^Rosa \(/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Tessera' })).toHaveCount(0)
 })
