@@ -58,4 +58,9 @@ describe('analizzaQuote', () => {
   it('rifiuta un codice che non è un codice stagione', () => {
     expect(() => analizzaQuote(['2024/2025=350'])).toThrow(/codice/i)
   })
+
+  it('rifiuta importi vuoti, di soli spazi o infiniti', () => {
+    expect(() => analizzaQuote(['2024-25= '])).toThrow(/quota/i)
+    expect(() => analizzaQuote(['2024-25=Infinity'])).toThrow(/quota/i)
+  })
 })

@@ -46,7 +46,7 @@ export function analizzaQuote(argomenti: string[]): Map<string, number> {
       throw new Error(`'${arg}': il codice stagione deve essere nella forma 2024-25`)
     }
     const valore = Number(importo)
-    if (resto.length > 0 || importo === '' || Number.isNaN(valore) || valore < 0) {
+    if (resto.length > 0 || importo?.trim() === '' || !Number.isFinite(valore) || valore < 0) {
       throw new Error(`'${arg}': la quota deve essere un importo non negativo`)
     }
     quote.set(codice, valore)
