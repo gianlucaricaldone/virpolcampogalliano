@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import type { Risultato } from '@/lib/azioni'
+import { formattaData } from '@/lib/domain/data'
 import type { Persona } from '@/lib/repos/persone'
 import type { Squadra } from '@/lib/repos/squadre'
 
@@ -40,7 +41,7 @@ export function FormTesseramento({
               <input type="radio" name="personaId" value={p.id} required />
               <span className="text-sm">
                 {p.cognome} {p.nome}
-                <span className="ml-2 text-neutral-500">{p.dataNascita}</span>
+                <span className="ml-2 text-neutral-500">{formattaData(p.dataNascita)}</span>
               </span>
             </label>
           ))}

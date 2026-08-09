@@ -4,6 +4,7 @@ import { PannelloQuota } from '@/components/quote/PannelloQuota'
 import { RigaImporto } from '@/components/quote/RigaImporto'
 import { PannelloAssegnazione } from '@/components/tesseramenti/PannelloAssegnazione'
 import { sessioneCorrente } from '@/lib/auth/corrente'
+import { formattaData } from '@/lib/domain/data'
 import {
   elencaPagamenti,
   importoTesseramento,
@@ -69,7 +70,8 @@ export default async function PaginaTesseramento({
             {tesserato.persona.cognome} {tesserato.persona.nome}
           </h1>
           <p className="text-sm text-neutral-600">
-            {stagione.etichetta} · nato il {tesserato.persona.dataNascita}
+            {stagione.etichetta}
+            {tesserato.persona.dataNascita && ` · nato il ${formattaData(tesserato.persona.dataNascita)}`}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
