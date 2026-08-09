@@ -17,6 +17,8 @@
 
 # next.js
 /.next/
+# distDir alternativa dello script dev:produzione (vedi next.config.ts)
+/.next-*/
 /out/
 
 # production
@@ -48,6 +50,9 @@ next-env.d.ts
 # da skills-lock.json, che invece è versionato: tenerne una copia nel repo
 # significherebbe 76 file di vendoring che divergono in silenzio dalla sorgente.
 /.claude/skills/
+# Stesso motivo, altra cartella: `npx skills add` installa qui le skill
+# condivise fra più strumenti.
+/.agents/
 # Permessi e preferenze della singola macchina, non del progetto.
 /.claude/settings.local.json
 
