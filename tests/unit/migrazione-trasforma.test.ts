@@ -5,6 +5,9 @@ import {
   trasformaStagione,
   trasformaTesserati,
   trasformaStaff,
+  fondiTesseramenti,
+  NOTA_RICOSTRUITO,
+  ricostruisciPagamenti,
 } from '@/scripts/migrazione/trasforma'
 
 const STAGIONE = {
@@ -189,5 +192,128 @@ describe('trasformaStaff', () => {
     const { account, anomalie } = trasformaStaff([anonimo], new Map())
     expect(account).toEqual([])
     expect(anomalie[0].tipo).toBe('staff_senza_nome')
+  })
+})
+
+const RIGA_SQUADRA = {
+  id: 'tss-1',
+  tesserato_id: 't-1',
+  squadra_id: 'sq-1',
+  stagione_id: 'st-1',
+  numero_maglia: 10,
+  data_tesseramento: '2024-09-15',
+  note: null,
+}
+
+const DATI = {
+  id: 'tds-1',
+  tesserato_id: 't-1',
+  stagione_id: 'st-1',
+  stato_pagamento: 'pagato',
+  note_pagamento: null,
+  visita_sportiva: true,
+  scadenza_certificato: '2025-05-01',
+  updated_at: '2024-10-01T10:00:00Z',
+}
+
+const PER_ID = new Map([['t-1', 'cf:RSSMRC12C04B819X']])
+
+describe('fondiTesseramenti', () => {
+  it('fonde riga squadra e dati stagionali in un tesseramento', () => {
+    const { tesseramenti, anomalie } = fondiTesseramenti([RIGA_SQUADRA], [DATI], PER_ID)
+    expect(anomalie).toEqual([])
+    expect(tesseramenti).toEqual([{
+      personaChiave: 'cf:RSSMRC12C04B819X',
+      stagioneVecchiaId: 'st-1',
+      squadraVecchiaId: 'sq-1',
+      numero_maglia: 10,
+      visita_scadenza: '2025-05-01',
+      note: null,
+    }])
+  })
+
+  it('dati stagionali senza riga squadra danno un tesseramento senza squadra', () => {
+    const { tesseramenti } = fondiTesseramenti([], [DATI], PER_ID)
+    expect(tesseramenti).toHaveLength(1)
+    expect(tesseramenti[0].squadraVecchiaId).toBeNull()
+  })
+
+  it('più squadre nella stessa stagione sono anomalia, nessun tesseramento', () => {
+    const seconda = { ...RIGA_SQUADRA, id: 'tss-2', squadra_id: 'sq-2', numero_maglia: null }
+    const { tesseramenti, anomalie } = fondiTesseramenti([RIGA_SQUADRA, seconda], [DATI], PER_ID)
+    expect(tesseramenti).toEqual([])
+    expect(anomalie.map((a) => a.tipo)).toEqual([
+      'tesserato_multi_squadra',
+      'tesserato_multi_squadra',
+    ])
+  })
+
+  it('visita sportiva senza scadenza è anomalia e il tesseramento migra senza data', () => {
+    const senza = { ...DATI, scadenza_certificato: null }
+    const { tesseramenti, anomalie } = fondiTesseramenti([RIGA_SQUADRA], [senza], PER_ID)
+    expect(tesseramenti[0].visita_scadenza).toBeNull()
+    expect(anomalie[0].tipo).toBe('visita_senza_scadenza')
+  })
+
+  it('un numero maglia fuori da 1-99 migra come nullo, con anomalia', () => {
+    const strano = { ...RIGA_SQUADRA, numero_maglia: 0 }
+    const { tesseramenti, anomalie } = fondiTesseramenti([strano], [DATI], PER_ID)
+    expect(tesseramenti[0].numero_maglia).toBeNull()
+    expect(anomalie[0].tipo).toBe('numero_maglia_invalido')
+  })
+
+  it('righe di tesserati non migrati sono ignorate qui: hanno già la loro anomalia', () => {
+    const { tesseramenti, anomalie } = fondiTesseramenti(
+      [{ ...RIGA_SQUADRA, tesserato_id: 't-sconosciuto' }],
+      [],
+      PER_ID,
+    )
+    expect(tesseramenti).toEqual([])
+    expect(anomalie).toEqual([])
+  })
+})
+
+describe('ricostruisciPagamenti', () => {
+  const QUOTE = new Map([['st-1', 350]])
+
+  it("'pagato' diventa un pagamento pari alla quota, datato updated_at", () => {
+    const { pagamenti } = ricostruisciPagamenti([DATI], PER_ID, QUOTE)
+    expect(pagamenti).toEqual([{
+      personaChiave: 'cf:RSSMRC12C04B819X',
+      stagioneVecchiaId: 'st-1',
+      importo: 350,
+      data: '2024-10-01',
+    }])
+  })
+
+  it("'parziale' vale metà quota", () => {
+    const { pagamenti } = ricostruisciPagamenti(
+      [{ ...DATI, stato_pagamento: 'parziale' }], PER_ID, QUOTE,
+    )
+    expect(pagamenti[0].importo).toBe(175)
+  })
+
+  it("'non_pagato' e 'in_sospeso' non generano pagamenti", () => {
+    const { pagamenti } = ricostruisciPagamenti(
+      [
+        { ...DATI, id: 'a', stato_pagamento: 'non_pagato' },
+        { ...DATI, id: 'b', stato_pagamento: 'in_sospeso' },
+      ],
+      PER_ID,
+      QUOTE,
+    )
+    expect(pagamenti).toEqual([])
+  })
+
+  it('uno stato di pagamento sconosciuto è anomalia', () => {
+    const { pagamenti, anomalie } = ricostruisciPagamenti(
+      [{ ...DATI, stato_pagamento: 'boh' }], PER_ID, QUOTE,
+    )
+    expect(pagamenti).toEqual([])
+    expect(anomalie[0].tipo).toBe('stato_pagamento_sconosciuto')
+  })
+
+  it('la nota fissa è esportata: il chiamante la scrive su ogni pagamento', () => {
+    expect(NOTA_RICOSTRUITO).toBe('importo ricostruito dalla migrazione')
   })
 })

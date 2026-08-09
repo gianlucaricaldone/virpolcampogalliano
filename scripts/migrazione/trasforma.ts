@@ -1,4 +1,4 @@
-import type { Anomalia, VecchiaStagione, VecchioTesserato, VecchioUtente } from './tipi'
+import type { Anomalia, VecchiaStagione, VecchioTesserato, VecchioUtente, VecchiDatiStagionali, VecchioTesseramentoSquadra } from './tipi'
 
 /**
  * '2024/2025' → '2024-25'. Solo nomi nella forma AAAA/AAAA con anni
@@ -227,4 +227,146 @@ export function trasformaStaff(
   }
 
   return { account, scartati, anomalie }
+}
+
+export type NuovoTesseramento = {
+  personaChiave: string
+  stagioneVecchiaId: string
+  squadraVecchiaId: string | null
+  numero_maglia: number | null
+  visita_scadenza: string | null
+  note: string | null
+}
+
+export type PagamentoRicostruito = {
+  personaChiave: string
+  stagioneVecchiaId: string
+  importo: number
+  data: string
+}
+
+/** Su ogni pagamento generato: distingue per sempre il ricostruito dal registrato. */
+export const NOTA_RICOSTRUITO = 'importo ricostruito dalla migrazione'
+
+/**
+ * Una riga per (tesserato, stagione): la riga squadra porta squadra e maglia,
+ * i dati stagionali portano la visita. Il nuovo schema ha
+ * unique (persona_id, stagione_id): più squadre nella stessa stagione non
+ * possono migrare, e scegliere una squadra a caso sposterebbe le presenze.
+ */
+export function fondiTesseramenti(
+  righeSquadra: VecchioTesseramentoSquadra[],
+  datiStagionali: VecchiDatiStagionali[],
+  tesseratiPerId: Map<string, string>,
+): { tesseramenti: NuovoTesseramento[]; anomalie: Anomalia[] } {
+  const anomalie: Anomalia[] = []
+
+  const perCoppia = new Map<string, VecchioTesseramentoSquadra[]>()
+  for (const r of righeSquadra) {
+    if (!tesseratiPerId.has(r.tesserato_id)) continue // già anomalo altrove
+    const chiave = `${r.tesserato_id}|${r.stagione_id}`
+    perCoppia.set(chiave, [...(perCoppia.get(chiave) ?? []), r])
+  }
+
+  const datiPerCoppia = new Map<string, VecchiDatiStagionali>()
+  for (const d of datiStagionali) {
+    if (!tesseratiPerId.has(d.tesserato_id)) continue
+    datiPerCoppia.set(`${d.tesserato_id}|${d.stagione_id}`, d)
+  }
+
+  const tesseramenti: NuovoTesseramento[] = []
+  const coppie = new Set([...perCoppia.keys(), ...datiPerCoppia.keys()])
+  for (const coppia of coppie) {
+    const righe = perCoppia.get(coppia) ?? []
+    const dati = datiPerCoppia.get(coppia)
+    const [tesseratoId, stagioneId] = coppia.split('|')
+    const personaChiave = tesseratiPerId.get(tesseratoId)!
+
+    if (righe.length > 1) {
+      for (const r of righe) {
+        anomalie.push({
+          tipo: 'tesserato_multi_squadra',
+          id: r.id,
+          chiave: `${personaChiave} @ stagione ${stagioneId}`,
+          dettaglio: `${righe.length} squadre nella stessa stagione: il nuovo schema ne ammette una, scegliere a mano`,
+        })
+      }
+      continue
+    }
+
+    const riga = righe[0]
+    let maglia = riga?.numero_maglia ?? null
+    if (maglia !== null && (maglia < 1 || maglia > 99)) {
+      anomalie.push({
+        tipo: 'numero_maglia_invalido',
+        id: riga!.id,
+        chiave: `${personaChiave} @ stagione ${stagioneId}`,
+        dettaglio: `numero maglia ${maglia} fuori da 1-99: migra senza numero`,
+      })
+      maglia = null
+    }
+
+    if (dati?.visita_sportiva && !dati.scadenza_certificato) {
+      anomalie.push({
+        tipo: 'visita_senza_scadenza',
+        id: dati.id,
+        chiave: `${personaChiave} @ stagione ${stagioneId}`,
+        dettaglio: 'visita segnata consegnata ma senza scadenza: registrarla a mano, nessuna data inventata',
+      })
+    }
+
+    tesseramenti.push({
+      personaChiave,
+      stagioneVecchiaId: stagioneId,
+      squadraVecchiaId: riga?.squadra_id ?? null,
+      numero_maglia: maglia,
+      visita_scadenza: dati?.scadenza_certificato ?? null,
+      note: riga?.note ?? null,
+    })
+  }
+  return { tesseramenti, anomalie }
+}
+
+export function ricostruisciPagamenti(
+  datiStagionali: VecchiDatiStagionali[],
+  tesseratiPerId: Map<string, string>,
+  quotaPerStagioneVecchia: Map<string, number>,
+): { pagamenti: PagamentoRicostruito[]; anomalie: Anomalia[] } {
+  const pagamenti: PagamentoRicostruito[] = []
+  const anomalie: Anomalia[] = []
+  for (const d of datiStagionali) {
+    const personaChiave = tesseratiPerId.get(d.tesserato_id)
+    if (!personaChiave) continue
+    const quota = quotaPerStagioneVecchia.get(d.stagione_id)
+    if (quota === undefined) continue // la stagione stessa è già anomala o senza quota: bloccato a monte
+
+    let importo: number
+    switch (d.stato_pagamento) {
+      case 'pagato':
+        importo = quota
+        break
+      case 'parziale':
+        importo = quota / 2
+        break
+      case 'non_pagato':
+      case 'in_sospeso':
+        continue
+      default:
+        anomalie.push({
+          tipo: 'stato_pagamento_sconosciuto',
+          id: d.id,
+          chiave: `${personaChiave} @ stagione ${d.stagione_id}`,
+          dettaglio: `stato_pagamento '${d.stato_pagamento}' mai visto: nessun pagamento generato`,
+        })
+        continue
+    }
+    if (importo <= 0) continue // quota 0: pagamenti_importo_positivo lo rifiuterebbe
+    pagamenti.push({
+      personaChiave,
+      stagioneVecchiaId: d.stagione_id,
+      importo,
+      data: d.updated_at.slice(0, 10),
+    })
+  }
+  return { pagamenti, anomalie }
 }
