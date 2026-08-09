@@ -5,6 +5,13 @@
  * database. Scrive solo con --esegui. Idempotente per chiavi naturali: ciò
  * che esiste già nel target si salta, mai si sovrascrive.
  *
+ * Un run --esegui interrotto a metà NON si riprende rieseguendo sopra: si
+ * azzera il target (npm run db:reset in locale; al cutover, un progetto
+ * appena creato) e si riesegue da zero. L'idempotenza copre i run completati,
+ * non i parziali: i pagamenti si generano solo per i tesseramenti creati
+ * nello stesso run, e le presenze si giudicano già migrate dalla sola
+ * presenza della seduta.
+ *
  * Uso:
  *   npm run migra -- --quota 2024-25=350 --quota 2025-26=380
  *   npm run migra -- --esegui --quota 2024-25=350 --quota 2025-26=380

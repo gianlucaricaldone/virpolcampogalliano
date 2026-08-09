@@ -91,6 +91,21 @@ nel target, la riga si conta come «già presente» e si salta:
 Il secondo run su un target già migrato deve produrre zero scritture e un
 report tutto «già presente»: è anche il test di integrazione dello script.
 
+### Run interrotto: si riparte da zero, non si riesegue sopra
+
+L'idempotenza per chiavi naturali copre i run completati, non quelli
+interrotti a metà. Due passaggi non hanno una chiave naturale propria e si
+appoggiano a un'altra tabella come proxy: i pagamenti si generano solo per i
+tesseramenti creati nello stesso run (un tesseramento già presente non ne
+genera uno nuovo, anche se il run precedente si è fermato prima di scrivere il
+suo pagamento), e le presenze si considerano già migrate dalla sola presenza
+della seduta (una seduta creata ma con le sue presenze non ancora scritte, a
+un run successivo, appare già fatta). Un secondo `--esegui` sopra un run
+interrotto salterebbe quei dati in modo permanente, con un report che dice
+tutto «già presente» mentre non è vero. Per questo un run interrotto NON si
+riprende rieseguendo sopra: si azzera il target — `npm run db:reset` in
+locale, un progetto appena creato al cutover — e si riesegue da zero.
+
 ## Mapping
 
 Dal design generale §9, verificato contro lo schema vecchio reale
