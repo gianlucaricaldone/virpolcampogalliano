@@ -50,4 +50,12 @@ describe('generaReport', () => {
     expect(report).toContain('luca_VIRPOL_1234')
     expect(report).toMatch(/a voce/i)
   })
+
+  it('pipe e a capo nei campi legacy non rompono la tabella', () => {
+    const report = generaReport({
+      ...BASE,
+      anomalie: [{ tipo: 'x', id: 'a|b', chiave: 'c\nd', dettaglio: 'e | f' }],
+    })
+    expect(report).toContain('| x | a\\|b | c d | e \\| f |')
+  })
 })
