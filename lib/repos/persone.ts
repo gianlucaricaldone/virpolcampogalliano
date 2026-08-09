@@ -131,6 +131,24 @@ export async function aggiornaPersona(
  * non si cancella, si disattiva, altrimenti spariscono anche le sue presenze
  * e i suoi pagamenti.
  */
+/**
+ * Cancellazione vera, non archiviazione: serve solo a compensare un
+ * tesseramento fallito subito dopo la creazione della persona, quando la riga
+ * ha pochi millisecondi e nessun riferimento. Per togliere dall'anagrafica una
+ * persona con una storia si usa `archiviaPersona`.
+ *
+ * `persone_del` è concessa al solo admin: chiamata da un dirigente questa
+ * funzione non lancia — la RLS non fa errore su una delete che non trova righe
+ * da cancellare — ma non cancella nulla. Chi la usa per compensare deve
+ * rileggere, o accettare di registrare l'orfano: vedi
+ * creaGiocatoreNellaSquadraAzione, che per questo controlla il numero di
+ * maglia prima di creare la persona.
+ */
+export async function eliminaPersona(db: Db, id: string): Promise<void> {
+  const { error } = await db.from('persone').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function archiviaPersona(db: Db, id: string): Promise<void> {
   const { error } = await db.from('persone').update({ attiva: false }).eq('id', id)
   if (error) throw error

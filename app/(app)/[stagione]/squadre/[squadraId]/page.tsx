@@ -12,6 +12,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { stagioneRichiesta } from '../../dati'
 import {
   aggiornaSquadraAzione,
+  creaGiocatoreNellaSquadraAzione,
   creaIncaricoAzione,
   rimuoviIncaricoAzione,
   tesseraNellaSquadraAzione,
@@ -83,6 +84,7 @@ export default async function PaginaSquadra({
         trovate={trovateRosa}
         candidati={candidatiRosa}
         azione={tesseraNellaSquadraAzione.bind(null, codice, squadra.id)}
+        azioneNuovo={creaGiocatoreNellaSquadraAzione.bind(null, codice, squadra.id)}
         modificabile={puoScrivere}
       />
 
@@ -102,7 +104,7 @@ export default async function PaginaSquadra({
                 className="mt-1.5 rounded-md border px-3 text-sm"
               />
             </div>
-            <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">Cerca</button>
+            <button type="submit" className="bottone-secondario">Cerca</button>
           </form>
         )}
         <PannelloStaff

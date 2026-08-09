@@ -47,6 +47,10 @@ async function accedi(page: import('@playwright/test').Page, email: string) {
   await expect(page).toHaveURL(/\/\d{4}-\d{2}$/)
 }
 
+function riquadroNuovoGiocatore(page: import('@playwright/test').Page) {
+  return page.locator('details', { hasText: 'Aggiungi un giocatore nuovo' })
+}
+
 async function crea(page: import('@playwright/test').Page, nome: string) {
   await page.goto('/2026-27/squadre/nuova')
   await page.getByLabel('Nome').fill(nome)
@@ -195,4 +199,65 @@ test('un allenatore non vede il modo di tesserare nella propria squadra', async 
   await page.getByRole('link', { name: 'Pulcini A' }).click()
   await expect(page.getByRole('heading', { name: /^Rosa \(/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Tessera' })).toHaveCount(0)
+})
+
+test('un giocatore nuovo si crea dalla scheda squadra e conta come tesseramento', async ({ page }) => {
+  await accedi(page, 'dirigente@virpol.test')
+  await crea(page, `${PREFISSO} Nuovi`)
+  await expect(page.getByRole('heading', { name: 'Rosa (0)' })).toBeVisible()
+
+  // Circoscritto al riquadro: in pagina ci sono anche il campo Nome della
+  // squadra e il campo Cognome della ricerca, e `getByLabel('Nome')` non
+  // distingue né un'etichetta contenuta in un'altra ("Cognome") né due campi
+  // con la stessa etichetta in form diversi.
+  const nuovo = riquadroNuovoGiocatore(page)
+  await nuovo.getByText('Aggiungi un giocatore nuovo').click()
+  await nuovo.getByLabel('Nome', { exact: true }).fill('Nuovo')
+  await nuovo.getByLabel('Cognome', { exact: true }).fill(`${PREFISSO}creato`)
+  await nuovo.getByLabel('Data di nascita').fill('2014-05-09')
+  await nuovo.getByLabel('Maglia', { exact: true }).fill('23')
+  await nuovo.getByRole('button', { name: 'Crea e tessera' }).click()
+
+  // Il tesseramento è la ragione del gesto: la rosa deve crescere, non solo
+  // l'anagrafica.
+  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+  await expect(page.getByRole('link', { name: `${PREFISSO}creato Nuovo` })).toBeVisible()
+
+  // E la persona esiste davvero in anagrafica, con la data che le è stata data.
+  await page.goto('/anagrafica?q=' + `${PREFISSO}creato`)
+  await expect(page.getByRole('link', { name: `${PREFISSO}creato Nuovo` })).toBeVisible()
+})
+
+test('una maglia occupata non lascia in anagrafica un giocatore mai tesserato', async ({ page }) => {
+  const db = clientServizio()
+  const { error } = await db.from('persone').insert({ nome: 'Primo', cognome: `${PREFISSO}occupa` })
+  if (error) throw error
+
+  await accedi(page, 'dirigente@virpol.test')
+  await crea(page, `${PREFISSO} Occupata`)
+  await page.getByLabel('Cerca in anagrafica').first().fill(`${PREFISSO}occupa`)
+  await page.getByRole('button', { name: 'Cerca' }).first().click()
+  await page.getByRole('radio', { name: `${PREFISSO}occupa Primo` }).check()
+  await page.getByLabel('Numero di maglia').fill('23')
+  await page.getByRole('button', { name: 'Tessera' }).click()
+  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+
+  // Stessa maglia, ma per un giocatore che non esiste ancora: il numero si
+  // verifica PRIMA di creare la persona, quindi l'anagrafica non deve
+  // guadagnare una riga che nessuno potrebbe più togliere — persone_del è
+  // concessa al solo admin.
+  const nuovo = riquadroNuovoGiocatore(page)
+  await nuovo.getByText('Aggiungi un giocatore nuovo').click()
+  await nuovo.getByLabel('Nome', { exact: true }).fill('Secondo')
+  await nuovo.getByLabel('Cognome', { exact: true }).fill(`${PREFISSO}scartato`)
+  await nuovo.getByLabel('Maglia', { exact: true }).fill('23')
+  await nuovo.getByRole('button', { name: 'Crea e tessera' }).click()
+
+  const avviso = page.getByRole('alert').filter({ hasText: /Il numero 23/ })
+  await expect(avviso).toBeVisible()
+  await expect(avviso).toContainText(`${PREFISSO}occupa Primo`)
+  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+
+  const { data: orfani } = await db.from('persone').select('id').eq('cognome', `${PREFISSO}scartato`)
+  expect(orfani).toEqual([])
 })

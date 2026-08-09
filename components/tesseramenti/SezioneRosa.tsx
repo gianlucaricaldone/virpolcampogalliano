@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Risultato } from '@/lib/azioni'
 import type { Persona } from '@/lib/repos/persone'
 import type { Tesserato } from '@/lib/repos/tesseramenti'
+import { FormNuovoGiocatore } from './FormNuovoGiocatore'
 import { FormTesseraInSquadra } from './FormTesseraInSquadra'
 import { TabellaTesserati } from './TabellaTesserati'
 
@@ -22,6 +23,7 @@ export function SezioneRosa({
   trovate,
   candidati,
   azione,
+  azioneNuovo,
   modificabile,
 }: {
   rosa: Tesserato[]
@@ -30,6 +32,7 @@ export function SezioneRosa({
   trovate: Persona[]
   candidati: Persona[]
   azione: (precedente: Risultato<null> | null, form: FormData) => Promise<Risultato<null>>
+  azioneNuovo: (precedente: Risultato<null> | null, form: FormData) => Promise<Risultato<null>>
   modificabile: boolean
 }) {
   return (
@@ -52,7 +55,7 @@ export function SezioneRosa({
                 className="mt-1.5 rounded-md border px-3 text-sm"
               />
             </div>
-            <button type="submit" className="min-h-10 rounded-md border px-4 text-sm hover:bg-neutral-50">
+            <button type="submit" className="bottone-secondario">
               Cerca
             </button>
           </form>
@@ -72,6 +75,8 @@ export function SezioneRosa({
           {candidati.length > 0 && (
             <FormTesseraInSquadra candidati={candidati} azione={azione} />
           )}
+
+          <FormNuovoGiocatore azione={azioneNuovo} />
         </>
       )}
     </div>
