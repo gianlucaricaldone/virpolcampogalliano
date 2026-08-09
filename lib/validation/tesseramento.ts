@@ -64,6 +64,11 @@ export function campiNuovoGiocatore(form: FormData): Record<string, unknown> {
 export const schemaVisita = z.object({
   scadenza: facoltativo(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data non valida')),
   consegnataIl: facoltativo(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data non valida')),
+  // Due radio e non una checkbox: una casella non spuntata non distingue "no"
+  // da "non ho ancora guardato", e qui la differenza è il motivo per cui la
+  // colonna esiste. `sì`/`no` come stringhe perché è quello che un form manda.
+  consegnata: z.enum(['si', 'no'], { message: 'Indica se è stata consegnata' })
+    .transform((v) => v === 'si'),
 })
 
 export const schemaIncarico = z.object({

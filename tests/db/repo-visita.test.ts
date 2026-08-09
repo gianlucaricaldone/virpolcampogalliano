@@ -108,7 +108,7 @@ describe('stato della visita — i quattro casi e i loro confini', () => {
     // marcherebbe come mancante ogni record migrato, cioè tutti.
     const { db } = await clientPerRuolo('dirigente')
     const t = await tesserato(giorniDopo(200))
-    await impostaVisita(db, t.id, { scadenza: giorniDopo(200), consegnataIl: null })
+    await impostaVisita(db, t.id, { scadenza: giorniDopo(200), consegnataIl: null, consegnata: false })
     expect((await visitaPerTesseramento(db, t.id))?.stato).toBe('valida')
   })
 })
@@ -190,15 +190,22 @@ describe('impostaVisita', () => {
     const { db } = await clientPerRuolo('dirigente')
     const t = await tesserato(null)
 
-    await impostaVisita(db, t.id, { scadenza: giorniDopo(365), consegnataIl: oggi })
+    // `consegnata: true` perché una data di consegna la richiede: la bandiera è
+    // il fatto, la data il dettaglio.
+    await impostaVisita(db, t.id, { scadenza: giorniDopo(365), consegnataIl: oggi, consegnata: true })
     expect(await visitaPerTesseramento(db, t.id)).toMatchObject({
       scadenza: giorniDopo(365),
       consegnataIl: oggi,
+      consegnata: true,
       stato: 'valida',
     })
 
-    await impostaVisita(db, t.id, { scadenza: null, consegnataIl: null })
-    expect(await visitaPerTesseramento(db, t.id)).toMatchObject({ stato: 'mancante' })
+    await impostaVisita(db, t.id, { scadenza: null, consegnataIl: null, consegnata: false })
+    expect(await visitaPerTesseramento(db, t.id)).toMatchObject({
+      consegnata: false,
+      consegnataIl: null,
+      stato: 'mancante',
+    })
   })
 
   it('è negata all\'allenatore, anche sui propri', async () => {
@@ -211,7 +218,7 @@ describe('impostaVisita', () => {
     const mister = await clientPerRuolo('allenatore')
     await creaIncarico({ personaId: mister.personaId!, stagioneId, squadraId })
 
-    await impostaVisita(mister.db, id, { scadenza: giorniDopo(100), consegnataIl: null })
+    await impostaVisita(mister.db, id, { scadenza: giorniDopo(100), consegnataIl: null, consegnata: false })
     const dirigente = await clientPerRuolo('dirigente')
     expect((await visitaPerTesseramento(dirigente.db, id))?.stato).toBe('mancante')
   })
@@ -224,7 +231,46 @@ describe('impostaVisita', () => {
       stagioneId: chiusa,
       visitaScadenza: null,
     })
-    await impostaVisita(db, id, { scadenza: giorniDopo(100), consegnataIl: null })
+    await impostaVisita(db, id, { scadenza: giorniDopo(100), consegnataIl: null, consegnata: false })
     expect((await visitaPerTesseramento(db, id))?.stato).toBe('mancante')
+  })
+})
+
+describe('vincolo visita_consegna_coerente', () => {
+  it('ammette consegnata senza data: è il caso normale', async () => {
+    const { db } = await clientPerRuolo('dirigente')
+    const { id } = await tesserato(null)
+    await impostaVisita(db, id, { scadenza: null, consegnataIl: null, consegnata: true })
+    const riga = await visitaPerTesseramento(db, id)
+    expect(riga?.consegnata).toBe(true)
+    expect(riga?.consegnataIl).toBeNull()
+    // La consegna non entra nello stato: senza scadenza resta mancante.
+    expect(riga?.stato).toBe('mancante')
+  })
+
+  it('una data di consegna su una visita non consegnata è rifiutata dal database', async () => {
+    const { db } = await clientPerRuolo('dirigente')
+    const { id } = await tesserato(null)
+    // Scavalca impostaVisita, che azzera la data quando la bandiera è falsa: qui
+    // si verifica la barriera sotto, quella che regge anche se un'azione futura
+    // dimenticasse quella riga.
+    await expect(
+      db.from('tesseramenti')
+        .update({ visita_consegnata: false, visita_consegnata_il: '2026-09-01' })
+        .eq('id', id)
+        .then(({ error }) => { if (error) throw error }),
+    ).rejects.toThrow(/visita_consegna_coerente/)
+  })
+
+  it('impostaVisita azzera la data quando la consegna è negata', async () => {
+    const { db } = await clientPerRuolo('dirigente')
+    const { id } = await tesserato(null)
+    await impostaVisita(db, id, { scadenza: null, consegnataIl: '2026-09-01', consegnata: true })
+    expect((await visitaPerTesseramento(db, id))?.consegnataIl).toBe('2026-09-01')
+
+    await impostaVisita(db, id, { scadenza: null, consegnataIl: '2026-09-01', consegnata: false })
+    const riga = await visitaPerTesseramento(db, id)
+    expect(riga?.consegnata).toBe(false)
+    expect(riga?.consegnataIl).toBeNull()
   })
 })

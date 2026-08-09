@@ -4,6 +4,7 @@ import { PannelloQuota } from '@/components/quote/PannelloQuota'
 import { RigaImporto } from '@/components/quote/RigaImporto'
 import { PannelloAssegnazione } from '@/components/tesseramenti/PannelloAssegnazione'
 import { sessioneCorrente } from '@/lib/auth/corrente'
+import { formattaEuro } from '@/lib/domain/denaro'
 import { formattaData } from '@/lib/domain/data'
 import {
   elencaPagamenti,
@@ -116,7 +117,25 @@ export default async function PaginaTesseramento({
       {staff && quota && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Quota di iscrizione</h2>
-          <div className="rounded-lg border bg-white">
+          {/*
+            A tendina, chiusa: un importo personale è l'eccezione — la quota
+            arriva dalla stagione o dalla squadra, e questo campo serve alla
+            famiglia con l'accordo diverso dalle altre. Sempre aperto occupava il
+            primo posto sotto il titolo, davanti al saldo, che è la cosa che si
+            viene a vedere. Il riepilogo nel `summary` dice l'importo che vale
+            adesso, così non serve aprirla per saperlo.
+          */}
+          <details className="rounded-lg border bg-white">
+            <summary className="cursor-pointer px-3 py-2 text-sm">
+              Importo personale
+              <span className="ml-2 text-neutral-600">
+                {override !== null
+                  ? formattaEuro(override)
+                  : quota.quotaAttesa > 0
+                    ? `nessuno · vale ${formattaEuro(quota.quotaAttesa)} da ${quota.livelloImporto}`
+                    : 'nessuno'}
+              </span>
+            </summary>
             <RigaImporto
               etichetta="Importo personale"
               valore={override}
@@ -133,7 +152,7 @@ export default async function PaginaTesseramento({
               }
               modificabile={puoScrivere}
             />
-          </div>
+          </details>
           <PannelloQuota
             quota={quota}
             pagamenti={pagamenti}

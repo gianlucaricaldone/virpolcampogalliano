@@ -80,6 +80,7 @@ export async function impostaVisitaAzione(
   const campi = schemaVisita.safeParse({
     scadenza: form.get('scadenza'),
     consegnataIl: form.get('consegnataIl'),
+    consegnata: form.get('consegnata'),
   })
   if (!campi.success) return daErroreZod(campi.error)
 

@@ -9,6 +9,7 @@ export type RigaVisita = {
   tesseramentoId: string
   scadenza: string | null
   consegnataIl: string | null
+  consegnata: boolean
   stato: StatoVisita
   giorniAllaScadenza: number | null
   persona: { id: string; cognome: string; nome: string }
@@ -16,7 +17,8 @@ export type RigaVisita = {
 }
 
 const CAMPI = `
-  tesseramento_id, visita_scadenza, visita_consegnata_il, stato_visita, giorni_alla_scadenza,
+  tesseramento_id, visita_scadenza, visita_consegnata_il, visita_consegnata,
+  stato_visita, giorni_alla_scadenza,
   persona:persone!tesseramenti_persona_id_fkey (id, cognome, nome),
   squadra:squadre!tesseramenti_squadra_di_stagione (id, nome)
 `
@@ -25,6 +27,7 @@ type RigaVista = {
   tesseramento_id: string | null
   visita_scadenza: string | null
   visita_consegnata_il: string | null
+  visita_consegnata: boolean | null
   stato_visita: string | null
   giorni_alla_scadenza: number | null
   persona: { id: string; cognome: string; nome: string } | null
@@ -36,6 +39,7 @@ function daRiga(r: RigaVista): RigaVisita {
     tesseramentoId: r.tesseramento_id!,
     scadenza: r.visita_scadenza,
     consegnataIl: r.visita_consegnata_il,
+    consegnata: r.visita_consegnata ?? false,
     stato: (r.stato_visita ?? 'mancante') as StatoVisita,
     giorniAllaScadenza: r.giorni_alla_scadenza,
     persona: {
@@ -107,11 +111,20 @@ export async function visitaPerTesseramento(
 export async function impostaVisita(
   db: Db,
   tesseramentoId: string,
-  dati: { scadenza: string | null; consegnataIl: string | null },
+  dati: { scadenza: string | null; consegnataIl: string | null; consegnata: boolean },
 ): Promise<void> {
   const { error } = await db
     .from('tesseramenti')
-    .update({ visita_scadenza: dati.scadenza, visita_consegnata_il: dati.consegnataIl })
+    .update({
+      visita_scadenza: dati.scadenza,
+      // La bandiera vince sulla data: "non consegnata" con una data di consegna
+      // è la combinazione che il vincolo visita_consegna_coerente rifiuta, e
+      // l'interfaccia non la produce (il campo data compare solo su SÌ). Qui si
+      // azzera invece di far arrivare al database un errore che l'utente non
+      // saprebbe leggere.
+      visita_consegnata_il: dati.consegnata ? dati.consegnataIl : null,
+      visita_consegnata: dati.consegnata,
+    })
     .eq('id', tesseramentoId)
   if (error) throw error
 }

@@ -83,6 +83,54 @@ export type Database = {
           },
         ]
       }
+      orari_allenamento: {
+        Row: {
+          created_at: string
+          giorno: number
+          id: string
+          note: string | null
+          ora_inizio: string
+          squadra_id: string
+          stagione_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          giorno: number
+          id?: string
+          note?: string | null
+          ora_inizio: string
+          squadra_id: string
+          stagione_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          giorno?: number
+          id?: string
+          note?: string | null
+          ora_inizio?: string
+          squadra_id?: string
+          stagione_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orari_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "squadre"
+            referencedColumns: ["id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "orari_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+        ]
+      }
       pagamenti_quota: {
         Row: {
           created_at: string
@@ -535,6 +583,7 @@ export type Database = {
           squadra_id: string | null
           stagione_id: string
           updated_at: string
+          visita_consegnata: boolean
           visita_consegnata_il: string | null
           visita_scadenza: string | null
         }
@@ -547,6 +596,7 @@ export type Database = {
           squadra_id?: string | null
           stagione_id: string
           updated_at?: string
+          visita_consegnata?: boolean
           visita_consegnata_il?: string | null
           visita_scadenza?: string | null
         }
@@ -559,6 +609,7 @@ export type Database = {
           squadra_id?: string | null
           stagione_id?: string
           updated_at?: string
+          visita_consegnata?: boolean
           visita_consegnata_il?: string | null
           visita_scadenza?: string | null
         }
@@ -722,6 +773,7 @@ export type Database = {
           stagione_id: string | null
           stato_visita: string | null
           tesseramento_id: string | null
+          visita_consegnata: boolean | null
           visita_consegnata_il: string | null
           visita_scadenza: string | null
         }
@@ -732,6 +784,7 @@ export type Database = {
           stagione_id?: string | null
           stato_visita?: never
           tesseramento_id?: string | null
+          visita_consegnata?: boolean | null
           visita_consegnata_il?: string | null
           visita_scadenza?: string | null
         }
@@ -742,6 +795,7 @@ export type Database = {
           stagione_id?: string | null
           stato_visita?: never
           tesseramento_id?: string | null
+          visita_consegnata?: boolean | null
           visita_consegnata_il?: string | null
           visita_scadenza?: string | null
         }

@@ -19,7 +19,10 @@ async function rimuoviProve() {
   const db = clientServizio()
   const { error } = await db
     .from('tesseramenti')
-    .update({ visita_scadenza: null, visita_consegnata_il: null })
+    // Anche la bandiera: azzerare le due date e lasciarla vera fa aprire il
+    // pannello su "Sì", quindi il test successivo trova il campo della data di
+    // consegna già presente e misura uno stato che non ha impostato lui.
+    .update({ visita_scadenza: null, visita_consegnata_il: null, visita_consegnata: false })
     .not('id', 'is', null)
   if (error) throw error
 }
@@ -59,9 +62,43 @@ test('registrare una scadenza futura la rende valida', async ({ page }) => {
   await accedi(page, 'dirigente@virpol.test')
   await page.goto(`/2026-27/tesseramenti/${await tesseramentoDi('Uno')}`)
   await page.getByLabel('Scadenza').fill(giorniDaOggi(200))
+  // Il campo della data di consegna esiste solo dopo aver detto Sì.
+  await page.getByText('Sì', { exact: true }).click()
   await page.getByLabel('Consegnata il').fill(giorniDaOggi(0))
   await page.getByRole('button', { name: 'Salva visita' }).click()
   await expect(page.getByText(/Valida fino al/)).toBeVisible()
+})
+
+test('la consegna si registra col Sì, senza dover sapere la data', async ({ page }) => {
+  const db = clientServizio()
+  const id = await tesseramentoDi('Uno')
+  await accedi(page, 'dirigente@virpol.test')
+  await page.goto(`/2026-27/tesseramenti/${id}`)
+
+  // Il campo della data non c'è finché la risposta è No: una data di consegna su
+  // una visita non consegnata è la combinazione che il vincolo rifiuta.
+  await expect(page.getByLabel('Consegnata il')).toHaveCount(0)
+
+  await page.getByText('Sì', { exact: true }).click()
+  await expect(page.getByLabel('Consegnata il')).toBeVisible()
+  // Nessuna data, né di consegna né di scadenza: tutto facoltativo.
+  await page.getByRole('button', { name: 'Salva visita' }).click()
+  await expect(page.getByText('Salvato')).toBeVisible()
+
+  const { data } = await db
+    .from('tesseramenti')
+    .select('visita_consegnata, visita_consegnata_il, visita_scadenza')
+    .eq('id', id)
+    .single()
+  expect(data).toEqual({
+    visita_consegnata: true,
+    visita_consegnata_il: null,
+    visita_scadenza: null,
+  })
+
+  // Lo stato dipende dalla sola scadenza: consegnata sì, ma senza scadenza
+  // resta mancante, ed è giusto — quel ragazzo non può scendere in campo.
+  await expect(page.getByText('Nessuna visita registrata')).toBeVisible()
 })
 
 test('una scadenza passata dice da quanto è scaduta', async ({ page }) => {
