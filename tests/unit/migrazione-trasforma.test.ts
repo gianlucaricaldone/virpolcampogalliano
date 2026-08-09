@@ -127,22 +127,31 @@ describe('trasformaTesserati', () => {
     expect(anomalie[0].tipo).toBe('tesserato_terna_duplicata')
   })
 
-  it('senza data di nascita è anomalia, nessuna data si inventa: persone.data_nascita è NOT NULL', () => {
+  it('senza data di nascita migra comunque, con il campo vuoto: la data è facoltativa (decisione del committente)', () => {
     const senzaData = { ...TESSERATO, codice_fiscale: null, data_nascita: null }
     const { persone, anomalie } = trasformaTesserati([senzaData])
-    expect(persone).toEqual([])
-    expect(anomalie).toHaveLength(1)
-    expect(anomalie[0]).toMatchObject({
-      tipo: 'tesserato_senza_data_nascita',
-      id: 't-1',
-    })
+    expect(anomalie).toEqual([])
+    expect(persone).toEqual([{
+      chiave: 'terna:rossi|marco|',
+      nome: 'Marco',
+      cognome: 'Rossi',
+      data_nascita: null,
+      codice_fiscale: null,
+      email: null,
+      telefono: null,
+      indirizzo: null,
+      citta: null,
+      cap: null,
+    }])
   })
 
-  it('con codice fiscale ma senza data di nascita è comunque anomalia: il vincolo è sulla colonna, non sulla chiave', () => {
+  it('con codice fiscale ma senza data di nascita migra lo stesso: il campo è facoltativo indipendentemente dalla chiave', () => {
     const conCfSenzaData = { ...TESSERATO, data_nascita: null }
     const { persone, anomalie } = trasformaTesserati([conCfSenzaData])
-    expect(persone).toEqual([])
-    expect(anomalie[0].tipo).toBe('tesserato_senza_data_nascita')
+    expect(anomalie).toEqual([])
+    expect(persone).toHaveLength(1)
+    expect(persone[0].chiave).toBe('cf:RSSMRC12C04B819X')
+    expect(persone[0].data_nascita).toBeNull()
   })
 })
 
