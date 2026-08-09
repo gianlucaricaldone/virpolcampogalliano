@@ -37,11 +37,13 @@ Quel che resta:
 | 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
 | — | admin utenti (creazione profili dal backoffice) | fatta, piano `gestione-utenti` |
 | 5 | sito pubblico | da fare |
-| 6 | script di migrazione dati e cutover | da fare |
+| 6 | script di migrazione dati e cutover | script pronto e verificato (lint, type-check, build, suite); dry-run contro i dati veri bloccato, vedi Debito noto |
 
 Le sette funzionalità richieste e la gestione utenti dal backoffice sono a
-schermo. Restano da fare il sito pubblico e lo script di migrazione con il
-cutover (fasi 5 e 6).
+schermo. Resta da fare il sito pubblico (fase 5). Lo script di migrazione
+(`npm run migra`) è scritto e passa lint/type-check/build e l'intera suite,
+ma non è ancora stato eseguito contro i dati veri del progetto vecchio: vedi
+Debito noto.
 
 ## Stack
 
@@ -60,6 +62,7 @@ sembra funzionante e non protegge nulla.
 npx supabase start          # richiede Docker attivo
 npm run db:reset            # applica le 7 migration da zero
 npm run seed:dev            # 3 utenti + stagioni di prova
+npm run migra -- --quota 2024-25=350   # dry-run; --esegui per scrivere. Vedi la spec di migrazione.
 npm run dev                 # http://localhost:3000
 ```
 
@@ -219,6 +222,19 @@ della macchina, e vicino a mezzanotte i due differiscono di un giorno.
   vecchio.
 
 ## Debito noto
+
+**Il dry-run della migrazione contro i dati veri non è stato eseguito.** Lo
+script (`scripts/migra.ts`, `scripts/migrazione/vecchio.ts`) è completo,
+passa lint, type-check, build e l'intera suite (`test:db`, `test:unit`,
+`test:e2e`), ma il progetto Supabase VECCHIO (`ctrsnztrfslewkpbfxei.supabase.co`,
+da `~/Progetti/virpolcampogalliano/.env.local.example`) non risolve più in
+DNS — `NXDOMAIN` da tre resolver indipendenti (locale, 8.8.8.8, 1.1.1.1),
+incluso il server autoritativo di `supabase.co`, segno che il record non
+esiste più lì, non di un blocco di rete locale. Prima del cutover: verificare
+se il progetto è stato sospeso/eliminato (i progetti Supabase free-tier
+inattivi vengono archiviati) e, se serve, ripristinarlo o procurarsi
+URL/chiave aggiornati. Finché non risolve, il dry-run e la prova di
+idempotenza (Step 5–6 del piano di migrazione) restano da fare.
 
 **Nessun export CSV delle statistiche.** Il piano 2 lo dava per facoltativo.
 
