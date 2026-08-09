@@ -23,6 +23,12 @@ cutover: senza di lei, lo switch del dominio spegnerebbe le pagine pubbliche.
   `stato = 'aperta'` per `data_inizio desc`, la stessa di
   `stagioneCorrenteDa` — perché le regole di business non si duplicano in
   TypeScript.
+  Il baseline delle RLS concedeva ad `anon` la SELECT diretta su `stagioni`
+  e `squadre` in vista di questa stessa fase, con un commento a due barriere.
+  Questa fase l'ha chiusa correggendo il baseline **in place** — non ancora
+  deployato, quindi correggibile per regola di CLAUDE.md — invece di
+  patcharlo con una revoke qui: l'unico varco per `anon` è, ed è sempre
+  stato dichiarato essere, questa view.
 - **Il resto è statico.** Home, contatti e dove siamo non leggono nulla:
   contenuti ricopiati dal sito vecchio (testi, sezioni, recapiti, mappa),
   asset copiati da `public/` del vecchio repo. La home passa da 791 righe

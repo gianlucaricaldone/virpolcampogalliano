@@ -2,9 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
-// Le quattro pagine del sito pubblico: home, squadre, contatti e dove-siamo
-// arrivano nel Task 3 (`docs/superpowers/plans/2026-08-09-sito-pubblico.md`).
-// I link esistono già: un 404 temporaneo è accettabile finché non arrivano.
+// Le quattro pagine del sito pubblico: home, squadre, contatti e dove-siamo.
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/squadre', label: 'Squadre' },

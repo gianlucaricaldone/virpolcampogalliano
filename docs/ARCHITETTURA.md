@@ -123,7 +123,7 @@ un test suo.
 ### `v_squadre_pubbliche`, l'eccezione security_invoker
 
 È l'unica view del repository senza `security_invoker`: esiste perché `anon`
-non ha più alcun privilegio sulle tabelle di dominio, e senza una view di
+non ha alcun privilegio sulle tabelle di dominio, e senza una view di
 proprietà di `postgres` — che legge `stagioni` e `squadre` coi diritti del
 proprietario, ignorando le RLS del chiamante — il sito pubblico non avrebbe
 modo di mostrare nome, categoria e annata delle squadre della stagione in
@@ -131,12 +131,12 @@ corso. Il recinto non sta nelle policy RLS di `stagioni` e `squadre`, che
 `anon` non arriva nemmeno ad attraversare: sta nella definizione della view
 stessa, tre sole colonne e solo le righe della stagione corrente — la stessa
 regola di `stagioneCorrenteDa` in `lib/domain/stagione.ts`, duplicata qui
-perché una view non può chiamare TypeScript. La migration che la introduce
-revoca il `grant select` diretto che il baseline delle RLS aveva concesso ad
-`anon` su `stagioni` e `squadre` per questo stesso scopo: da quel momento
-`anon` legge solo attraverso la view, mai le tabelle sottostanti. La matrice
-RLS verifica entrambi i lati del recinto: che `anon` legga la view e che non
-possa più leggere le tabelle.
+perché una view non può chiamare TypeScript. Il baseline delle RLS non
+concede alcun privilegio di tabella ad `anon` su `stagioni` e `squadre`: non
+c'è una revoke da fare in questa migration, perché non c'era nulla da
+revocare. Questa view è, ed è sempre stata dichiarata essere, l'unico varco
+di `anon` su quei dati. La matrice RLS verifica entrambi i lati del recinto:
+che `anon` legga la view e che non possa leggere le tabelle direttamente.
 
 ### Il limite noto delle view
 

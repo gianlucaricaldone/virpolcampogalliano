@@ -62,7 +62,7 @@ sembra funzionante e non protegge nulla.
 
 ```bash
 npx supabase start          # richiede Docker attivo
-npm run db:reset            # applica le 7 migration da zero
+npm run db:reset            # applica le migration da zero
 npm run seed:dev            # 3 utenti + stagioni di prova
 npm run migra -- --quota 2024-25=350   # dry-run; --esegui per scrivere. Vedi la spec di migrazione.
 npm run dev                 # http://localhost:3000

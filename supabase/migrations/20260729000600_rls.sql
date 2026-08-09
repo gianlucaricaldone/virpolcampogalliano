@@ -69,12 +69,8 @@ alter table public.pagamenti_quota    enable row level security;
 -- valutata: le RLS restano comunque l'unico filtro sulle RIGHE, in loro
 -- assenza per una combinazione ruolo/verbo l'accesso resta comunque negato.
 --
--- anon serve solo al sito pubblico, che mostra i nomi delle squadre: sola
--- lettura e solo su queste due tabelle. Così un errore in una policy futura
--- non può esporre anagrafiche o dati finanziari a chi ha la chiave anon, che
--- viaggia nel bundle del browser. Due barriere indipendenti invece di una.
-grant select on public.stagioni, public.squadre to anon;
-
+-- anon non ha alcun privilegio di tabella: il sito pubblico passa da
+-- public.v_squadre_pubbliche (migration sito_pubblico), l'unico varco.
 grant select, insert, update, delete on
   public.stagioni, public.squadre, public.persone, public.profili,
   public.tesseramenti, public.incarichi_staff, public.sedute_allenamento,
@@ -132,8 +128,9 @@ grant select, insert, update, delete on
 grant select on public.v_quote, public.v_presenze, public.v_presenze_squadra
   to service_role;
 
--- STAGIONI: lette da tutti (il sito pubblico ne ha bisogno), scritte dall'admin.
-create policy stagioni_sel on public.stagioni for select to anon, authenticated
+-- STAGIONI: lette da chi è autenticato, scritte dall'admin. anon non ha il
+-- privilegio di tabella: non le raggiunge nemmeno prima di questa policy.
+create policy stagioni_sel on public.stagioni for select to authenticated
   using (true);
 create policy stagioni_ins on public.stagioni for insert to authenticated
   with check (app.mio_ruolo() = 'admin');
@@ -142,8 +139,10 @@ create policy stagioni_upd on public.stagioni for update to authenticated
 create policy stagioni_del on public.stagioni for delete to authenticated
   using (app.mio_ruolo() = 'admin');
 
--- SQUADRE: lette da tutti, scritte da admin e dirigente su stagioni aperte.
-create policy squadre_sel on public.squadre for select to anon, authenticated
+-- SQUADRE: lette da chi è autenticato, scritte da admin e dirigente su
+-- stagioni aperte. anon non ha il privilegio di tabella: non le raggiunge
+-- nemmeno prima di questa policy.
+create policy squadre_sel on public.squadre for select to authenticated
   using (true);
 create policy squadre_ins on public.squadre for insert to authenticated
   with check (app.mio_ruolo() in ('admin', 'dirigente')

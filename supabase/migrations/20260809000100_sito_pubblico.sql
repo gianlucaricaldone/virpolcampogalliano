@@ -26,6 +26,6 @@ comment on view public.v_squadre_pubbliche is
 
 grant select on public.v_squadre_pubbliche to anon, authenticated;
 
--- La view serve anon: revoca l'accesso diretto alle tabelle, che era stato
--- concesso per il sito pubblico ma ora ristretto a questa sola vista.
-revoke select on public.stagioni, public.squadre from anon;
+-- Nessuna revoca qui: il baseline delle RLS non concede alcun privilegio di
+-- tabella ad anon. Questa view è il solo varco che anon abbia mai avuto su
+-- stagioni e squadre.
