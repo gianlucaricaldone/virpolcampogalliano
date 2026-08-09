@@ -37,14 +37,15 @@ Quel che resta:
 | 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
 | — | admin utenti (creazione profili dal backoffice) | fatta, piano `gestione-utenti` |
 | 5 | sito pubblico | da fare |
-| 6 | script di migrazione dati e cutover | script fatto e provato in dry-run; cutover dopo la fase 5 |
+| 6 | script di migrazione dati e cutover | migrazione dati vera contro il database locale, verificata e idempotente; cutover (progetto Supabase di produzione, switch dominio) dopo la fase 5 |
 
 Le sette funzionalità richieste e la gestione utenti dal backoffice sono a
 schermo. Resta da fare il sito pubblico (fase 5). Lo script di migrazione
-(`npm run migra`) è scritto, provato in dry-run e in esecuzione reale contro
-il database locale (due volte, per l'idempotenza) — vedi Debito noto per un
-difetto vero trovato nei dati del vecchio sistema, non nello script, che
-riguarda il cutover.
+(`npm run migra`) ha eseguito la migrazione vera dei dati storici (188
+tesserati, 3067 presenze) nel database locale, due volte per l'idempotenza:
+186 persone su 188 (2 scartate per terna cognome+nome duplicata), tutti i
+loro tesseramenti, pagamenti e sedute di presenza, e 11 account staff — vedi
+Debito noto sulla data di nascita, ora facoltativa.
 
 ## Stack
 
@@ -224,21 +225,18 @@ della macchina, e vicino a mezzanotte i due differiscono di un giorno.
 
 ## Debito noto
 
-**Nel vecchio sistema, nessun tesserato ha una data di nascita.** Il
-dry-run e il run reale contro i dati veri (188 tesserati, 3067 presenze) lo
-mostrano senza ambiguità: `data_nascita` e `codice_fiscale` sono `null` per
-tutti i 188, in ogni categoria. `persone.data_nascita` è `NOT NULL` nel nuovo
-schema e questo script non inventa mai una data (stesso principio già
-applicato agli allenatori senza persona corrispondente): il risultato è che
-**nessuna persona, tesseramento, pagamento, seduta o presenza migra** finché
-quel campo resta vuoto nel vecchio sistema — solo stagioni, quote, squadre e
-gli account staff che non richiedono una persona (6 su 25, tutti admin)
-migrano oggi. È una decisione per la società, non per lo script: prima del
-cutover va deciso se backfillare le date di nascita nel vecchio sistema (la
-sola via che non inventa nulla) o accettare che l'anagrafica si ricostruisca
-a mano dal backoffice nuovo. Il report (`scripts/report-migrazione.md`,
-gitignorato) elenca ogni tesserato coinvolto con l'anomalia
-`tesserato_senza_data_nascita`.
+**`persone.data_nascita` è facoltativa, `codice_fiscale` lo era già.** Il primo
+dry-run contro i dati veri (188 tesserati) ha mostrato che tutti hanno
+`data_nascita` e `codice_fiscale` nulli, senza eccezioni: col `NOT NULL`
+originale sarebbe migrato solo lo scheletro (stagioni, quote, squadre, gli
+account staff senza persona). Decisione del committente (2026-08-09, vedi
+`docs/superpowers/specs/2026-08-09-migrazione-dati-design.md`, «Decisioni
+prese»): il vincolo cade dal baseline, il campo non è più obbligatorio nel
+form dell'anagrafica, e un tesserato senza data migra comunque, col campo
+vuoto. **Da completare col tempo dal backoffice**: 186 delle 188 persone
+migrate nel run reale non hanno una data di nascita in anagrafica (le 2
+mancanti sono terne cognome+nome+nascita duplicate, anomalia distinta,
+irrisolvibile dallo script).
 
 **Nessun export CSV delle statistiche.** Il piano 2 lo dava per facoltativo.
 
