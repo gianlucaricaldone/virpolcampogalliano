@@ -82,10 +82,11 @@ genitori.
 **Due barriere indipendenti**, e la seconda esiste perché la prima è scrivibile a
 mano da chiunque:
 
-1. **Privilegi di tabella.** `anon` ha `SELECT` su `stagioni` e `squadre` e nulla
-   più. `authenticated` ha la DML sulle dieci tabelle. `service_role` la DML, senza
-   TRUNCATE. Un `using (true)` copiato per errore su `persone` in un task futuro
-   non può esporla ad `anon`, perché il privilegio non c'è.
+1. **Privilegi di tabella.** `anon` non ha alcun privilegio sulle tabelle di
+   dominio: legge solo `v_squadre_pubbliche` (vedi sotto). `authenticated` ha la
+   DML sulle dieci tabelle. `service_role` la DML, senza TRUNCATE. Un
+   `using (true)` copiato per errore su `persone` in un task futuro non può
+   esporla ad `anon`, perché il privilegio non c'è.
 2. **Policy RLS**, 46, separate per verbo.
 
 Perché separate per verbo: una policy `FOR ALL` che porta `stato = 'aperta'` nella
@@ -118,6 +119,24 @@ nell'API. Il controllo del ruolo è dentro di lei e usa `is distinct from`:
 l'IF non scatterebbe e la funzione restituirebbe l'elenco intero. La revoca
 dell'EXECUTE che Postgres concede a PUBLIC è ciò che tiene fuori `anon`, e ha
 un test suo.
+
+### `v_squadre_pubbliche`, l'eccezione security_invoker
+
+È l'unica view del repository senza `security_invoker`: esiste perché `anon`
+non ha più alcun privilegio sulle tabelle di dominio, e senza una view di
+proprietà di `postgres` — che legge `stagioni` e `squadre` coi diritti del
+proprietario, ignorando le RLS del chiamante — il sito pubblico non avrebbe
+modo di mostrare nome, categoria e annata delle squadre della stagione in
+corso. Il recinto non sta nelle policy RLS di `stagioni` e `squadre`, che
+`anon` non arriva nemmeno ad attraversare: sta nella definizione della view
+stessa, tre sole colonne e solo le righe della stagione corrente — la stessa
+regola di `stagioneCorrenteDa` in `lib/domain/stagione.ts`, duplicata qui
+perché una view non può chiamare TypeScript. La migration che la introduce
+revoca il `grant select` diretto che il baseline delle RLS aveva concesso ad
+`anon` su `stagioni` e `squadre` per questo stesso scopo: da quel momento
+`anon` legge solo attraverso la view, mai le tabelle sottostanti. La matrice
+RLS verifica entrambi i lati del recinto: che `anon` legga la view e che non
+possa più leggere le tabelle.
 
 ### Il limite noto delle view
 

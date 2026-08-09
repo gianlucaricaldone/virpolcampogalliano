@@ -22,7 +22,7 @@ Documenti di riferimento, in quell'altro repo:
 
 Se una decisione qui ti sembra arbitraria, la ragione è in uno di quei tre.
 
-## Stato: fondamenta, funzionalità cardine e gestione utenti, complete
+## Stato: fondamenta, funzionalità cardine, gestione utenti e sito pubblico, complete
 
 La fase 1 ha costruito le fondamenta — schema, autorizzazione, autenticazione,
 shell del backoffice. Il piano 2 (`docs/superpowers/plans/2026-07-29-funzionalita-cardine.md`)
@@ -36,16 +36,16 @@ Quel che resta:
 |---|---|---|
 | 2-4 | anagrafica, squadre, tesseramenti e staff, quote, visita medica, presenze, cruscotto, statistiche | fatte, piano `funzionalita-cardine` |
 | — | admin utenti (creazione profili dal backoffice) | fatta, piano `gestione-utenti` |
-| 5 | sito pubblico | da fare |
-| 6 | script di migrazione dati e cutover | migrazione dati vera contro il database locale, verificata e idempotente; cutover (progetto Supabase di produzione, switch dominio) dopo la fase 5 |
+| 5 | sito pubblico | fatta, piano `sito-pubblico` |
+| 6 | script di migrazione dati e cutover | migrazione dati vera contro il database locale, verificata e idempotente; cutover (progetto Supabase di produzione, switch dominio) da fare |
 
-Le sette funzionalità richieste e la gestione utenti dal backoffice sono a
-schermo. Resta da fare il sito pubblico (fase 5). Lo script di migrazione
-(`npm run migra`) ha eseguito la migrazione vera dei dati storici (188
-tesserati, 3067 presenze) nel database locale, due volte per l'idempotenza:
-186 persone su 188 (2 scartate per terna cognome+nome duplicata), tutti i
-loro tesseramenti, pagamenti e sedute di presenza, e 11 account staff — vedi
-Debito noto sulla data di nascita, ora facoltativa.
+Le sette funzionalità richieste, la gestione utenti dal backoffice e il sito
+pubblico sono a schermo. Resta da fare solo il cutover. Lo script di
+migrazione (`npm run migra`) ha eseguito la migrazione vera dei dati storici
+(188 tesserati, 3067 presenze) nel database locale, due volte per
+l'idempotenza: 186 persone su 188 (2 scartate per terna cognome+nome
+duplicata), tutti i loro tesseramenti, pagamenti e sedute di presenza, e 11
+account staff — vedi Debito noto sulla data di nascita, ora facoltativa.
 
 ## Stack
 
