@@ -58,7 +58,7 @@ export type NuovaPersona = {
   chiave: string
   nome: string
   cognome: string
-  data_nascita: string
+  data_nascita: string | null
   codice_fiscale: string | null
   email: string | null
   telefono: string | null
@@ -122,25 +122,15 @@ export function trasformaTesserati(tesserati: VecchioTesserato[]): {
       continue
     }
     const t = gruppo[0]
-    if (!t.data_nascita) {
-      // persone.data_nascita è NOT NULL nel nuovo schema, e i dati reali
-      // arrivano davvero senza: nessuna data si inventa, mai — né qui né
-      // altrove in questo script. La persona (e con lei tesseramenti,
-      // pagamenti e presenze, che dipendono da tesseratiPerId) resta fuori
-      // e va completata a mano nel vecchio sistema.
-      anomalie.push({
-        tipo: 'tesserato_senza_data_nascita',
-        id: t.id,
-        chiave,
-        dettaglio: `'${t.cognome} ${t.nome}' non ha data di nascita nel vecchio sistema: persone.data_nascita è NOT NULL, nessuna data si inventa — completarla nel vecchio sistema prima di migrare`,
-      })
-      continue
-    }
+    // persone.data_nascita è facoltativa nel nuovo schema (decisione del
+    // committente, 2026-08-09): i dati reali arrivano spesso senza, e il
+    // tesserato migra comunque, col campo vuoto — da completare col tempo
+    // dal backoffice. Nessuna data si inventa, qui come altrove.
     persone.push({
       chiave,
       nome: t.nome,
       cognome: t.cognome,
-      data_nascita: t.data_nascita,
+      data_nascita: t.data_nascita ?? null,
       codice_fiscale: t.codice_fiscale?.trim().toUpperCase() ?? null,
       email: t.email,
       telefono: t.telefono,

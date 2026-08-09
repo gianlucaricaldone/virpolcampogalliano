@@ -7,7 +7,7 @@ export type Persona = {
   id: string
   nome: string
   cognome: string
-  dataNascita: string
+  dataNascita: string | null
   codiceFiscale: string | null
   email: string | null
   telefono: string | null
@@ -23,7 +23,7 @@ export type Persona = {
 export type DatiPersona = {
   nome: string
   cognome: string
-  dataNascita: string
+  dataNascita: string | null
   codiceFiscale?: string | null
   email?: string | null
   telefono?: string | null

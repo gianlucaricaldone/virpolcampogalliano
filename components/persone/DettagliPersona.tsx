@@ -1,3 +1,4 @@
+import { formattaData } from '@/lib/domain/data'
 import type { Persona } from '@/lib/repos/persone'
 
 function Voce({ etichetta, valore }: { etichetta: string; valore: string | null }) {
@@ -17,7 +18,7 @@ export function DettagliPersona({ persona }: { persona: Persona }) {
 
   return (
     <dl className="grid gap-3 rounded-lg border bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Voce etichetta="Data di nascita" valore={persona.dataNascita} />
+      <Voce etichetta="Data di nascita" valore={formattaData(persona.dataNascita)} />
       <Voce etichetta="Codice fiscale" valore={persona.codiceFiscale} />
       <Voce etichetta="Email" valore={persona.email} />
       <Voce etichetta="Telefono" valore={persona.telefono} />

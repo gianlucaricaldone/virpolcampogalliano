@@ -76,4 +76,14 @@ describe('regola sul client service role', () => {
     expect(esito.codice).not.toBe(0)
     expect(esito.output).toMatch(/service role/i)
   }, TIMEOUT_SPAWN)
+
+  // scripts/migrazione/vecchio è la chiave service role del progetto
+  // VECCHIO di produzione: read-only per contratto (espone solo
+  // leggiTutto), ma la chiave stessa può scrivere. Va sorvegliata come le
+  // altre tre.
+  it('rifiuta un import di scripts/migrazione/vecchio sotto app/', () => {
+    const esito = eseguiEslint('tests/lint/fixtures/app/importa-vecchio.tsx')
+    expect(esito.codice).not.toBe(0)
+    expect(esito.output).toMatch(/vecchio|service role/i)
+  }, TIMEOUT_SPAWN)
 })

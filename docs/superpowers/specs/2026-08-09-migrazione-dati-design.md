@@ -26,6 +26,14 @@ in brainstorming; dove i due divergono, vale questo.
   `passwordIniziale(nome)`, la stessa convenzione della creazione dal
   backoffice. Il report elenca gli account creati; le password si comunicano
   a voce.
+- **La data di nascita diventa facoltativa** (decisione del committente,
+  2026-08-09). Il primo dry-run sui dati veri ha mostrato che tutti i 188
+  tesserati del vecchio sistema hanno `data_nascita` e `codice_fiscale`
+  nulli: con `persone.data_nascita NOT NULL` migrerebbe solo lo scheletro.
+  Il vincolo cade dal baseline (non ancora deployato, si corregge in place),
+  il campo diventa facoltativo anche nel form dell'anagrafica, e un
+  tesserato senza data migra con il campo vuoto — da completare col tempo
+  dal backoffice. Il codice fiscale era già facoltativo ovunque.
 - **Approccio: supabase-js su entrambi i lati.** Lettura dal vecchio con
   service role via PostgREST, scrittura nel nuovo col client admin già
   esistente in `scripts/`. Gli account passano comunque da
@@ -83,6 +91,21 @@ nel target, la riga si conta come «già presente» e si salta:
 Il secondo run su un target già migrato deve produrre zero scritture e un
 report tutto «già presente»: è anche il test di integrazione dello script.
 
+### Run interrotto: si riparte da zero, non si riesegue sopra
+
+L'idempotenza per chiavi naturali copre i run completati, non quelli
+interrotti a metà. Due passaggi non hanno una chiave naturale propria e si
+appoggiano a un'altra tabella come proxy: i pagamenti si generano solo per i
+tesseramenti creati nello stesso run (un tesseramento già presente non ne
+genera uno nuovo, anche se il run precedente si è fermato prima di scrivere il
+suo pagamento), e le presenze si considerano già migrate dalla sola presenza
+della seduta (una seduta creata ma con le sue presenze non ancora scritte, a
+un run successivo, appare già fatta). Un secondo `--esegui` sopra un run
+interrotto salterebbe quei dati in modo permanente, con un report che dice
+tutto «già presente» mentre non è vero. Per questo un run interrotto NON si
+riprende rieseguendo sopra: si azzera il target — `npm run db:reset` in
+locale, un progetto appena creato al cutover — e si riesegue da zero.
+
 ## Mapping
 
 Dal design generale §9, verificato contro lo schema vecchio reale
@@ -102,10 +125,12 @@ Dal design generale §9, verificato contro lo schema vecchio reale
   cognome+nome normalizzati) riusa quella persona. Admin e dirigente senza
   corrispondenza nascono con profilo senza persona, com'è normale nel
   backoffice nuovo. Un **allenatore senza corrispondenza è un'anomalia**:
-  il vincolo `profili_allenatore_ha_persona` esige la persona, `persone.
-  data_nascita` è NOT NULL e il vecchio `users` non ha date di nascita —
-  inventarne una violerebbe il principio di questo script. Nessun account
-  creato; si sistema a mano dal backoffice dopo la migrazione.
+  il vincolo `profili_allenatore_ha_persona` esige la persona, e creare una
+  persona-fantasma con la sola coppia cognome+nome sarebbe inventare
+  un'anagrafica che non esiste. Nessun account creato; si sistema a mano
+  dal backoffice dopo la migrazione. Due persone migrate con lo stesso
+  cognome+nome rendono la corrispondenza ambigua: nessun collegamento
+  silenzioso, l'allenatore finisce nella stessa anomalia.
 - `stagioni_sportive` → `stagioni`. Nome `'2024/2025'` → codice `'2024-25'`
   più etichetta; `archiviata` → stato `chiusa`, altrimenti `aperta`.
 - `squadre` → `squadre`, per stagione.

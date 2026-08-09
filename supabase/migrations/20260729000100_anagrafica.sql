@@ -7,7 +7,9 @@ create table public.persone (
   id             uuid primary key default gen_random_uuid(),
   nome           text not null,
   cognome        text not null,
-  data_nascita   date not null,
+  -- Facoltativa: lo storico reale (188 tesserati) non la porta, decisione
+  -- del committente nella spec di migrazione dati (2026-08-09).
+  data_nascita   date,
   codice_fiscale text unique,
   email          text,
   telefono       text,

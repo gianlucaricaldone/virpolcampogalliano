@@ -1990,6 +1990,35 @@ git commit -m "feat(migrazione): lo script completo, dry-run per default"
 
 ---
 
+## Task 7: Data di nascita facoltativa, e la migrazione vera
+
+Aggiunto su direttiva del committente (2026-08-09) dopo il primo dry-run sui
+dati reali: tutti i 188 tesserati del vecchio sistema hanno `data_nascita` e
+`codice_fiscale` nulli, quindi con il NOT NULL migrerebbe solo lo scheletro.
+Il codice fiscale è già facoltativo ovunque; cade solo il vincolo sulla data.
+Vedi la spec, sezione «Decisioni prese».
+
+**Files:**
+- Modify: `supabase/migrations/20260729000100_anagrafica.sql` (in place: baseline non deployato)
+- Modify: `lib/db/types.ts` (rigenerato con `npm run db:types`)
+- Modify: `lib/repos/persone.ts` (`dataNascita: string | null`, due punti: type `Persona` e riga di insert/update)
+- Modify: `lib/validation/persona.ts` (`dataNascita` → `facoltativo(...)`)
+- Modify: `components/persone/FormPersona.tsx` (via `obbligatorio` dal campo data)
+- Modify: `components/persone/TabellaPersone.tsx`, `components/persone/DettagliPersona.tsx`, `components/tesseramenti/*` SOLO se il tipo nullable li rompe a type-check (`formattaData` gestisce già il null)
+- Modify: `tests/unit/persona.test.ts` (la stringa vuota ora è valida e diventa null; `14/05/2012` resta rifiutata)
+- Modify: `scripts/migrazione/trasforma.ts` (via l'anomalia `tesserato_senza_data_nascita`: una data nulla migra col campo vuoto; `NuovaPersona.data_nascita: string | null`)
+- Modify: `tests/unit/migrazione-trasforma.test.ts` (i due test dell'anomalia si capovolgono: la persona migra, con data nulla)
+- Modify: `CLAUDE.md` (la voce di «Debito noto» sul gap dei dati cambia: non blocca più la migrazione, resta il completamento manuale di date e CF dal backoffice)
+
+**Passi:**
+
+- [ ] **Step 1**: nel baseline `20260729000100_anagrafica.sql`, `data_nascita date not null` → `data_nascita date`, con un commento di una riga sul perché (lo storico reale non ha le date; decisione del committente nella spec di migrazione). `npm run db:reset && npm run db:types`.
+- [ ] **Step 2**: TDD sulle trasformazioni — capovolgi i due test dell'anomalia in `migrazione-trasforma.test.ts` (rosso), poi togli il blocco `tesserato_senza_data_nascita` da `trasformaTesserati` e rendi `NuovaPersona.data_nascita: string | null` (verde). La chiave `terna:` con data nulla resta com'è (segmento vuoto).
+- [ ] **Step 3**: applicazione — zod (`facoltativo`), repo (tipo nullable), form (campo non obbligatorio), aggiusta `tests/unit/persona.test.ts`. Se il type-check segnala altri consumatori del tipo nullable, sistemali col minimo tocco (`formattaData` accetta già null; per una `Voce` con valore nullo usa '—').
+- [ ] **Step 4**: pipeline nell'ordine: `npm run db:reset && npm run test:db && npm run test:unit`, poi `npm run seed:dev && npm run test:e2e`, poi `npm run lint && npm run type-check && npm run build`. Se un E2E asserisce che la data di nascita è obbligatoria, il requisito è cambiato per decisione del committente: il test si adegua (non è un indebolimento).
+- [ ] **Step 5**: la migrazione vera — `npm run db:reset`, dry-run con le quote del run precedente, leggi il report (attesi: ~186 persone migrabili, anomalie molto ridotte), poi `--esegui` due volte con le stesse quote: primo run migra, secondo run tutto «già presenti» e zero scritture. Controlli a campione: una persona senza data di nascita visibile in anagrafica, una seduta con presenze, un pagamento con la nota di ricostruzione. Conteggi di entrambi i run nel report del task.
+- [ ] **Step 6**: docs (`CLAUDE.md`) e commit (prefissi convenzionali, corpi in italiano sul perché; separa il commit dello schema+app da quello della migrazione se ti viene naturale).
+
 ## Ordine e dipendenze
 
 ```
@@ -1999,6 +2028,7 @@ git commit -m "feat(migrazione): lo script completo, dry-run per default"
 4 presenze → sedute       ← richiede 1, 2
 5 report                  ← richiede 1
 6 orchestratore           ← richiede tutti
+7 data nascita facoltativa ← richiede 6, direttiva del committente
 ```
 
 Sequenziali: un implementer alla volta sull'albero.
