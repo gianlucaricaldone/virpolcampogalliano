@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Client } from 'pg'
 import {
-  asAnon, asUser, creaIncarico, creaPersona, creaSeduta, creaSquadra, creaStagione,
+  asAnon, asUser, creaIncarico, creaOrario, creaPersona, creaSeduta, creaSquadra, creaStagione,
   creaTesseramento, creaUtenteAuth, impostaQuota, inRollback, registraPagamento, registraPresenza,
 } from './harness'
 
@@ -33,6 +33,8 @@ async function dueSquadre(c: Client) {
   })
   const sedutaA = await creaSeduta(c, { squadraId: squadraA, stagioneId: stagione, data: '2026-10-01' })
   const sedutaB = await creaSeduta(c, { squadraId: squadraB, stagioneId: stagione, data: '2026-10-01' })
+  await creaOrario(c, { squadraId: squadraA, stagioneId: stagione, giorno: 2, oraInizio: '18:15' })
+  await creaOrario(c, { squadraId: squadraB, stagioneId: stagione, giorno: 4, oraInizio: '18:15' })
 
   return { stagione, squadraA, squadraB, mister, dirigente, admin, giocatoreA, giocatoreB, sedutaA, sedutaB }
 }
@@ -386,6 +388,107 @@ describe('dirigente e admin', () => {
     }))
 })
 
+/**
+ * L'orario settimanale è l'unica tabella dove l'allenatore legge ma non
+ * scrive, al contrario delle sedute. Ogni ruolo ha qui sia un permesso sia un
+ * diniego: se l'impersonificazione si rompesse, `auth.uid()` sarebbe nullo,
+ * ogni policy falsa e tutti i dinieghi passerebbero da soli.
+ */
+describe('orari di allenamento', () => {
+  it('l\'allenatore vede l\'orario della propria squadra', () =>
+    inRollback(async (c) => {
+      const { mister, squadraA } = await dueSquadre(c)
+      const n = await asUser(c, mister, () =>
+        conta(c, 'select id from public.orari_allenamento where squadra_id = $1', [squadraA]),
+      )
+      expect(n).toBe(1)
+    }))
+
+  it('l\'allenatore NON vede l\'orario della squadra altrui', () =>
+    inRollback(async (c) => {
+      const { mister, squadraB } = await dueSquadre(c)
+      const n = await asUser(c, mister, () =>
+        conta(c, 'select id from public.orari_allenamento where squadra_id = $1', [squadraB]),
+      )
+      expect(n).toBe(0)
+    }))
+
+  // Diverso da sedute_allenamento di proposito: il calendario incastra campi e
+  // fasce fra tutte le squadre, quindi non lo tocca il singolo allenatore.
+  it('l\'allenatore NON scrive l\'orario nemmeno della propria squadra', () =>
+    inRollback(async (c) => {
+      const { mister, stagione, squadraA } = await dueSquadre(c)
+      await expect(
+        asUser(c, mister, () =>
+          creaOrario(c, { squadraId: squadraA, stagioneId: stagione, giorno: 5, oraInizio: '20:00' }),
+        ),
+      ).rejects.toThrow(/row-level security/)
+    }))
+
+  it('il dirigente crea un orario e li vede tutti', () =>
+    inRollback(async (c) => {
+      const { dirigente, stagione, squadraB } = await dueSquadre(c)
+      await asUser(c, dirigente, () =>
+        creaOrario(c, { squadraId: squadraB, stagioneId: stagione, giorno: 6, oraInizio: '09:30' }),
+      )
+      const n = await asUser(c, dirigente, () => conta(c, 'select id from public.orari_allenamento'))
+      expect(n).toBe(3)
+    }))
+
+  it('l\'admin cancella un orario', () =>
+    inRollback(async (c) => {
+      const { admin, squadraA } = await dueSquadre(c)
+      await asUser(c, admin, () =>
+        c.query('delete from public.orari_allenamento where squadra_id = $1', [squadraA]),
+      )
+      const { rows } = await c.query('select count(*)::int as n from public.orari_allenamento')
+      expect(rows[0].n).toBe(1)
+    }))
+
+  // Il permesso e il diniego stanno in due `inRollback` distinti, non per
+  // gusto: la prima istruzione rifiutata aborta la transazione, e ogni query
+  // successiva nello stesso blocco morirebbe con "current transaction is
+  // aborted" invece di misurare quello che dice di misurare.
+  it('a stagione chiusa nemmeno l\'admin inserisce un orario', () =>
+    inRollback(async (c) => {
+      const { admin, stagione, squadraA } = await dueSquadre(c)
+      await c.query(`update public.stagioni set stato = 'chiusa' where id = $1`, [stagione])
+      await expect(
+        asUser(c, admin, () =>
+          creaOrario(c, { squadraId: squadraA, stagioneId: stagione, giorno: 7, oraInizio: '10:00' }),
+        ),
+      ).rejects.toThrow(/row-level security/)
+    }))
+
+  it('a stagione chiusa l\'orario resta leggibile', () =>
+    inRollback(async (c) => {
+      const { admin, stagione } = await dueSquadre(c)
+      await c.query(`update public.stagioni set stato = 'chiusa' where id = $1`, [stagione])
+      const n = await asUser(c, admin, () => conta(c, 'select id from public.orari_allenamento'))
+      expect(n).toBe(2)
+    }))
+
+  it('rifiuta un giorno fuori dalla numerazione ISO', () =>
+    inRollback(async (c) => {
+      const { stagione, squadraA } = await dueSquadre(c)
+      await expect(
+        creaOrario(c, { squadraId: squadraA, stagioneId: stagione, giorno: 0 }),
+      ).rejects.toThrow(/orari_giorno_iso/)
+    }))
+
+  // La FK composita è ciò che impedisce di appendere un orario a una squadra
+  // di un'altra stagione: senza, la denormalizzazione di stagione_id sarebbe
+  // solo una colonna in più da tenere allineata a mano.
+  it('rifiuta un orario con la stagione di un\'altra squadra', () =>
+    inRollback(async (c) => {
+      const { squadraA } = await dueSquadre(c)
+      const altra = await creaStagione(c)
+      await expect(
+        creaOrario(c, { squadraId: squadraA, stagioneId: altra, giorno: 3 }),
+      ).rejects.toThrow(/orari_squadra_di_stagione/)
+    }))
+})
+
 describe('utente anonimo', () => {
   it('legge le squadre dalla vista, non dalle tabelle', () =>
     inRollback(async (c) => {
@@ -399,6 +502,7 @@ describe('utente anonimo', () => {
   it.each([
     'persone', 'profili', 'tesseramenti', 'incarichi_staff',
     'sedute_allenamento', 'presenze', 'quote_importi', 'pagamenti_quota',
+    'orari_allenamento',
   ])('NON raggiunge %s', (tabella) =>
     inRollback(async (c) => {
       await dueSquadre(c)
@@ -459,8 +563,8 @@ describe('utente anonimo', () => {
 // lo farebbe tornare con la suite verde se solo anon fosse sorvegliato.
 describe('privilegi di tabella per authenticated', () => {
   const TABELLE = [
-    'incarichi_staff', 'pagamenti_quota', 'persone', 'presenze', 'profili',
-    'quote_importi', 'sedute_allenamento', 'squadre', 'stagioni', 'tesseramenti',
+    'incarichi_staff', 'orari_allenamento', 'pagamenti_quota', 'persone', 'presenze',
+    'profili', 'quote_importi', 'sedute_allenamento', 'squadre', 'stagioni', 'tesseramenti',
   ]
   // v_visite è arrivata con la gestione della visita medica: la sua SELECT è
   // voluta e va aggiunta qui, non aggirata. Che questo test sia diventato
@@ -468,7 +572,7 @@ describe('privilegi di tabella per authenticated', () => {
   // v_squadre_pubbliche è la vetrina per il sito pubblico: anon la legge, non le tabelle.
   const VISTE = ['v_presenze', 'v_presenze_squadra', 'v_quote', 'v_squadre_pubbliche', 'v_visite']
 
-  it('ha esattamente le quattro DML sulle dieci tabelle e SELECT sulle cinque viste', () =>
+  it('ha esattamente le quattro DML sulle undici tabelle e SELECT sulle cinque viste', () =>
     inRollback(async (c) => {
       const privilegi = await privilegiTabella(c, 'authenticated')
       const atteso = [

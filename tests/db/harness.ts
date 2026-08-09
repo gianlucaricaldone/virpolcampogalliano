@@ -269,6 +269,18 @@ export async function creaSeduta(
   return rows[0].id as string
 }
 
+export async function creaOrario(
+  c: Client,
+  dati: { squadraId: string; stagioneId: string; giorno?: number; oraInizio?: string },
+): Promise<string> {
+  const { rows } = await c.query(
+    `insert into public.orari_allenamento (squadra_id, stagione_id, giorno, ora_inizio)
+     values ($1, $2, $3, $4) returning id`,
+    [dati.squadraId, dati.stagioneId, dati.giorno ?? 2, dati.oraInizio ?? '18:15'],
+  )
+  return rows[0].id as string
+}
+
 /**
  * Registra una presenza ricavando `squadra_id` dalla seduta, così i chiamanti
  * non devono conoscere la colonna denormalizzata.
