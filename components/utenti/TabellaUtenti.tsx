@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import type { Risultato } from '@/lib/azioni'
 import type { RuoloApp } from '@/lib/auth/session'
 import type { Utente } from '@/lib/repos/utenti'
+import { Tabella } from '../ui/Tabella'
 
 const ETICHETTA_RUOLO: Record<string, string> = {
   admin: 'Amministratore',
@@ -47,32 +48,42 @@ export function TabellaUtenti({
         </p>
       )}
 
-      <table className="w-full border-collapse overflow-hidden rounded border bg-white text-sm">
-        <thead className="bg-neutral-100 text-left">
+      {/*
+        La cornice condivisa, non una tabella con stili propri: questa aveva
+        `p-2`, un'intestazione grigia diversa da tutte le altre e — soprattutto —
+        nessuno scroll interno. Su un telefono le cinque colonne allargavano il
+        viewport a 605px invece di 390: la pagina intera scorreva in orizzontale,
+        che è il difetto per cui `Tabella` esiste.
+      */}
+      <Tabella>
+        <thead className="text-left">
           <tr>
-            <th className="p-2">Email</th>
-            <th className="p-2">Ruolo</th>
-            <th className="p-2">Persona</th>
-            <th className="p-2">Stato</th>
-            <th className="p-2" />
+            <th>Email</th>
+            <th>Ruolo</th>
+            {/* "Nome" e non "Persona": la colonna mostra cognome e nome, e
+                "persona" è il nome della tabella nel database, non una parola
+                che chi legge deve conoscere. */}
+            <th>Nome</th>
+            <th>Stato</th>
+            <th />
           </tr>
         </thead>
         <tbody>
           {utenti.map((u) => (
-            <tr key={u.id} className="border-t">
-              <td className="p-2 font-medium">{u.email}</td>
-              <td className="p-2 text-neutral-600">{ETICHETTA_RUOLO[u.ruolo] ?? u.ruolo}</td>
-              <td className="p-2 text-neutral-600">
+            <tr key={u.id}>
+              <td className="font-medium">{u.email}</td>
+              <td className="text-neutral-600">{ETICHETTA_RUOLO[u.ruolo] ?? u.ruolo}</td>
+              <td className="text-neutral-600">
                 {u.persona ? `${u.persona.cognome} ${u.persona.nome}` : '—'}
               </td>
-              <td className="p-2">
+              <td>
                 {u.attivo ? 'attivo' : (
                   <span className="rounded bg-neutral-200 px-2 py-0.5 text-neutral-700">
                     disattivato
                   </span>
                 )}
               </td>
-              <td className="p-2 text-right">
+              <td className="text-right">
                 <div className="flex justify-end gap-3">
                   <button type="button" disabled={inCorso}
                           onClick={() => esegui(() => reimposta(u.id))}
@@ -93,7 +104,7 @@ export function TabellaUtenti({
             </tr>
           ))}
         </tbody>
-      </table>
+      </Tabella>
     </div>
   )
 }
