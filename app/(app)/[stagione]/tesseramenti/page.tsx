@@ -54,39 +54,15 @@ export default async function PaginaTesseramenti({
         )}
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
-        <div>
-          <label htmlFor="squadra" className="block text-sm font-medium">Squadra</label>
-          <select
-            id="squadra"
-            name="squadra"
-            defaultValue={squadra ?? ''}
-            className="mt-1.5 rounded-md border px-3 text-sm"
-          >
-            <option value="">Tutte</option>
-            {squadre.map((s) => (
-              <option key={s.id} value={s.id}>{s.nome}</option>
-            ))}
-          </select>
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          {/* Ha la precedenza sul filtro per squadra: sono due domande diverse
-              e sceglierne una sola evita un elenco vuoto senza spiegazione. */}
-          <input type="checkbox" name="senza" value="1" defaultChecked={senzaSquadra} />
-          Solo chi non ha una squadra
-        </label>
-        <button type="submit" className="bottone-secondario">Filtra</button>
-      </form>
-
-      <p className="text-sm text-neutral-600">
-        {tesserati.length} {tesserati.length === 1 ? 'tesserato' : 'tesserati'}
-      </p>
       <TabellaTesserati
         tesserati={tesserati}
         codiceStagione={codice}
         quotaPerTesseramento={quotaPerTesseramento}
         visitaConsegnata={visitaConsegnata}
         mostraQuota={staff}
+        squadre={squadre}
+        squadraSelezionata={squadra ?? ''}
+        senzaSquadra={senzaSquadra}
       />
     </section>
   )

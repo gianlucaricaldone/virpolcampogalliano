@@ -184,3 +184,87 @@ test('un tesseramento inesistente o di un\'altra stagione dà 404', async ({ pag
   const inesistente = await page.goto('/2026-27/tesseramenti/00000000-0000-4000-8000-000000000000')
   expect(inesistente?.status()).toBe(404)
 })
+
+test('i filtri dell\'elenco valgono su nome, visita e quota', async ({ page }) => {
+  const db = clientServizio()
+  await accedi(page, 'dirigente@virpol.test')
+
+  // Uno con la visita consegnata, l'altro no: il seed non li distingue.
+  const { data: uno } = await db
+    .from('tesseramenti').select('id, persone!inner(nome)').eq('persone.nome', 'Uno').single()
+  await db.from('tesseramenti').update({ visita_consegnata: true }).eq('id', uno!.id)
+
+  await page.goto('/2026-27/tesseramenti')
+  // `aria-live` invece del testo: la pagina ha già un suo conteggio di
+  // tesserati, e cercare per testo ne pescava due.
+  const conteggio = page.locator('p[aria-live="polite"]')
+  await expect(conteggio).toContainText('tesserati')
+
+  // Nome: si restringe a ogni battuta, senza invio.
+  await page.getByLabel('Nome').fill('Uno')
+  await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Giocatore Due' })).toHaveCount(0)
+  await expect(conteggio).toContainText('di')
+
+  await page.getByRole('button', { name: 'Azzera i filtri' }).click()
+  await expect(page.getByRole('link', { name: 'Giocatore Due' })).toBeVisible()
+
+  // Visita: consegnata solo Uno.
+  await page.getByLabel('Visita').selectOption('si')
+  await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Giocatore Due' })).toHaveCount(0)
+
+  await page.getByLabel('Visita').selectOption('no')
+  await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Giocatore Due' })).toBeVisible()
+
+  // Quota: senza importi configurati v_quote li dà saldati entrambi, quindi
+  // "non pagato" non deve trovare nessuno e "saldato" tutti e due.
+  await page.getByLabel('Visita').selectOption('')
+  await page.getByLabel('Quota').selectOption('non_pagato')
+  await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toHaveCount(0)
+  await page.getByLabel('Quota').selectOption('saldato')
+  await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Giocatore Due' })).toBeVisible()
+})
+
+test('all\'allenatore non si offre il filtro sulla quota', async ({ page }) => {
+  await accedi(page, 'mister@virpol.test')
+  await page.goto('/2026-27/tesseramenti')
+  // Nome e visita sì: sono dati che vede davvero.
+  await expect(page.getByLabel('Nome')).toBeVisible()
+  await expect(page.getByLabel('Visita')).toBeVisible()
+  // La quota no: per lui v_quote risponderebbe "saldato" per chiunque, e
+  // filtrare su quel valore vorrebbe dire filtrare su un dato inventato.
+  await expect(page.getByLabel('Quota')).toHaveCount(0)
+})
+
+test('i filtri stanno in una barra sola, e "senza squadra" disabilita il menù', async ({ page }) => {
+  await accedi(page, 'dirigente@virpol.test')
+  await page.goto('/2026-27/tesseramenti')
+
+  // `exact`: l'etichetta della casella "Solo chi non ha una squadra" contiene
+  // la parola "squadra", e senza il vincolo il locator ne pesca due.
+  const menuSquadra = page.getByLabel('Squadra', { exact: true })
+
+  // Un solo riquadro di filtri: prima erano due, il form GET della squadra e
+  // quello client, e nulla diceva perché.
+  await expect(menuSquadra).toBeVisible()
+  await expect(page.getByLabel('Nome')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Filtra' })).toHaveCount(0)
+
+  // La squadra naviga da sé: cambia le righe lette, quindi passa dal server.
+  await menuSquadra.selectOption({ label: 'Pulcini B' })
+  await expect(page).toHaveURL(/[?&]squadra=/)
+  await expect(page.getByRole('link', { name: 'Giocatore Due' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toHaveCount(0)
+
+  // "Solo chi non ha una squadra" ha la precedenza, e si vede: il menù si
+  // disabilita invece di restare attivo e ignorato.
+  // `click` e non `check`: la casella è controllata dal parametro nell'URL, e il
+  // suo stato cambia quando arriva la pagina nuova — `check` pretende invece che
+  // cambi nell'istante del click.
+  await page.getByRole('checkbox', { name: 'Solo chi non ha una squadra' }).click()
+  await expect(page).toHaveURL(/[?&]senza=1/)
+  await expect(page.getByLabel('Squadra', { exact: true })).toBeDisabled()
+})
