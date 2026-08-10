@@ -7,6 +7,8 @@ try { loadEnvFile('.env.local') } catch { /* in CI le variabili arrivano dall'am
 const PASSWORD = 'virpol-dev-123'
 const DATA_PRIMA = '2027-04-06'
 const DATA_SECONDA = '2027-04-13'
+// In un altro mese, per il filtro sui mesi: due sedute ad aprile, una a maggio.
+const DATA_TERZA = '2027-05-04'
 
 function clientServizio() {
   return createClient(
@@ -19,7 +21,7 @@ function clientServizio() {
 async function rimuoviProve() {
   // Le presenze se ne vanno in cascade con le sedute.
   const { error } = await clientServizio()
-    .from('sedute_allenamento').delete().in('data', [DATA_PRIMA, DATA_SECONDA])
+    .from('sedute_allenamento').delete().in('data', [DATA_PRIMA, DATA_SECONDA, DATA_TERZA])
   if (error) throw error
 }
 
@@ -125,4 +127,44 @@ test('un allenatore vede le statistiche dei propri e non delle altre squadre', a
   await expect(page.getByRole('link', { name: 'Giocatore Uno' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Giocatore Due' })).toHaveCount(0)
   await expect(page.getByRole('row').filter({ hasText: 'Pulcini B' })).toHaveCount(0)
+})
+
+test('il filtro sui mesi cambia il denominatore, non solo le righe', async ({ page }) => {
+  const db = clientServizio()
+  const { data: squadra } = await db
+    .from('squadre').select('id, stagione_id').eq('nome', 'Pulcini A').single()
+  const { data: seduta, error } = await db
+    .from('sedute_allenamento')
+    .insert({ squadra_id: squadra!.id, stagione_id: squadra!.stagione_id, data: DATA_TERZA })
+    .select('id').single()
+  if (error) throw error
+  const { data: tesseramento } = await db
+    .from('tesseramenti').select('id, persone!inner(nome)')
+    .eq('squadra_id', squadra!.id).eq('persone.nome', 'Uno').single()
+  await db.from('presenze').insert({
+    seduta_id: seduta!.id,
+    tesseramento_id: tesseramento!.id,
+    squadra_id: squadra!.id,
+    stato: 'presente',
+  })
+
+  await accedi(page, 'dirigente@virpol.test')
+  await page.goto('/2026-27/statistiche')
+
+  // Stagione intera: presente a due sedute su tre.
+  const riga = () => page.getByRole('row').filter({ hasText: 'Giocatore Uno' })
+  await expect(riga()).toContainText('66.7')
+
+  // Aprile: due sedute, una presenza.
+  await page.getByLabel('Mese').selectOption('2027-04-01')
+  await page.getByRole('button', { name: 'Filtra' }).click()
+  await expect(page.getByText(/Solo aprile 2027/)).toBeVisible()
+  await expect(riga()).toContainText('50')
+
+  // Maggio: una seduta, una presenza. Se il denominatore restasse quello della
+  // stagione, qui si leggerebbe 33,3 invece di 100.
+  await page.getByLabel('Mese').selectOption('2027-05-01')
+  await page.getByRole('button', { name: 'Filtra' }).click()
+  await expect(page.getByText(/Solo maggio 2027/)).toBeVisible()
+  await expect(riga()).toContainText('100')
 })

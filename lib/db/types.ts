@@ -75,6 +75,13 @@ export type Database = {
             referencedColumns: ["squadra_id", "stagione_id"]
           },
           {
+            foreignKeyName: "incarichi_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
             foreignKeyName: "incarichi_staff_persona_id_fkey"
             columns: ["persona_id"]
             isOneToOne: false
@@ -127,6 +134,13 @@ export type Database = {
             columns: ["squadra_id", "stagione_id"]
             isOneToOne: false
             referencedRelation: "v_presenze_squadra"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "orari_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
             referencedColumns: ["squadra_id", "stagione_id"]
           },
         ]
@@ -182,6 +196,13 @@ export type Database = {
             columns: ["tesseramento_id"]
             isOneToOne: false
             referencedRelation: "v_presenze"
+            referencedColumns: ["tesseramento_id"]
+          },
+          {
+            foreignKeyName: "pagamenti_quota_tesseramento_id_fkey"
+            columns: ["tesseramento_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_mese"
             referencedColumns: ["tesseramento_id"]
           },
           {
@@ -311,6 +332,13 @@ export type Database = {
             foreignKeyName: "presenze_tesseramento_di_squadra"
             columns: ["tesseramento_id", "squadra_id"]
             isOneToOne: false
+            referencedRelation: "v_presenze_mese"
+            referencedColumns: ["tesseramento_id", "squadra_id"]
+          },
+          {
+            foreignKeyName: "presenze_tesseramento_di_squadra"
+            columns: ["tesseramento_id", "squadra_id"]
+            isOneToOne: false
             referencedRelation: "v_quote"
             referencedColumns: ["tesseramento_id", "squadra_id"]
           },
@@ -405,6 +433,13 @@ export type Database = {
             referencedColumns: ["squadra_id"]
           },
           {
+            foreignKeyName: "quote_importi_squadra_id_fkey"
+            columns: ["squadra_id"]
+            isOneToOne: true
+            referencedRelation: "v_presenze_squadra_mese"
+            referencedColumns: ["squadra_id"]
+          },
+          {
             foreignKeyName: "quote_importi_stagione_id_fkey"
             columns: ["stagione_id"]
             isOneToOne: true
@@ -423,6 +458,13 @@ export type Database = {
             columns: ["tesseramento_id"]
             isOneToOne: true
             referencedRelation: "v_presenze"
+            referencedColumns: ["tesseramento_id"]
+          },
+          {
+            foreignKeyName: "quote_importi_tesseramento_id_fkey"
+            columns: ["tesseramento_id"]
+            isOneToOne: true
+            referencedRelation: "v_presenze_mese"
             referencedColumns: ["tesseramento_id"]
           },
           {
@@ -495,6 +537,13 @@ export type Database = {
             columns: ["squadra_id", "stagione_id"]
             isOneToOne: false
             referencedRelation: "v_presenze_squadra"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "sedute_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
             referencedColumns: ["squadra_id", "stagione_id"]
           },
         ]
@@ -636,6 +685,13 @@ export type Database = {
             referencedColumns: ["squadra_id", "stagione_id"]
           },
           {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
             foreignKeyName: "tesseramenti_stagione_id_fkey"
             columns: ["stagione_id"]
             isOneToOne: false
@@ -683,6 +739,66 @@ export type Database = {
             referencedColumns: ["squadra_id", "stagione_id"]
           },
           {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_stagione_id_fkey"
+            columns: ["stagione_id"]
+            isOneToOne: false
+            referencedRelation: "stagioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_presenze_mese: {
+        Row: {
+          assenti: number | null
+          giustificati: number | null
+          infortuni: number | null
+          mese: string | null
+          non_registrate: number | null
+          percentuale: number | null
+          persona_id: string | null
+          presenti: number | null
+          sedute_squadra: number | null
+          squadra_id: string | null
+          stagione_id: string | null
+          tesseramento_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tesseramenti_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "persone"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "squadre"
+            referencedColumns: ["id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
             foreignKeyName: "tesseramenti_stagione_id_fkey"
             columns: ["stagione_id"]
             isOneToOne: false
@@ -696,6 +812,30 @@ export type Database = {
           assenti: number | null
           giustificati: number | null
           infortuni: number | null
+          non_registrate: number | null
+          percentuale: number | null
+          presenti: number | null
+          sedute: number | null
+          squadra_id: string | null
+          stagione_id: string | null
+          tesserati: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "squadre_stagione_id_fkey"
+            columns: ["stagione_id"]
+            isOneToOne: false
+            referencedRelation: "stagioni"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_presenze_squadra_mese: {
+        Row: {
+          assenti: number | null
+          giustificati: number | null
+          infortuni: number | null
+          mese: string | null
           non_registrate: number | null
           percentuale: number | null
           presenti: number | null
@@ -746,6 +886,13 @@ export type Database = {
             columns: ["squadra_id", "stagione_id"]
             isOneToOne: false
             referencedRelation: "v_presenze_squadra"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
             referencedColumns: ["squadra_id", "stagione_id"]
           },
           {
@@ -819,6 +966,13 @@ export type Database = {
             columns: ["squadra_id", "stagione_id"]
             isOneToOne: false
             referencedRelation: "v_presenze_squadra"
+            referencedColumns: ["squadra_id", "stagione_id"]
+          },
+          {
+            foreignKeyName: "tesseramenti_squadra_di_stagione"
+            columns: ["squadra_id", "stagione_id"]
+            isOneToOne: false
+            referencedRelation: "v_presenze_squadra_mese"
             referencedColumns: ["squadra_id", "stagione_id"]
           },
           {

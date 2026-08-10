@@ -570,9 +570,14 @@ describe('privilegi di tabella per authenticated', () => {
   // voluta e va aggiunta qui, non aggirata. Che questo test sia diventato
   // rosso da solo, al primo grant nuovo, è esattamente il suo mestiere.
   // v_squadre_pubbliche è la vetrina per il sito pubblico: anon la legge, non le tabelle.
-  const VISTE = ['v_presenze', 'v_presenze_squadra', 'v_quote', 'v_squadre_pubbliche', 'v_visite']
+  // v_presenze_mese e v_presenze_squadra_mese sono arrivate col filtro sui mesi
+  // nelle statistiche: sorelle delle due di stagione, stessi privilegi.
+  const VISTE = [
+    'v_presenze', 'v_presenze_mese', 'v_presenze_squadra', 'v_presenze_squadra_mese',
+    'v_quote', 'v_squadre_pubbliche', 'v_visite',
+  ]
 
-  it('ha esattamente le quattro DML sulle undici tabelle e SELECT sulle cinque viste', () =>
+  it('ha esattamente le quattro DML sulle undici tabelle e SELECT sulle sette viste', () =>
     inRollback(async (c) => {
       const privilegi = await privilegiTabella(c, 'authenticated')
       const atteso = [

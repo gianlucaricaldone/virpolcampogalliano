@@ -226,3 +226,93 @@ describe('v_presenze', () => {
       expect(s.sedute_squadra).toBe(1)
     }))
 })
+
+/*
+ * Il denominatore del mese sono le sedute DI QUEL MESE, e la vista di stagione
+ * non è la somma delle mensili: chi si tessera a novembre ha percentuale piena
+ * su novembre e bassa sulla stagione. Sono due letture entrambe corrette, ed è
+ * la ragione per cui esistono due viste invece di un filtro sulle date.
+ */
+describe('v_presenze_mese', () => {
+  async function dueMesi(c: Client) {
+    const s = await scenario(c)
+    // Due sedute in ottobre, una in novembre.
+    const ott1 = await creaSeduta(c, { squadraId: s.squadra, stagioneId: s.stagione, data: '2026-10-06' })
+    const ott2 = await creaSeduta(c, { squadraId: s.squadra, stagioneId: s.stagione, data: '2026-10-13' })
+    const nov1 = await creaSeduta(c, { squadraId: s.squadra, stagioneId: s.stagione, data: '2026-11-03' })
+    return { ...s, ott1, ott2, nov1 }
+  }
+
+  it('una riga per mese con sedute, non per mese del calendario', () =>
+    inRollback(async (c) => {
+      const { tesseramento } = await dueMesi(c)
+      const { rows } = await c.query(
+        `select mese::text, sedute_squadra from public.v_presenze_mese
+         where tesseramento_id = $1 order by mese`,
+        [tesseramento],
+      )
+      expect(rows).toEqual([
+        { mese: '2026-10-01', sedute_squadra: 2 },
+        { mese: '2026-11-01', sedute_squadra: 1 },
+      ])
+    }))
+
+  it('la percentuale del mese ignora le presenze degli altri mesi', () =>
+    inRollback(async (c) => {
+      const { tesseramento, ott1, ott2, nov1 } = await dueMesi(c)
+      await registraPresenza(c, ott1, tesseramento, 'presente')
+      await registraPresenza(c, ott2, tesseramento, 'assente')
+      await registraPresenza(c, nov1, tesseramento, 'presente')
+
+      const { rows } = await c.query(
+        `select mese::text, presenti, assenti, non_registrate, percentuale::text
+         from public.v_presenze_mese where tesseramento_id = $1 order by mese`,
+        [tesseramento],
+      )
+      expect(rows).toEqual([
+        { mese: '2026-10-01', presenti: 1, assenti: 1, non_registrate: 0, percentuale: '50.0' },
+        { mese: '2026-11-01', presenti: 1, assenti: 0, non_registrate: 0, percentuale: '100.0' },
+      ])
+
+      // La stagione intera: 2 presenze su 3 sedute.
+      const { rows: stagione } = await c.query(
+        `select percentuale::text from public.v_presenze where tesseramento_id = $1`,
+        [tesseramento],
+      )
+      expect(stagione[0].percentuale).toBe('66.7')
+    }))
+
+  it('conta come non registrate le sedute del mese senza una riga di presenza', () =>
+    inRollback(async (c) => {
+      const { tesseramento, ott1 } = await dueMesi(c)
+      await registraPresenza(c, ott1, tesseramento, 'presente')
+      const { rows } = await c.query(
+        `select non_registrate, percentuale::text from public.v_presenze_mese
+         where tesseramento_id = $1 and mese = '2026-10-01'`,
+        [tesseramento],
+      )
+      expect(rows[0]).toEqual({ non_registrate: 1, percentuale: '50.0' })
+    }))
+
+  it('v_presenze_squadra_mese usa le sedute del mese per i tesserati', () =>
+    inRollback(async (c) => {
+      const { squadra, stagione, tesseramento, ott1 } = await dueMesi(c)
+      const secondo = await creaTesseramento(c, {
+        personaId: await creaPersona(c, { codiceFiscale: 'SECONDO' }),
+        stagioneId: stagione,
+        squadraId: squadra,
+      })
+      await registraPresenza(c, ott1, tesseramento, 'presente')
+      await registraPresenza(c, ott1, secondo, 'presente')
+
+      const { rows } = await c.query(
+        `select tesserati, sedute, presenti, non_registrate, percentuale::text
+         from public.v_presenze_squadra_mese where squadra_id = $1 and mese = '2026-10-01'`,
+        [squadra],
+      )
+      // Due sedute per due tesserati fa quattro caselle, due riempite.
+      expect(rows[0]).toEqual({
+        tesserati: 2, sedute: 2, presenti: 2, non_registrate: 2, percentuale: '50.0',
+      })
+    }))
+})

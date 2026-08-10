@@ -3,7 +3,12 @@ import { TabellaStatistiche } from '@/components/statistiche/TabellaStatistiche'
 import { sessioneCorrente } from '@/lib/auth/corrente'
 import { squadreDiStaff } from '@/lib/repos/incarichi'
 import { elencaSquadre } from '@/lib/repos/squadre'
-import { statistichePerGiocatore, statistichePerSquadra } from '@/lib/repos/statistiche'
+import { etichettaMese } from '@/lib/domain/data'
+import {
+  mesiConSedute,
+  statistichePerGiocatore,
+  statistichePerSquadra,
+} from '@/lib/repos/statistiche'
 import { supabaseServer } from '@/lib/supabase/server'
 import { stagioneRichiesta } from '../dati'
 
@@ -12,10 +17,10 @@ export default async function PaginaStatistiche({
   searchParams,
 }: {
   params: Promise<{ stagione: string }>
-  searchParams: Promise<{ squadra?: string }>
+  searchParams: Promise<{ squadra?: string; mese?: string }>
 }) {
   const { stagione: codice } = await params
-  const { squadra } = await searchParams
+  const { squadra, mese } = await searchParams
   const [stagione, db, sessione] = await Promise.all([
     stagioneRichiesta(codice),
     supabaseServer(),
@@ -26,12 +31,16 @@ export default async function PaginaStatistiche({
   // un allenatore avrebbe nel menù squadre che poi risultano vuote.
   // Tre letture indipendenti: l'elenco delle squadre serve solo a filtrare
   // quelle di squadra a valle, non a costruire le altre due query.
-  const [squadre, giocatori, tutteLeSquadre] = await Promise.all([
+  const [squadre, giocatori, tutteLeSquadre, mesi] = await Promise.all([
     sessione?.ruolo === 'allenatore' && sessione.personaId
       ? squadreDiStaff(db, sessione.personaId, stagione.id)
       : elencaSquadre(db, stagione.id),
-    statistichePerGiocatore(db, stagione.id, { squadraId: squadra || undefined }),
-    statistichePerSquadra(db, stagione.id),
+    statistichePerGiocatore(db, stagione.id, {
+      squadraId: squadra || undefined,
+      mese: mese || undefined,
+    }),
+    statistichePerSquadra(db, stagione.id, { mese: mese || undefined }),
+    mesiConSedute(db, stagione.id),
   ])
   const perSquadra = tutteLeSquadre.filter(
     (r) =>
@@ -41,6 +50,15 @@ export default async function PaginaStatistiche({
   return (
     <section className="space-y-6">
       <h1 className="text-xl font-semibold">Statistiche presenze {stagione.etichetta}</h1>
+
+      {/* Il periodo scelto va detto anche fuori dal menù: chi arriva su un
+          collegamento filtrato, o riapre la pagina, deve capire perché le
+          percentuali non sono quelle della stagione. */}
+      {mese && (
+        <p className="rounded border-2 border-[var(--colore-nero)] bg-[var(--colore-giallo)] px-3 py-1.5 text-sm">
+          Solo {etichettaMese(mese)}: il denominatore sono le sedute di questo mese.
+        </p>
+      )}
 
       {squadre.length > 0 && (
         <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
@@ -58,6 +76,22 @@ export default async function PaginaStatistiche({
               ))}
             </select>
           </div>
+          {mesi.length > 0 && (
+            <div>
+              <label htmlFor="mese" className="block text-sm font-medium">Mese</label>
+              <select
+                id="mese"
+                name="mese"
+                defaultValue={mese ?? ''}
+                className="mt-1.5 rounded-md border px-3 text-sm"
+              >
+                <option value="">Tutta la stagione</option>
+                {mesi.map((m) => (
+                  <option key={m} value={m}>{etichettaMese(m)}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <button type="submit" className="bottone-secondario">Filtra</button>
         </form>
       )}

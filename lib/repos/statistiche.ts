@@ -47,9 +47,14 @@ const CAMPI = `
 export async function statistichePerGiocatore(
   db: Db,
   stagioneId: string,
-  filtro: { squadraId?: string } = {},
+  filtro: { squadraId?: string; mese?: string } = {},
 ): Promise<StatisticaGiocatore[]> {
-  let query = db.from('v_presenze').select(CAMPI).eq('stagione_id', stagioneId)
+  // Due viste e non un filtro sulle date: la percentuale di un mese ha per
+  // denominatore le sedute di quel mese, e quel conto lo fa `v_presenze_mese`.
+  // Ricavarlo qui vorrebbe dire una seconda implementazione della stessa regola.
+  let query = filtro.mese
+    ? db.from('v_presenze_mese').select(CAMPI).eq('stagione_id', stagioneId).eq('mese', filtro.mese)
+    : db.from('v_presenze').select(CAMPI).eq('stagione_id', stagioneId)
   if (filtro.squadraId) query = query.eq('squadra_id', filtro.squadraId)
 
   const { data, error } = await query
@@ -86,12 +91,20 @@ export async function statistichePerGiocatore(
 export async function statistichePerSquadra(
   db: Db,
   stagioneId: string,
+  filtro: { mese?: string } = {},
 ): Promise<StatisticaSquadra[]> {
+  const perMese = db
+    .from('v_presenze_squadra_mese')
+    .select('squadra_id, tesserati, sedute, presenti, non_registrate, percentuale')
+    .eq('stagione_id', stagioneId)
+    .eq('mese', filtro.mese ?? '')
+  const perStagione = db
+    .from('v_presenze_squadra')
+    .select('squadra_id, tesserati, sedute, presenti, non_registrate, percentuale')
+    .eq('stagione_id', stagioneId)
+
   const [statistiche, squadre] = await Promise.all([
-    db
-      .from('v_presenze_squadra')
-      .select('squadra_id, tesserati, sedute, presenti, non_registrate, percentuale')
-      .eq('stagione_id', stagioneId),
+    filtro.mese ? perMese : perStagione,
     db.from('squadre').select('id, nome').eq('stagione_id', stagioneId),
   ])
   if (statistiche.error) throw statistiche.error
@@ -110,4 +123,24 @@ export async function statistichePerSquadra(
       percentuale: r.percentuale === null ? null : Number(r.percentuale),
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+}
+
+/**
+ * I mesi in cui questa stagione ha almeno una seduta, dal più recente.
+ *
+ * Letti da `v_presenze_squadra_mese` e non da `sedute_allenamento`: la vista è
+ * già raggruppata per mese e già filtrata dalle RLS, quindi un allenatore
+ * ottiene i mesi delle proprie squadre e non quelli di tutta la società — che
+ * gli mostrerebbe nel menù mesi poi risultati vuoti.
+ */
+export async function mesiConSedute(db: Db, stagioneId: string): Promise<string[]> {
+  const { data, error } = await db
+    .from('v_presenze_squadra_mese')
+    .select('mese')
+    .eq('stagione_id', stagioneId)
+  if (error) throw error
+
+  const mesi = new Set<string>()
+  for (const r of data) if (r.mese) mesi.add(r.mese)
+  return [...mesi].sort().reverse()
 }
