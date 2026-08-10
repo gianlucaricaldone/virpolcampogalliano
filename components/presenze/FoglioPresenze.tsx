@@ -3,6 +3,7 @@
 import { useOptimistic, useState, useTransition } from 'react'
 import type { Risultato } from '@/lib/azioni'
 import { STATI_PRESENZA } from '@/lib/costanti'
+import { COLORE_PRESENZA } from '@/lib/domain/presenza'
 import type { RigaPresenza, StatoPresenza } from '@/lib/repos/presenze'
 import { Tabella } from '../ui/Tabella'
 
@@ -126,8 +127,14 @@ export function FoglioPresenze({
                         // pollice a bordo campo. A `px-2 py-1` i quattro
                         // pulsanti erano larghi 26px e attaccati fra loro:
                         // sbagliare stato era più facile che azzeccarlo.
-                        className={`min-h-11 min-w-11 rounded border font-medium disabled:opacity-60 ${
-                          r.stato === s.valore ? 'bg-neutral-900 text-white' : 'bg-white'
+                        // Scelto: campitura del significato, contorno nero e
+                        // ombra dura, come i pulsanti primari. Non scelto:
+                        // bianco con contorno tenue, così i tre che non sono
+                        // stati premuti non competono con quello che lo è.
+                        className={`min-h-11 min-w-11 rounded border-2 font-semibold disabled:opacity-60 ${
+                          r.stato === s.valore
+                            ? `${COLORE_PRESENZA[s.valore]} border-[var(--colore-nero)] shadow-[2px_2px_0_0_var(--colore-nero)]`
+                            : 'border-neutral-300 bg-white text-neutral-700 hover:border-[var(--colore-nero)]'
                         }`}
                         title={s.etichetta}
                       >
