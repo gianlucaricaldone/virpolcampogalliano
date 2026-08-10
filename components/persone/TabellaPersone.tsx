@@ -70,8 +70,8 @@ export function TabellaPersone({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3 rounded-lg border bg-white p-4">
-        <div className="flex flex-col">
+      <div className="grid grid-cols-2 items-end gap-x-4 gap-y-3 rounded-lg border bg-white p-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:p-4">
+        <div className="col-span-2 flex flex-col sm:col-span-1">
           <label htmlFor="q" className="text-sm font-medium">Cognome</label>
           <input
             id="q"
@@ -79,11 +79,11 @@ export function TabellaPersone({
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
             placeholder="Cognome, nome o codice fiscale"
-            className="mt-1.5 w-72 rounded-md border px-3 text-sm"
+            className="mt-1.5 w-full rounded-md border px-3 text-sm sm:w-72"
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="col-span-2 flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={mostraArchiviate}

@@ -106,7 +106,7 @@ export function TabellaTesserati({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3 rounded-lg border bg-white p-4">
+      <div className="grid grid-cols-2 items-end gap-x-4 gap-y-3 rounded-lg border bg-white p-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:p-4">
         {squadre && (
           <>
             <div className="flex flex-col">
@@ -124,7 +124,7 @@ export function TabellaTesserati({
                 ))}
               </select>
             </div>
-            <label className="flex items-center gap-2 self-center pt-5 text-sm">
+            <label className="col-span-2 flex items-center gap-2 text-sm sm:self-center sm:pt-5">
               {/* Ha la precedenza sul filtro per squadra: sono due domande
                   diverse e sceglierne una sola evita un elenco vuoto senza
                   spiegazione. Il menù si disabilita da sé, così la precedenza
@@ -139,7 +139,7 @@ export function TabellaTesserati({
           </>
         )}
 
-        <div className="flex flex-col">
+        <div className="col-span-2 flex flex-col sm:col-span-1">
           <label htmlFor="filtro-nome" className="text-sm font-medium">Nome</label>
           <input
             id="filtro-nome"
@@ -147,7 +147,7 @@ export function TabellaTesserati({
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             placeholder="Cognome o nome"
-            className="mt-1.5 w-56 rounded-md border px-3 text-sm"
+            className="mt-1.5 w-full rounded-md border px-3 text-sm sm:w-56"
           />
         </div>
 

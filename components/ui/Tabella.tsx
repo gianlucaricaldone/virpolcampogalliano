@@ -13,6 +13,11 @@
  * parentesi quadre, invece che riga per riga in dieci componenti. Le
  * intestazioni sono grigie e minuscole perché sono etichette, non contenuto:
  * prima erano nero grassetto e pesavano quanto i dati sotto.
+ *
+ * Sul telefono il fianco delle celle si stringe da 16 a 12 pixel e le
+ * intestazioni non vanno a capo: "Visita consegnata" su due righe alzava
+ * l'intestazione di una riga intera per ogni tabella, e con lo scroll interno
+ * una colonna in più che sporge è un invito a trascinare, non un difetto.
  */
 export function Tabella({ children }: { children: React.ReactNode }) {
   return (
@@ -20,9 +25,10 @@ export function Tabella({ children }: { children: React.ReactNode }) {
       <table
         className="w-full border-collapse text-sm
           [&_thead]:bg-neutral-50
-          [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-xs [&_th]:font-medium
-          [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-neutral-500
-          [&_td]:px-4 [&_td]:py-3
+          [&_th]:whitespace-nowrap [&_th]:px-3 [&_th]:py-2.5 [&_th]:text-xs
+          [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide
+          [&_th]:text-neutral-500 sm:[&_th]:px-4
+          [&_td]:px-3 [&_td]:py-3 sm:[&_td]:px-4
           [&_tbody_tr]:border-t"
       >
         {children}

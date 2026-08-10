@@ -84,3 +84,37 @@ test('un profilo disattivato porta al login, non a un ciclo di redirect', async 
   await expect(page).toHaveURL(/\/login\?sessione=terminata$/)
   await expect(page.getByRole('heading', { name: 'Accesso' })).toBeVisible()
 })
+
+test('su telefono le voci stanno in un pannello che si apre e si chiude navigando', async ({ page }) => {
+  // 390px: il viewport su cui la barra a capo occupava tre righe.
+  await page.setViewportSize({ width: 390, height: 780 })
+  await page.goto('/login')
+  await page.getByLabel('Email').fill('admin@virpol.test')
+  await page.getByLabel('Password').fill(PASSWORD)
+  await page.getByRole('button', { name: 'Entra' }).click()
+  await expect(page).toHaveURL(/\/\d{4}-\d{2}$/)
+
+  const pannello = page.locator('#menu-backoffice')
+  const apri = page.getByRole('button', { name: 'Apri il menù' })
+
+  // A pannello chiuso nessuna voce è raggiungibile, ma Esci sì: è l'unica che
+  // si cerca di fretta e non deve costare due gesti.
+  await expect(pannello).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Esci' })).toBeVisible()
+
+  await apri.click()
+  await expect(pannello).toBeVisible()
+  await expect(apri).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Chiudi il menù' })).toHaveAttribute('aria-expanded', 'true')
+
+  // Il layout non si rimonta fra una pagina e l'altra: senza l'effetto sul
+  // percorso il pannello resterebbe aperto sopra la pagina appena raggiunta.
+  await pannello.getByRole('link', { name: 'Anagrafica' }).click()
+  await expect(page).toHaveURL(/\/anagrafica$/)
+  await expect(pannello).toBeHidden()
+
+  // Da desktop il pannello non serve e il pulsante non c'è.
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await expect(page.getByRole('button', { name: 'Apri il menù' })).toBeHidden()
+  await expect(page.getByRole('link', { name: 'Anagrafica' })).toBeVisible()
+})

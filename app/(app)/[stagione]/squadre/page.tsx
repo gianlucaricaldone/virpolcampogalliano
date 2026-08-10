@@ -24,7 +24,7 @@ export default async function PaginaSquadre({
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold">Squadre {stagione.etichetta}</h1>
         {puoScrivere && (
           <Link

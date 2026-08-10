@@ -19,7 +19,7 @@ export default async function LayoutStagione({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SelettoreStagione stagioni={stagioni} corrente={stagione.codice} />
         {solaLettura && (
           <p className="rounded bg-amber-100 px-3 py-1 text-sm text-amber-900">

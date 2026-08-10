@@ -15,7 +15,7 @@ export function BadgeAmbiente() {
   return (
     <div
       aria-live="polite"
-      className={`fixed bottom-3 right-3 z-50 rounded-md px-2.5 py-1 font-mono text-[11px] leading-none shadow-sm ${
+      className={`fixed bottom-2 right-2 z-50 rounded-md px-1.5 py-0.5 font-mono text-[9px] leading-none shadow-sm sm:bottom-3 sm:right-3 sm:px-2.5 sm:py-1 sm:text-[11px] ${
         remoto
           ? 'bg-red-600 text-white ring-1 ring-red-900/30'
           : 'bg-neutral-200/90 text-neutral-700 ring-1 ring-neutral-400/40'

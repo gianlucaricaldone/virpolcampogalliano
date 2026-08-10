@@ -76,7 +76,7 @@ export function TabellaSquadre({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
         <div className="flex flex-col">
           <label htmlFor="filtro-squadre" className="text-sm font-medium">
             Cerca fra le squadre
@@ -87,7 +87,7 @@ export function TabellaSquadre({
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
             placeholder="Nome, categoria o annata"
-            className="mt-1.5 w-64 rounded-md border px-3 text-sm"
+            className="mt-1.5 w-full rounded-md border px-3 text-sm sm:w-64"
           />
         </div>
         {/* Il conteggio è l'unico modo di sapere che il filtro sta filtrando:
