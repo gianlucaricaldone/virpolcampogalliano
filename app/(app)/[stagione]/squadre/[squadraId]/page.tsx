@@ -6,7 +6,9 @@ import { PulsanteEliminaSquadra } from '@/components/squadre/PulsanteEliminaSqua
 import { SezioneRosa } from '@/components/tesseramenti/SezioneRosa'
 import { sessioneCorrente } from '@/lib/auth/corrente'
 import { elencaIncarichi } from '@/lib/repos/incarichi'
+import { statoQuote } from '@/lib/repos/quote'
 import { elencaTesseramenti } from '@/lib/repos/tesseramenti'
+import { statoVisite } from '@/lib/repos/visite'
 import { supabaseServer } from '@/lib/supabase/server'
 import { stagioneRichiesta } from '../../dati'
 import {
@@ -38,16 +40,20 @@ export default async function PaginaSquadra({
   ])
   if (!squadra) notFound()
 
-  const puoScrivere =
-    (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&
-    stagione.stato === 'aperta'
+  const staff = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
+  const puoScrivere = staff && stagione.stato === 'aperta'
 
-  // Due letture indipendenti, e nient'altro: i candidati per gli autocomplete
-  // non si calcolano più qui.
-  const [rosa, incarichi] = await Promise.all([
+  // Quattro letture indipendenti. `statoQuote` solo per admin e dirigente: per
+  // l'allenatore v_quote è security_invoker su tabelle finanziarie che non vede,
+  // quindi risponderebbe "saldato" per tutta la rosa — un falso, non un vuoto.
+  const [rosa, incarichi, quote, visite] = await Promise.all([
     elencaTesseramenti(db, stagione.id, { squadraId: squadra.id }),
     elencaIncarichi(db, squadra.id),
+    staff ? statoQuote(db, stagione.id, { squadraId: squadra.id }) : [],
+    statoVisite(db, stagione.id, { squadraId: squadra.id }),
   ])
+  const quotaPerTesseramento = new Map(quote.map((q) => [q.tesseramentoId, q.stato]))
+  const visitaConsegnata = new Map(visite.map((v) => [v.tesseramentoId, v.consegnata]))
 
   return (
     <section className="space-y-6">
@@ -67,6 +73,9 @@ export default async function PaginaSquadra({
       <SezioneRosa
         rosa={rosa}
         codiceStagione={codice}
+        quotaPerTesseramento={quotaPerTesseramento}
+        visitaConsegnata={visitaConsegnata}
+        mostraQuota={staff}
         cerca={cercaCandidatiAzione.bind(null, codice, squadra.id, 'rosa')}
         azione={tesseraNellaSquadraAzione.bind(null, codice, squadra.id)}
         azioneNuovo={creaGiocatoreNellaSquadraAzione.bind(null, codice, squadra.id)}

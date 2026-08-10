@@ -1,19 +1,8 @@
 import Link from 'next/link'
 import { formattaEuro } from '@/lib/domain/denaro'
+import { COLORE_QUOTA, ETICHETTA_QUOTA } from '@/lib/domain/quota'
 import type { LivelloImporto, RigaQuota } from '@/lib/repos/quote'
 import { Tabella } from '../ui/Tabella'
-
-const ETICHETTA_STATO: Record<string, string> = {
-  non_pagato: 'non pagato',
-  parziale: 'parziale',
-  saldato: 'saldato',
-}
-
-const COLORE_STATO: Record<string, string> = {
-  non_pagato: 'bg-red-100 text-red-900',
-  parziale: 'bg-amber-100 text-amber-900',
-  saldato: 'bg-green-100 text-green-900',
-}
 
 const ETICHETTA_LIVELLO: Record<LivelloImporto, string> = {
   tesseramento: 'personale',
@@ -84,8 +73,8 @@ export function TabellaQuote({
               )}
             </td>
             <td>
-              <span className={`rounded px-2 py-0.5 ${COLORE_STATO[r.stato]}`}>
-                {ETICHETTA_STATO[r.stato]}
+              <span className={`rounded px-2 py-0.5 ${COLORE_QUOTA[r.stato]}`}>
+                {ETICHETTA_QUOTA[r.stato]}
               </span>
             </td>
           </tr>

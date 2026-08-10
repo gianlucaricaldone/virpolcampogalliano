@@ -235,3 +235,62 @@ test('un giocatore nuovo si crea dalla scheda squadra e conta come tesseramento'
   await page.goto('/anagrafica?q=' + `${PREFISSO}creato`)
   await expect(page.getByRole('link', { name: `${PREFISSO}creato Nuovo` })).toBeVisible()
 })
+
+test('la rosa mostra quota e visita, e all\'allenatore la quota resta nascosta', async ({ page }) => {
+  const db = clientServizio()
+  const { data: persona, error } = await db
+    .from('persone').insert({ nome: 'Rossa', cognome: `${PREFISSO}stato` }).select('id').single()
+  if (error) throw error
+
+  await accedi(page, 'dirigente@virpol.test')
+  await crea(page, `${PREFISSO} Stato`)
+  await expect(page.getByRole('heading', { name: `${PREFISSO} Stato` })).toBeVisible()
+  // L'id dal database e non dall'URL: subito dopo `crea` il redirect può non
+  // essere ancora avvenuto, e `page.url()` restituirebbe /squadre/nuova.
+  const { data: squadra } = await db
+    .from('squadre').select('id, stagione_id').eq('nome', `${PREFISSO} Stato`).single()
+
+  const form = page.locator('form', { hasText: 'Tessera in questa squadra' })
+  await form.getByLabel('Cerca in anagrafica').fill(`${PREFISSO}stato`)
+  await form.getByRole('option', { name: `${PREFISSO}stato Rossa` }).click()
+  await page.getByRole('button', { name: 'Tessera' }).click()
+  await expect(page.getByRole('heading', { name: 'Rosa (1)' })).toBeVisible()
+
+  const riga = page.getByRole('row').filter({ hasText: `${PREFISSO}stato Rossa` })
+  // Nessun importo configurato per questa stagione di prova: la quota attesa è
+  // zero e v_quote la dà per saldata. Conta che la colonna esista e riporti lo
+  // stato che decide la vista, non che dica "non pagato".
+  await expect(riga).toContainText('saldato')
+  await expect(riga).toContainText('No')
+
+  // Consegnata la visita, la stessa riga passa a Sì.
+  const { error: eVis } = await db
+    .from('tesseramenti')
+    .update({ visita_consegnata: true })
+    .eq('persona_id', persona.id)
+  if (eVis) throw eVis
+  await page.reload()
+  await expect(page.getByRole('row').filter({ hasText: `${PREFISSO}stato Rossa` })).toContainText('Sì')
+
+  // L'allenatore non vede la colonna: per lui v_quote risponderebbe "saldato"
+  // per chiunque, perché le tabelle finanziarie gli sono invisibili.
+  const { data: mister } = await db
+    .from('profili').select('persona_id').eq('ruolo', 'allenatore')
+    .not('persona_id', 'is', null).limit(1).single()
+  const { error: eInc } = await db.from('incarichi_staff').insert({
+    persona_id: mister!.persona_id,
+    stagione_id: squadra!.stagione_id,
+    squadra_id: squadra!.id,
+    ruolo: 'allenatore',
+  })
+  if (eInc) throw eInc
+
+  // Esce prima di rientrare: con la sessione del dirigente ancora valida il
+  // middleware rimbalza /login sulla dashboard, e `accedi` non trova il form.
+  await page.getByRole('button', { name: 'Esci' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  await accedi(page, 'mister@virpol.test')
+  await page.goto(`/2026-27/squadre/${squadra!.id}`)
+  await expect(page.getByRole('columnheader', { name: 'Visita consegnata' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Quota' })).toHaveCount(0)
+})

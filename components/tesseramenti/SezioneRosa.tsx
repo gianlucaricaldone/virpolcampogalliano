@@ -1,9 +1,10 @@
 import type { Risultato } from '@/lib/azioni'
 import type { Persona } from '@/lib/repos/persone'
+import type { StatoQuota } from '@/lib/repos/quote'
 import type { Tesserato } from '@/lib/repos/tesseramenti'
 import { FormNuovoGiocatore } from './FormNuovoGiocatore'
 import { FormTesseraInSquadra } from './FormTesseraInSquadra'
-import { TabellaTesserati } from './TabellaTesserati'
+import { TabellaRosa } from './TabellaRosa'
 
 type Azione = (precedente: Risultato<null> | null, form: FormData) => Promise<Risultato<null>>
 
@@ -19,6 +20,9 @@ type Azione = (precedente: Risultato<null> | null, form: FormData) => Promise<Ri
 export function SezioneRosa({
   rosa,
   codiceStagione,
+  quotaPerTesseramento,
+  visitaConsegnata,
+  mostraQuota,
   cerca,
   azione,
   azioneNuovo,
@@ -26,6 +30,9 @@ export function SezioneRosa({
 }: {
   rosa: Tesserato[]
   codiceStagione: string
+  quotaPerTesseramento: Map<string, StatoQuota>
+  visitaConsegnata: Map<string, boolean>
+  mostraQuota: boolean
   cerca: (testo: string) => Promise<Risultato<Persona[]>>
   azione: Azione
   azioneNuovo: Azione
@@ -34,7 +41,13 @@ export function SezioneRosa({
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold">Rosa ({rosa.length})</h2>
-      <TabellaTesserati tesserati={rosa} codiceStagione={codiceStagione} mostraSquadra={false} />
+      <TabellaRosa
+        tesserati={rosa}
+        codiceStagione={codiceStagione}
+        quotaPerTesseramento={quotaPerTesseramento}
+        visitaConsegnata={visitaConsegnata}
+        mostraQuota={mostraQuota}
+      />
 
       {modificabile && (
         <>
