@@ -4,7 +4,7 @@ import type { StatoQuota } from '@/lib/repos/quote'
 import type { Tesserato } from '@/lib/repos/tesseramenti'
 import { FormNuovoGiocatore } from './FormNuovoGiocatore'
 import { FormTesseraInSquadra } from './FormTesseraInSquadra'
-import { TabellaRosa } from './TabellaRosa'
+import { TabellaTesserati } from './TabellaTesserati'
 
 type Azione = (precedente: Risultato<null> | null, form: FormData) => Promise<Risultato<null>>
 
@@ -41,12 +41,14 @@ export function SezioneRosa({
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-semibold">Rosa ({rosa.length})</h2>
-      <TabellaRosa
+      <TabellaTesserati
         tesserati={rosa}
         codiceStagione={codiceStagione}
         quotaPerTesseramento={quotaPerTesseramento}
         visitaConsegnata={visitaConsegnata}
         mostraQuota={mostraQuota}
+        mostraSquadra={false}
+        vuoto="Nessun tesserato in questa squadra."
       />
 
       {modificabile && (

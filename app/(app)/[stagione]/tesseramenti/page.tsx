@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { TabellaTesserati } from '@/components/tesseramenti/TabellaTesserati'
 import { sessioneCorrente } from '@/lib/auth/corrente'
+import { statoQuote } from '@/lib/repos/quote'
 import { elencaSquadre } from '@/lib/repos/squadre'
 import { elencaTesseramenti } from '@/lib/repos/tesseramenti'
+import { statoVisite } from '@/lib/repos/visite'
 import { supabaseServer } from '@/lib/supabase/server'
 import { stagioneRichiesta } from '../dati'
 
@@ -21,17 +23,22 @@ export default async function PaginaTesseramenti({
   const senzaSquadra = senza === '1'
   // Il menù delle squadre e l'elenco dei tesserati non dipendono l'uno
   // dall'altro.
-  const [squadre, tesserati] = await Promise.all([
+  const staff = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
+  // `statoQuote` solo per lo staff: per l'allenatore v_quote risponde "saldato"
+  // per chiunque, perché le tabelle finanziarie non hanno policy per lui.
+  const [squadre, tesserati, quote, visite] = await Promise.all([
     elencaSquadre(db, stagione.id),
     elencaTesseramenti(db, stagione.id, {
       squadraId: senzaSquadra ? undefined : squadra || undefined,
       senzaSquadra,
     }),
+    staff ? statoQuote(db, stagione.id) : [],
+    statoVisite(db, stagione.id),
   ])
+  const quotaPerTesseramento = new Map(quote.map((q) => [q.tesseramentoId, q.stato]))
+  const visitaConsegnata = new Map(visite.map((v) => [v.tesseramentoId, v.consegnata]))
 
-  const puoScrivere =
-    (sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente') &&
-    stagione.stato === 'aperta'
+  const puoScrivere = staff && stagione.stato === 'aperta'
 
   return (
     <section className="space-y-4">
@@ -74,7 +81,13 @@ export default async function PaginaTesseramenti({
       <p className="text-sm text-neutral-600">
         {tesserati.length} {tesserati.length === 1 ? 'tesserato' : 'tesserati'}
       </p>
-      <TabellaTesserati tesserati={tesserati} codiceStagione={codice} />
+      <TabellaTesserati
+        tesserati={tesserati}
+        codiceStagione={codice}
+        quotaPerTesseramento={quotaPerTesseramento}
+        visitaConsegnata={visitaConsegnata}
+        mostraQuota={staff}
+      />
     </section>
   )
 }
