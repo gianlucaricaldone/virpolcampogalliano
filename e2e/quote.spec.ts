@@ -52,15 +52,16 @@ async function accedi(page: import('@playwright/test').Page, email: string) {
 
 async function apriImporti(page: import('@playwright/test').Page) {
   await page.goto('/2026-27/quote')
-  await page.getByRole('button', { name: 'Importi della stagione' }).click()
+  // `<details>` e non un pulsante con stato React: si apre cliccando il summary.
+  await page.getByText('Importi della stagione').click()
 }
 
 test('l\'importo di stagione vale per tutti, quello di squadra lo sovrascrive', async ({ page }) => {
   await accedi(page, 'dirigente@virpol.test')
   await apriImporti(page)
 
-  await page.getByLabel('Default 2026/2027').fill('250,00')
-  await page.getByLabel('Default 2026/2027').press('Enter')
+  await page.getByLabel('Tutta la stagione 2026/2027').fill('250,00')
+  await page.getByLabel('Tutta la stagione 2026/2027').press('Enter')
   const riga = page.getByRole('row').filter({ hasText: 'Giocatore Uno' })
   await expect(riga).toContainText('250,00')
   // Il livello va detto: senza, un override sembra un errore di calcolo.
@@ -79,8 +80,8 @@ test('l\'importo di stagione vale per tutti, quello di squadra lo sovrascrive', 
 test('un versamento parziale porta lo stato a parziale, il saldo a saldato', async ({ page }) => {
   await accedi(page, 'dirigente@virpol.test')
   await apriImporti(page)
-  await page.getByLabel('Default 2026/2027').fill('250')
-  await page.getByLabel('Default 2026/2027').press('Enter')
+  await page.getByLabel('Tutta la stagione 2026/2027').fill('250')
+  await page.getByLabel('Tutta la stagione 2026/2027').press('Enter')
 
   await page.getByRole('link', { name: 'Giocatore Uno' }).click()
   // "Metà" non è un caso speciale: è un versamento di importo pari a metà, e
@@ -97,8 +98,8 @@ test('un versamento parziale porta lo stato a parziale, il saldo a saldato', asy
 test('chi versa più del dovuto ha un credito, non un errore', async ({ page }) => {
   await accedi(page, 'dirigente@virpol.test')
   await apriImporti(page)
-  await page.getByLabel('Default 2026/2027').fill('100')
-  await page.getByLabel('Default 2026/2027').press('Enter')
+  await page.getByLabel('Tutta la stagione 2026/2027').fill('100')
+  await page.getByLabel('Tutta la stagione 2026/2027').press('Enter')
 
   await page.getByRole('link', { name: 'Giocatore Due' }).click()
   await page.getByLabel('Importo', { exact: true }).fill('150')
@@ -113,8 +114,8 @@ test('chi versa più del dovuto ha un credito, non un errore', async ({ page }) 
 test('annullare un versamento riporta indietro lo stato', async ({ page }) => {
   await accedi(page, 'dirigente@virpol.test')
   await apriImporti(page)
-  await page.getByLabel('Default 2026/2027').fill('200')
-  await page.getByLabel('Default 2026/2027').press('Enter')
+  await page.getByLabel('Tutta la stagione 2026/2027').fill('200')
+  await page.getByLabel('Tutta la stagione 2026/2027').press('Enter')
 
   await page.getByRole('link', { name: 'Giocatore Uno' }).click()
   await page.getByLabel('Importo', { exact: true }).fill('200')
@@ -128,8 +129,8 @@ test('annullare un versamento riporta indietro lo stato', async ({ page }) => {
 test('un importo scritto male non arriva al database', async ({ page }) => {
   await accedi(page, 'dirigente@virpol.test')
   await apriImporti(page)
-  await page.getByLabel('Default 2026/2027').fill('duecento')
-  await page.getByLabel('Default 2026/2027').press('Enter')
+  await page.getByLabel('Tutta la stagione 2026/2027').fill('duecento')
+  await page.getByLabel('Tutta la stagione 2026/2027').press('Enter')
   await expect(page.getByRole('alert').filter({ hasText: /importo valido/i })).toBeVisible()
 })
 
