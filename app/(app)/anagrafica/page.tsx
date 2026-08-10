@@ -13,10 +13,11 @@ export default async function PaginaAnagrafica({
   const [db, sessione] = await Promise.all([supabaseServer(), sessioneCorrente()])
   const puoScrivere = sessione?.ruolo === 'admin' || sessione?.ruolo === 'dirigente'
 
-  const persone = await elencaPersone(db, {
-    cognome: q,
-    soloAttive: archiviate !== '1',
-  })
+  // Nessun `cognome` nel filtro: quello lo applica TabellaPersone mentre si
+  // scrive, e un filtro anche qui renderebbe impossibile allargare la ricerca
+  // senza ricaricare — il client avrebbe solo il sottoinsieme già scaricato.
+  // `soloAttive` invece decide quali righe leggere, e resta qui.
+  const persone = await elencaPersone(db, { soloAttive: archiviate !== '1' })
 
   return (
     <section className="space-y-4">
@@ -32,34 +33,17 @@ export default async function PaginaAnagrafica({
         )}
       </div>
 
-      {/* Form GET, non un client component: la ricerca finisce nell'URL, quindi
-          è condivisibile, torna indietro con il tasto del browser e funziona
-          senza JavaScript. */}
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
-        <div>
-          <label htmlFor="q" className="block text-sm font-medium">Cognome</label>
-          <input
-            id="q"
-            name="q"
-            defaultValue={q ?? ''}
-            placeholder="Cerca per cognome"
-            className="mt-1.5 rounded-md border px-3 text-sm"
-          />
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="archiviate" value="1" defaultChecked={archiviate === '1'} />
-          Mostra anche le archiviate
-        </label>
-        <button type="submit" className="bottone-secondario">Cerca</button>
-      </form>
-
       {sessione?.ruolo === 'allenatore' && (
         <p className="rounded bg-sky-50 px-3 py-2 text-sm text-sky-900">
           Vedi solo le persone tesserate o in staff nelle tue squadre.
         </p>
       )}
 
-      <TabellaPersone persone={persone} />
+      <TabellaPersone
+        persone={persone}
+        ricercaIniziale={q ?? ''}
+        mostraArchiviate={archiviate === '1'}
+      />
     </section>
   )
 }

@@ -56,9 +56,9 @@ test('un dirigente crea una persona e la ritrova cercandola', async ({ page }) =
   // La creazione porta sulla scheda: è lì che si aggiungono tesseramenti.
   await expect(page.getByRole('heading', { name: `${COGNOME} Prima` })).toBeVisible()
 
+  // Il filtro si applica mentre si scrive: non c'è nessun pulsante Cerca.
   await page.goto('/anagrafica')
   await page.getByLabel('Cognome').fill(COGNOME)
-  await page.getByRole('button', { name: 'Cerca' }).click()
   await expect(page.getByRole('link', { name: `${COGNOME} Prima` })).toBeVisible()
 })
 
@@ -109,4 +109,39 @@ test('una persona inesistente dà 404, non una scheda vuota', async ({ page }) =
 
   const malformato = await page.goto('/anagrafica/non-un-uuid')
   expect(malformato?.status()).toBe(404)
+})
+
+test('il filtro dell\'anagrafica restringe mentre si scrive e resta nell\'URL', async ({ page }) => {
+  await accedi(page, 'dirigente@virpol.test')
+  // Attendere la scheda dopo ogni creazione non è pignoleria: `compila` finisce
+  // col click, e il `goto` della creazione successiva interrompe la Server
+  // Action in volo — la seconda persona a volte non veniva creata, e il test era
+  // intermittente per questo, non per il filtro che sta verificando.
+  await compila(page, 'Alfa')
+  await expect(page.getByRole('heading', { name: `${COGNOME} Alfa` })).toBeVisible()
+  await compila(page, 'Beta')
+  await expect(page.getByRole('heading', { name: `${COGNOME} Beta` })).toBeVisible()
+
+  await page.goto('/anagrafica')
+  const conteggio = page.getByText(/^\d+ (di \d+|persone|persona)$/)
+  await expect(conteggio).toContainText('persone')
+
+  // Nessun invio e nessun pulsante: le righe si riducono a ogni battuta.
+  await page.getByLabel('Cognome').fill(COGNOME)
+  await expect(page.getByRole('link', { name: `${COGNOME} Alfa` })).toBeVisible()
+  await expect(page.getByRole('link', { name: `${COGNOME} Beta` })).toBeVisible()
+  await expect(conteggio).toContainText('di')
+
+  // Cerca anche per nome, non solo per cognome.
+  await page.getByLabel('Cognome').fill('Alfa')
+  await expect(page.getByRole('link', { name: `${COGNOME} Alfa` })).toBeVisible()
+  await expect(page.getByRole('link', { name: `${COGNOME} Beta` })).toHaveCount(0)
+
+  // L'URL segue il filtro senza ricaricare, quindi la ricerca è condivisibile.
+  await expect(page).toHaveURL(/[?&]q=Alfa/)
+
+  // E un collegamento con ?q= arriva già filtrato.
+  await page.goto(`/anagrafica?q=${COGNOME}`)
+  await expect(page.getByLabel('Cognome')).toHaveValue(COGNOME)
+  await expect(page.getByRole('link', { name: `${COGNOME} Alfa` })).toBeVisible()
 })

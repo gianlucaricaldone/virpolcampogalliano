@@ -19,8 +19,15 @@ const COLONNE: { chiave: Colonna; etichetta: string }[] = [
  * Le squadre di una stagione sono ventidue nel caso peggiore visto finora: sono
  * già tutte nella pagina, e mandare un parametro al server per riordinare venti
  * righe vorrebbe dire un giro di rete e un ricaricamento per un lavoro che il
- * browser fa in un millisecondo. Per l'anagrafica, che ha duecento righe e
- * crescerà, la scelta sarebbe l'opposta.
+ * browser fa in un millisecondo.
+ *
+ * Qui c'era scritto che per l'anagrafica la scelta sarebbe stata l'opposta.
+ * Sbagliato, e corretto quando l'anagrafica ha avuto il suo filtro: quella
+ * pagina non è paginata e il server legge comunque l'elenco intero, quindi le
+ * righe sono già nel browser esattamente come queste. Il discrimine non è
+ * quante righe ci sono, è se la pagina le ha già tutte — e il limite vero, per
+ * entrambe, è `max_rows` di PostgREST: oltre mille righe il client filtrerebbe
+ * un elenco troncato senza dirlo. Vedi TabellaPersone.
  *
  * Il confronto usa `localeCompare` con `numeric: true`: i nomi delle squadre qui
  * sono annate — "2010", "2011/2012", "2019/2020" — e un ordinamento di stringhe
