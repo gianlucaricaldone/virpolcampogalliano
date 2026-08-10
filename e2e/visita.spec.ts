@@ -44,6 +44,16 @@ function giorniDaOggi(giorni: number): string {
 test.beforeEach(rimuoviProve)
 test.afterAll(rimuoviProve)
 
+/**
+ * Il SÌ/NO della visita, non quello del materiale sportivo. Da quando la scheda
+ * del tesserato ne porta due, un `getByText('Sì')` scoperto li trova entrambi e
+ * il test muore su "strict mode violation": il nome della `<legend>` è l'unica
+ * cosa che distingue i due gruppi, per un test come per uno screen reader.
+ */
+function consegnata(page: import('@playwright/test').Page) {
+  return page.getByRole('group', { name: 'Consegnata' })
+}
+
 async function accedi(page: import('@playwright/test').Page, email: string) {
   await page.goto('/login')
   await page.getByLabel('Email').fill(email)
@@ -63,7 +73,7 @@ test('registrare una scadenza futura la rende valida', async ({ page }) => {
   await page.goto(`/2026-27/tesseramenti/${await tesseramentoDi('Uno')}`)
   await page.getByLabel('Scadenza').fill(giorniDaOggi(200))
   // Il campo della data di consegna esiste solo dopo aver detto Sì.
-  await page.getByText('Sì', { exact: true }).click()
+  await consegnata(page).getByText('Sì', { exact: true }).click()
   await page.getByLabel('Consegnata il').fill(giorniDaOggi(0))
   await page.getByRole('button', { name: 'Salva visita' }).click()
   await expect(page.getByText(/Valida fino al/)).toBeVisible()
@@ -79,7 +89,7 @@ test('la consegna si registra col Sì, senza dover sapere la data', async ({ pag
   // una visita non consegnata è la combinazione che il vincolo rifiuta.
   await expect(page.getByLabel('Consegnata il')).toHaveCount(0)
 
-  await page.getByText('Sì', { exact: true }).click()
+  await consegnata(page).getByText('Sì', { exact: true }).click()
   await expect(page.getByLabel('Consegnata il')).toBeVisible()
   // Nessuna data, né di consegna né di scadenza: tutto facoltativo.
   await page.getByRole('button', { name: 'Salva visita' }).click()

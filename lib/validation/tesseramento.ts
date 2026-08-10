@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TAGLIE } from '@/lib/domain/materiale'
 import { facoltativo, facoltativoIntero } from '@/lib/validation/comune'
 import { schemaPersona } from '@/lib/validation/persona'
 
@@ -69,6 +70,22 @@ export const schemaVisita = z.object({
   // colonna esiste. `sì`/`no` come stringhe perché è quello che un form manda.
   consegnata: z.enum(['si', 'no'], { message: 'Indica se è stata consegnata' })
     .transform((v) => v === 'si'),
+})
+
+/**
+ * Materiale sportivo: la consegna e la taglia, senza legami fra le due.
+ *
+ * A differenza della visita qui non c'è nessuna combinazione da vietare: la
+ * taglia si raccoglie prima di ordinare la fornitura, quindi «taglia M, non
+ * consegnato» è lo stato in cui sta metà squadra per mezza stagione. Vedi il
+ * commento della migration 20260810000200.
+ */
+export const schemaMateriale = z.object({
+  consegnato: z.enum(['si', 'no'], { message: 'Indica se è stato consegnato' })
+    .transform((v) => v === 'si'),
+  // `facoltativo` con `maiuscolo`: la scala è in maiuscolo e un 'm' che arrivi
+  // da un client diverso dal nostro menù è la stessa taglia, non una nuova.
+  taglia: facoltativo(z.enum(TAGLIE, { message: 'Taglia non prevista' }), true),
 })
 
 export const schemaIncarico = z.object({

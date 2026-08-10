@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { PannelloQuota } from '@/components/quote/PannelloQuota'
-import { RigaImporto } from '@/components/quote/RigaImporto'
+import { PannelloMateriale } from '@/components/materiale/PannelloMateriale'
+import { SezioneQuota } from '@/components/quote/SezioneQuota'
 import { PannelloAssegnazione } from '@/components/tesseramenti/PannelloAssegnazione'
 import { sessioneCorrente } from '@/lib/auth/corrente'
-import { formattaEuro } from '@/lib/domain/denaro'
 import { formattaData } from '@/lib/domain/data'
 import {
   elencaPagamenti,
@@ -24,6 +23,7 @@ import {
 import { stagioneRichiesta } from '../../dati'
 import {
   aggiornaAssegnazioneAzione,
+  impostaMaterialeAzione,
   impostaVisitaAzione,
   rimuoviTesseramentoAzione,
 } from '../actions'
@@ -114,54 +114,38 @@ export default async function PaginaTesseramento({
         </div>
       )}
 
+      {/* Fuori dal `staff &&`: il materiale non è un dato finanziario, e chi
+          allena sapere se la sua squadra ha le divise gli serve. Non è nemmeno
+          dentro un `visita &&` — quello dipende da una riga di `v_visite`, questo
+          sono due colonne del tesseramento, che c'è sempre. */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Materiale sportivo</h2>
+        <PannelloMateriale
+          materiale={{
+            consegnato: tesserato.materialeConsegnato,
+            taglia: tesserato.materialeTaglia,
+          }}
+          azione={impostaMaterialeAzione.bind(null, codice, tesseramentoId)}
+          modificabile={puoScrivere}
+        />
+      </div>
+
       {staff && quota && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Quota di iscrizione</h2>
-          {/*
-            A tendina, chiusa: un importo personale è l'eccezione — la quota
-            arriva dalla stagione o dalla squadra, e questo campo serve alla
-            famiglia con l'accordo diverso dalle altre. Sempre aperto occupava il
-            primo posto sotto il titolo, davanti al saldo, che è la cosa che si
-            viene a vedere. Il riepilogo nel `summary` dice l'importo che vale
-            adesso, così non serve aprirla per saperlo.
-          */}
-          <details className="rounded-lg border bg-white">
-            <summary className="cursor-pointer px-3 py-2 text-sm">
-              Importo personale
-              <span className="ml-2 text-neutral-600">
-                {override !== null
-                  ? formattaEuro(override)
-                  : quota.quotaAttesa > 0
-                    ? `nessuno · vale ${formattaEuro(quota.quotaAttesa)} da ${quota.livelloImporto}`
-                    : 'nessuno'}
-              </span>
-            </summary>
-            <RigaImporto
-              etichetta="Importo personale"
-              valore={override}
-              ereditato={
-                override === null && quota.quotaAttesa > 0
-                  ? { importo: quota.quotaAttesa, da: quota.livelloImporto }
-                  : null
-              }
-              azione={impostaImportoAzione.bind(null, codice, { tesseramentoId })}
-              rimuovi={
-                sessione?.ruolo === 'admin' && puoScrivere
-                  ? rimuoviImportoAzione.bind(null, codice, { tesseramentoId })
-                  : undefined
-              }
-              modificabile={puoScrivere}
-            />
-          </details>
-          <PannelloQuota
-            quota={quota}
-            pagamenti={pagamenti}
-            registra={registraPagamentoAzione.bind(null, codice, tesseramentoId)}
-            annulla={annullaPagamentoAzione.bind(null, codice, tesseramentoId)}
-            oggi={oggi}
-            modificabile={puoScrivere}
-          />
-        </div>
+        <SezioneQuota
+          quota={quota}
+          pagamenti={pagamenti}
+          override={override}
+          impostaImporto={impostaImportoAzione.bind(null, codice, { tesseramentoId })}
+          rimuoviImporto={
+            sessione?.ruolo === 'admin' && puoScrivere
+              ? rimuoviImportoAzione.bind(null, codice, { tesseramentoId })
+              : undefined
+          }
+          registra={registraPagamentoAzione.bind(null, codice, tesseramentoId)}
+          annulla={annullaPagamentoAzione.bind(null, codice, tesseramentoId)}
+          oggi={oggi}
+          modificabile={puoScrivere}
+        />
       )}
     </section>
   )

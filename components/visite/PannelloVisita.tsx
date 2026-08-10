@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import type { Risultato } from '@/lib/azioni'
 import { COLORE_VISITA, descrizioneVisita } from '@/lib/domain/visita'
 import type { RigaVisita } from '@/lib/repos/visite'
+import { SceltaSiNo } from '../ui/SceltaSiNo'
 
 type Azione = (
   precedente: Risultato<null> | null,
@@ -33,7 +34,7 @@ export function PannelloVisita({
 }) {
   const [esito, invia, inCorso] = useActionState(azione, null)
   const campi = esito && !esito.ok ? esito.campi : undefined
-  const [consegnata, setConsegnata] = useState<'si' | 'no'>(visita.consegnata ? 'si' : 'no')
+  const [consegnata, setConsegnata] = useState(visita.consegnata)
 
   return (
     <div className="space-y-3 rounded-lg border bg-white p-4">
@@ -49,37 +50,13 @@ export function PannelloVisita({
               riga di aiuto sotto, e allineando i fondi le due etichette
               finivano ad altezze diverse — si vedeva a occhio nudo. */}
           <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-            <fieldset>
-              <legend className="text-sm font-medium">Consegnata</legend>
-              <div className="mt-1.5 flex overflow-hidden rounded-md border-2 border-[var(--colore-nero)]">
-                {[
-                  { valore: 'si', etichetta: 'Sì' },
-                  { valore: 'no', etichetta: 'No' },
-                ].map((o) => (
-                  <label
-                    key={o.valore}
-                    className={`min-h-10 cursor-pointer px-4 py-2 text-sm font-medium ${
-                      (consegnata === 'si') === (o.valore === 'si')
-                        ? 'bg-[var(--colore-giallo)]'
-                        : 'bg-white hover:bg-neutral-100'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="consegnata"
-                      value={o.valore}
-                      checked={consegnata === o.valore}
-                      onChange={() => setConsegnata(o.valore as 'si' | 'no')}
-                      className="sr-only"
-                    />
-                    {o.etichetta}
-                  </label>
-                ))}
-              </div>
-              {campi?.consegnata && (
-                <p role="alert" className="mt-1 text-sm text-red-700">{campi.consegnata}</p>
-              )}
-            </fieldset>
+            <SceltaSiNo
+              nome="consegnata"
+              legenda="Consegnata"
+              valore={consegnata}
+              cambia={setConsegnata}
+              errore={campi?.consegnata}
+            />
 
             <div className="flex flex-col">
               <label htmlFor="scadenza" className="text-sm font-medium">
@@ -102,7 +79,7 @@ export function PannelloVisita({
             {/* Il campo compare solo su SÌ: una data di consegna su una visita
                 dichiarata non consegnata è la combinazione che il vincolo
                 visita_consegna_coerente rifiuta. */}
-            {consegnata === 'si' && (
+            {consegnata && (
               <div className="flex flex-col">
                 <label htmlFor="consegnataIl" className="text-sm font-medium">
                   Consegnata il <span className="font-normal text-neutral-500">(facoltativa)</span>

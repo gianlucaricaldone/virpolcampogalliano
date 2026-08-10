@@ -9,6 +9,14 @@ export type Tesserato = {
   numeroMaglia: number | null
   visitaScadenza: string | null
   visitaConsegnataIl: string | null
+  /**
+   * Materiale sportivo. Viaggia sulla riga del tesserato e non in una mappa a
+   * parte come quota e visita, perché non viene da una vista: sono due colonne
+   * di `tesseramenti`, cioè della tabella che questa query legge già. Gli
+   * elenchi lo mostrano senza una lettura in più.
+   */
+  materialeConsegnato: boolean
+  materialeTaglia: string | null
   note: string | null
   persona: { id: string; cognome: string; nome: string; dataNascita: string | null }
   squadra: { id: string; nome: string } | null
@@ -17,7 +25,8 @@ export type Tesserato = {
 // Stringa letterale in un'unica espressione: concatenandola il tipo diventa
 // `string` e supabase-js non deduce più la forma del risultato.
 const CAMPI = `
-  id, stagione_id, numero_maglia, visita_scadenza, visita_consegnata_il, note,
+  id, stagione_id, numero_maglia, visita_scadenza, visita_consegnata_il,
+  materiale_consegnato, materiale_taglia, note,
   persona:persone!tesseramenti_persona_id_fkey (id, cognome, nome, data_nascita),
   squadra:squadre!tesseramenti_squadra_di_stagione (id, nome)
 `
@@ -28,6 +37,8 @@ type Riga = {
   numero_maglia: number | null
   visita_scadenza: string | null
   visita_consegnata_il: string | null
+  materiale_consegnato: boolean
+  materiale_taglia: string | null
   note: string | null
   persona: { id: string; cognome: string; nome: string; data_nascita: string | null }
   squadra: { id: string; nome: string } | null
@@ -40,6 +51,8 @@ function daRiga(r: Riga): Tesserato {
     numeroMaglia: r.numero_maglia,
     visitaScadenza: r.visita_scadenza,
     visitaConsegnataIl: r.visita_consegnata_il,
+    materialeConsegnato: r.materiale_consegnato,
+    materialeTaglia: r.materiale_taglia,
     note: r.note,
     persona: {
       id: r.persona.id,
@@ -149,6 +162,29 @@ export async function impostaNumeroMaglia(
   numero: number | null,
 ): Promise<void> {
   const { error } = await db.from('tesseramenti').update({ numero_maglia: numero }).eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * Consegna e taglia in una sola UPDATE, per la stessa ragione di
+ * `impostaVisita`: sono i due campi di un unico gesto — la segreteria apre il
+ * pannello e dice cosa sa — e con PostgREST due chiamate sono due transazioni,
+ * quindi la seconda che fallisce lascerebbe scritto metà di quello che si è
+ * visto salvare.
+ *
+ * La taglia **non** si azzera quando la consegna è negata: non esiste nessun
+ * vincolo di coerenza da rispettare, e cancellarla costringerebbe a chiederla
+ * di nuovo al ragazzo per un materiale già ordinato con quella misura.
+ */
+export async function impostaMateriale(
+  db: Db,
+  id: string,
+  dati: { consegnato: boolean; taglia: string | null },
+): Promise<void> {
+  const { error } = await db
+    .from('tesseramenti')
+    .update({ materiale_consegnato: dati.consegnato, materiale_taglia: dati.taglia })
+    .eq('id', id)
   if (error) throw error
 }
 

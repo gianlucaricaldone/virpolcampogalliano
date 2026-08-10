@@ -626,6 +626,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          materiale_consegnato: boolean
+          materiale_taglia: string | null
           note: string | null
           numero_maglia: number | null
           persona_id: string
@@ -639,6 +641,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          materiale_consegnato?: boolean
+          materiale_taglia?: string | null
           note?: string | null
           numero_maglia?: number | null
           persona_id: string
@@ -652,6 +656,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          materiale_consegnato?: boolean
+          materiale_taglia?: string | null
           note?: string | null
           numero_maglia?: number | null
           persona_id?: string

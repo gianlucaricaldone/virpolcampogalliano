@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { coloreMateriale, TAGLIE } from '@/lib/domain/materiale'
 import { COLORE_QUOTA, ETICHETTA_QUOTA } from '@/lib/domain/quota'
 import type { StatoQuota } from '@/lib/repos/quote'
 import type { Squadra } from '@/lib/repos/squadre'
@@ -12,14 +13,36 @@ import { Tabella } from '../ui/Tabella'
 const STATI_QUOTA: StatoQuota[] = ['non_pagato', 'parziale', 'saldato']
 
 /**
+ * Il filtro sul materiale fa due domande con un menù solo: se è stato
+ * consegnato, e di che taglia. Sono indipendenti — la taglia si registra prima
+ * della consegna — ma due menù affiancati per una colonna sola, in una barra che
+ * ne ha già quattro, si guadagnano solo un po' di confusione. `senza` è la
+ * domanda pratica di inizio stagione: a chi devo ancora chiedere la taglia.
+ */
+type FiltroMateriale = '' | 'si' | 'no' | 'senza' | `t:${string}`
+
+function corrispondeMateriale(t: Tesserato, filtro: FiltroMateriale): boolean {
+  if (filtro === '') return true
+  if (filtro === 'si') return t.materialeConsegnato
+  if (filtro === 'no') return !t.materialeConsegnato
+  if (filtro === 'senza') return t.materialeTaglia === null
+  return t.materialeTaglia === filtro.slice(2)
+}
+
+/**
  * L'elenco dei tesserati, uguale nella rosa di una squadra e nell'elenco della
  * stagione: cambia solo la colonna Squadra, che nella rosa sarebbe la stessa su
  * ogni riga.
  *
- * Le colonne sono le due cose che si controllano tesserato per tesserato — la
- * quota e il certificato medico — al posto di nascita e numero di maglia. La
- * data di nascita si legge nella scheda della persona; il numero di maglia è il
- * dato che la società non usa.
+ * Le colonne sono le tre cose che si controllano tesserato per tesserato — la
+ * quota, il certificato medico e il materiale sportivo — al posto di nascita e
+ * numero di maglia. La data di nascita si legge nella scheda della persona; il
+ * numero di maglia è il dato che la società non usa.
+ *
+ * Il materiale arriva sulla riga del `Tesserato`, quota e visita da due mappe:
+ * non è un'incoerenza da sistemare. Quelle due vengono da `v_quote` e
+ * `v_visite`, che sono letture a parte perché calcolano uno stato; il materiale
+ * sono due colonne di `tesseramenti`, cioè della tabella che l'elenco legge già.
  *
  * I FILTRI SONO QUI, non nel server, per la stessa ragione dell'anagrafica: la
  * pagina carica già tutti i tesserati della stagione — centottantasei in
@@ -69,6 +92,7 @@ export function TabellaTesserati({
   const [nome, setNome] = useState('')
   const [visita, setVisita] = useState<'' | 'si' | 'no'>('')
   const [quota, setQuota] = useState<'' | StatoQuota>('')
+  const [materiale, setMateriale] = useState<FiltroMateriale>('')
 
   const visibili = useMemo(() => {
     const cercato = nome.trim().toLowerCase()
@@ -84,9 +108,20 @@ export function TabellaTesserati({
       // dal filtro invece che assegnato d'ufficio a "non pagato", che sarebbe
       // un'affermazione che il database non fa.
       if (quota && quotaPerTesseramento.get(t.id) !== quota) return false
+      if (!corrispondeMateriale(t, materiale)) return false
       return true
     })
-  }, [tesserati, nome, visita, quota, visitaConsegnata, quotaPerTesseramento])
+  }, [tesserati, nome, visita, quota, materiale, visitaConsegnata, quotaPerTesseramento])
+
+  /*
+   * Solo le taglie che qualcuno ha davvero. Offrire tutte e nove significa nove
+   * voci che nella maggior parte dei casi danno un elenco vuoto, e un elenco
+   * vuoto sembra un guasto.
+   */
+  const taglieUsate = useMemo(
+    () => TAGLIE.filter((taglia) => tesserati.some((t) => t.materialeTaglia === taglia)),
+    [tesserati],
+  )
 
   const filtrato = visibili.length !== tesserati.length
 
@@ -182,6 +217,28 @@ export function TabellaTesserati({
           </div>
         )}
 
+        <div className="flex flex-col">
+          <label htmlFor="filtro-materiale" className="text-sm font-medium">Materiale</label>
+          <select
+            id="filtro-materiale"
+            value={materiale}
+            onChange={(e) => setMateriale(e.target.value as FiltroMateriale)}
+            className="mt-1.5 rounded-md border px-3 text-sm"
+          >
+            <option value="">Tutti</option>
+            <option value="si">Consegnato</option>
+            <option value="no">Non consegnato</option>
+            <option value="senza">Taglia da chiedere</option>
+            {taglieUsate.length > 0 && (
+              <optgroup label="Taglia">
+                {taglieUsate.map((t) => (
+                  <option key={t} value={`t:${t}`}>{t}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
+
         {/* Il conteggio è l'unico modo di sapere che i filtri stanno filtrando:
             un elenco corto e un filtro troppo stretto si somigliano. */}
         <p aria-live="polite" className="text-sm text-neutral-600">
@@ -193,7 +250,7 @@ export function TabellaTesserati({
         {filtrato && (
           <button
             type="button"
-            onClick={() => { setNome(''); setVisita(''); setQuota('') }}
+            onClick={() => { setNome(''); setVisita(''); setQuota(''); setMateriale('') }}
             className="text-sm underline"
           >
             Azzera i filtri
@@ -211,6 +268,7 @@ export function TabellaTesserati({
               {mostraSquadra && <th>Squadra</th>}
               {mostraQuota && <th>Quota</th>}
               <th>Visita consegnata</th>
+              <th>Materiale</th>
             </tr>
           </thead>
           <tbody>
@@ -256,6 +314,22 @@ export function TabellaTesserati({
                       }`}
                     >
                       {consegnata ? 'Sì' : 'No'}
+                    </span>
+                  </td>
+                  {/* Sì/No e taglia nella stessa cella, non in due colonne: sono
+                      la risposta a una domanda sola — questo ragazzo è a posto
+                      col materiale? — e una colonna in più su un telefono si
+                      paga in scorrimento orizzontale. La frase lunga
+                      (`descrizioneMateriale`) sta nella scheda, dove c'è spazio. */}
+                  <td className="whitespace-nowrap">
+                    <span
+                      className={`rounded px-2 py-0.5 text-sm ${coloreMateriale({
+                        consegnato: t.materialeConsegnato,
+                        taglia: t.materialeTaglia,
+                      })}`}
+                    >
+                      {t.materialeConsegnato ? 'Sì' : 'No'}
+                      {t.materialeTaglia && ` · ${t.materialeTaglia}`}
                     </span>
                   </td>
                 </tr>
