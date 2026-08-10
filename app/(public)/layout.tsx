@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { SEDE } from '@/lib/costanti'
 
 // Le quattro pagine del sito pubblico: home, squadre, contatti e dove-siamo.
 const NAV = [
@@ -50,54 +51,47 @@ function Header() {
   )
 }
 
+/*
+ * Il footer aveva tre colonne e due erano da buttare: un telefono segnaposto
+ * (059 123456), una email su dominio non verificato, e la colonna «Orari
+ * Segreteria» — che dava orari diversi da quelli scritti in /contatti e in
+ * /dove-siamo, tre versioni della stessa cosa in tre punti del sito. Restano
+ * bio e indirizzo, che è vero e vive in SEDE, in un posto solo.
+ *
+ * Nessun anno nel copyright. C'era «© 2024» in un sito che gira nel 2026, e le
+ * due alternative hanno lo stesso difetto in tempi diversi: un anno scritto a
+ * mano invecchia, `new Date().getFullYear()` in una pagina prerenderizzata si
+ * congela al momento del build. Non scriverlo è la sola forma che non scade.
+ */
 function Footer() {
   return (
     <footer className="bg-neutral-900 text-neutral-300">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2">
         <div>
           <h2 className="text-lg font-bold text-white">Virpol Campogalliano</h2>
           <p className="mt-1 text-sm text-neutral-400">Società Sportiva</p>
           <p className="mt-4 text-sm leading-relaxed">
-            Dal 2009 portiamo avanti la passione per il calcio con dedizione,
-            formazione e spirito di squadra. Una famiglia che cresce insieme.
+            Portiamo avanti la passione per il calcio con dedizione, formazione e
+            spirito di squadra. Una famiglia che cresce insieme.
           </p>
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-white">Contatti</h3>
-          <address className="mt-4 space-y-3 text-sm not-italic">
-            <p>
-              Via dello Sport, 1
-              <br />
-              41011 Campogalliano (MO)
-              <br />
-              Emilia-Romagna, Italia
-            </p>
-            <p>
-              <a href="tel:059123456" className="hover:text-white">
-                059 123456
-              </a>
-            </p>
-            <p>
-              <a href="mailto:info@virpolcampogalliano.it" className="hover:text-white">
-                info@virpolcampogalliano.it
-              </a>
-            </p>
+          <h3 className="text-sm font-semibold text-white">Dove siamo</h3>
+          <address className="mt-4 text-sm not-italic leading-relaxed">
+            <span className="block text-neutral-200">{SEDE.centro}</span>
+            {SEDE.via}
+            <br />
+            {SEDE.comune}
           </address>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold text-white">Orari Segreteria</h3>
-          <div className="mt-4 space-y-1 text-sm text-neutral-400">
-            <p>Lun - Ven: 18:00 - 20:00</p>
-            <p>Sabato: 15:00 - 18:00</p>
-            <p>Domenica: Solo durante partite</p>
-          </div>
+          <Link href="/dove-siamo" className="mt-4 inline-block text-sm hover:text-white">
+            Come arrivare →
+          </Link>
         </div>
       </div>
 
       <div className="border-t border-neutral-700 px-4 py-6 text-center text-sm text-neutral-500">
-        © 2024 Virpol Campogalliano. Realizzato con ♥ per lo sport.
+        © Virpol Campogalliano. Realizzato con ♥ per lo sport.
       </div>
     </footer>
   )

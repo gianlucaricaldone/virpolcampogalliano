@@ -83,7 +83,8 @@ genitori.
 mano da chiunque:
 
 1. **Privilegi di tabella.** `anon` non ha alcun privilegio sulle tabelle di
-   dominio: legge solo `v_squadre_pubbliche` (vedi sotto). `authenticated` ha la
+   dominio: legge solo `v_squadre_pubbliche` e `v_numeri_pubblici` (vedi sotto).
+   `authenticated` ha la
    DML sulle dieci tabelle. `service_role` la DML, senza TRUNCATE. Un
    `using (true)` copiato per errore su `persone` in un task futuro non può
    esporla ad `anon`, perché il privilegio non c'è.
@@ -120,23 +121,42 @@ l'IF non scatterebbe e la funzione restituirebbe l'elenco intero. La revoca
 dell'EXECUTE che Postgres concede a PUBLIC è ciò che tiene fuori `anon`, e ha
 un test suo.
 
-### `v_squadre_pubbliche`, l'eccezione security_invoker
+### Le due view pubbliche, le eccezioni security_invoker
 
-È l'unica view del repository senza `security_invoker`: esiste perché `anon`
+`v_squadre_pubbliche` e `v_numeri_pubblici` sono le sole view del repository
+senza `security_invoker`: esistono perché `anon`
 non ha alcun privilegio sulle tabelle di dominio, e senza una view di
-proprietà di `postgres` — che legge `stagioni` e `squadre` coi diritti del
+proprietà di `postgres` — che legge le tabelle coi diritti del
 proprietario, ignorando le RLS del chiamante — il sito pubblico non avrebbe
 modo di mostrare nome, categoria e annata delle squadre della stagione in
-corso. Il recinto non sta nelle policy RLS di `stagioni` e `squadre`, che
-`anon` non arriva nemmeno ad attraversare: sta nella definizione della view
-stessa, tre sole colonne e solo le righe della stagione corrente — la stessa
-regola di `stagioneCorrenteDa` in `lib/domain/stagione.ts`, duplicata qui
-perché una view non può chiamare TypeScript. Il baseline delle RLS non
-concede alcun privilegio di tabella ad `anon` su `stagioni` e `squadre`: non
-c'è una revoke da fare in questa migration, perché non c'era nulla da
-revocare. Questa view è, ed è sempre stata dichiarata essere, l'unico varco
-di `anon` su quei dati. La matrice RLS verifica entrambi i lati del recinto:
-che `anon` legga la view e che non possa leggere le tabelle direttamente.
+corso, né quante sono le squadre e gli atleti. Il recinto non sta nelle policy
+RLS delle tabelle, che
+`anon` non arriva nemmeno ad attraversare: sta nella definizione delle view
+stesse — tre sole colonne e solo le righe della stagione corrente per la prima,
+**due soli aggregati** per la seconda — e nel grant. La regola della stagione
+corrente è la stessa di `stagioneCorrenteDa` in `lib/domain/stagione.ts`,
+duplicata là perché una view non può chiamare TypeScript, e duplicata una
+seconda volta fra le due view: `v_numeri_pubblici` non ha voluto un
+`create or replace` su una view già in produzione per condividerla, e il prezzo
+della copia lo paga un test che verifica lo spareggio anche sulla view nuova.
+
+`v_numeri_pubblici` legge `tesseramenti`, cioè scavalca le RLS della tabella
+più sensibile dello schema. La rende innocua il fatto che esponga due
+`count()`: nessuna colonna di riga, nessun parametro, nessuna persona.
+**Aggiungere una colonna a quella view è una decisione di sicurezza, non
+un'aggiunta di comodo.** È concessa al solo `anon`, non ad `authenticated`: nel
+backoffice i numeri veri si leggono dalle tabelle.
+
+Il baseline delle RLS non concede alcun privilegio di tabella ad `anon`, quindi
+per la prima view non c'era nulla da revocare; per la seconda la revoca c'è, e
+serve al progetto ospitato, dove i default privilege concedono la DML ad `anon`
+su ogni view nuova (vedi `20260809000300_recinto_anon.sql`). Queste due view
+sono l'unico varco di `anon` sui dati di dominio. La matrice RLS verifica
+entrambi i lati del recinto per ciascuna: che `anon` le legga e che non possa
+leggere le tabelle direttamente. Un test di catalogo pinna in più che
+`reloptions` sia nullo su tutte e due: aggiungere `security_invoker`, che
+sembra la scelta prudente, spegnerebbe il sito pubblico — o, peggio, lo
+farebbe rispondere zero senza errori.
 
 ### Il limite noto delle view
 

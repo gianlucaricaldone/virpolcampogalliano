@@ -3,6 +3,10 @@
 // griglia di foto stock decorative sulla destra (4 URL Unsplash hotlinked,
 // non fra gli asset copiati nel Task 2) e il bottone «Scopri di più», che nel
 // vecchio sito puntava a /storia — pagina fuori perimetro nel piano nuovo.
+//
+// Via anche «Dal 2009» dall'apertura del primo paragrafo: l'anno di fondazione
+// non è un dato che qualcuno abbia verificato, e stava scritto in quattro punti
+// del sito. Il titolo «La Nostra Storia» resta — è narrativa, non una data.
 export function ChiSiamo() {
   return (
     <section id="chi-siamo" className="bg-white py-24">
@@ -11,10 +15,9 @@ export function ChiSiamo() {
           La Nostra <span className="text-blue-600">Storia</span>
         </h2>
         <p className="mb-6 text-xl leading-relaxed text-neutral-600">
-          Dal 2009, la <strong>Virpol Campogalliano</strong> rappresenta un punto
-          di riferimento nel panorama calcistico locale. Nata dalla passione di
-          un gruppo di amici, oggi è cresciuta fino a diventare una vera e
-          propria famiglia.
+          La <strong>Virpol Campogalliano</strong> è un punto di riferimento nel
+          panorama calcistico locale. Nata dalla passione di un gruppo di amici,
+          oggi è cresciuta fino a diventare una vera e propria famiglia.
         </p>
         <p className="mb-8 text-lg leading-relaxed text-neutral-600">
           La nostra missione è quella di far crescere i giovani atleti non solo

@@ -40,7 +40,7 @@ export function Hero() {
         <p className="mx-auto mb-12 max-w-3xl text-xl leading-relaxed text-neutral-200 md:text-2xl">
           Dove la passione per il calcio diventa{' '}
           <span className="font-semibold text-yellow-400">famiglia</span>.
-          Formazione, crescita e successi dal 2009.
+          Formazione, crescita e successi.
         </p>
 
         <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">

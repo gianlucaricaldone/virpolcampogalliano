@@ -708,6 +708,13 @@ export type Database = {
       }
     }
     Views: {
+      v_numeri_pubblici: {
+        Row: {
+          atleti: number | null
+          squadre: number | null
+        }
+        Relationships: []
+      }
       v_presenze: {
         Row: {
           assenti: number | null

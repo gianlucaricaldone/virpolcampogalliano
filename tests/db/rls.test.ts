@@ -499,6 +499,19 @@ describe('utente anonimo', () => {
       expect(squadre).toBe(2)
     }))
 
+  it('legge i numeri dalla vista, non dalle tabelle', () =>
+    inRollback(async (c) => {
+      await dueSquadre(c)
+      // Il gemello del test sopra per la seconda vista pubblica. La matrice si
+      // autovalida solo se ogni ruolo ha sia un permesso sia un diniego: senza
+      // questa lettura riuscita, un'impersonificazione rotta renderebbe verdi
+      // tutti i dinieghi qui sotto.
+      const righe = await asAnon(c, () =>
+        conta(c, 'select squadre from public.v_numeri_pubblici'),
+      )
+      expect(righe).toBe(1)
+    }))
+
   it.each([
     'persone', 'profili', 'tesseramenti', 'incarichi_staff',
     'sedute_allenamento', 'presenze', 'quote_importi', 'pagamenti_quota',
@@ -540,10 +553,11 @@ describe('utente anonimo', () => {
       await c.query('rollback to savepoint anon_sel_squadre')
     }))
 
-  it('anon ha SELECT solo su v_squadre_pubbliche', () =>
+  it('anon ha SELECT solo sulle due viste pubbliche', () =>
     inRollback(async (c) => {
       const privilegi = await privilegiTabella(c, 'anon')
       expect(privilegi).toEqual([
+        { table_name: 'v_numeri_pubblici', privilege_type: 'SELECT' },
         { table_name: 'v_squadre_pubbliche', privilege_type: 'SELECT' },
       ])
       // Il baseline non concede nulla ad anon su squadre e stagioni: zero
@@ -570,6 +584,10 @@ describe('privilegi di tabella per authenticated', () => {
   // voluta e va aggiunta qui, non aggirata. Che questo test sia diventato
   // rosso da solo, al primo grant nuovo, è esattamente il suo mestiere.
   // v_squadre_pubbliche è la vetrina per il sito pubblico: anon la legge, non le tabelle.
+  // v_numeri_pubblici NON è in questo elenco e non è una dimenticanza: i due
+  // conteggi della home sono concessi al solo anon, perché nel backoffice
+  // nessuno li legge — ha i numeri veri. L'asserzione d'insieme esatto qui sotto
+  // diventa rossa da sola se una migration futura li concede ad authenticated.
   // v_presenze_mese e v_presenze_squadra_mese sono arrivate col filtro sui mesi
   // nelle statistiche: sorelle delle due di stagione, stessi privilegi.
   const VISTE = [
