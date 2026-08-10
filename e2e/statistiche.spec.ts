@@ -168,3 +168,32 @@ test('il filtro sui mesi cambia il denominatore, non solo le righe', async ({ pa
   await expect(page.getByText(/Solo maggio 2027/)).toBeVisible()
   await expect(riga()).toContainText('100')
 })
+
+// Il menù dei mesi era reso solo quando c'era qualcosa da scegliere: sulla
+// 2026/2027, undici squadre e zero allenamenti, sembrava una funzione mancante.
+test('il menù dei mesi c\'è anche senza sedute, e dice perché è vuoto', async ({ page }) => {
+  // Serve una stagione CON squadre e SENZA sedute: nel seed la 2025-26 non ha
+  // squadre, e il form dei filtri per intero non viene reso quando non c'è
+  // nulla da filtrare. Una squadra di prova sulla stagione chiusa ricostruisce
+  // esattamente il caso della 2026/2027 vera, che ha undici squadre e zero
+  // allenamenti registrati.
+  const db = clientServizio()
+  const { data: chiusa } = await db
+    .from('stagioni').select('id').eq('codice', '2025-26').single()
+  const { data: squadra, error } = await db
+    .from('squadre')
+    .insert({ stagione_id: chiusa!.id, nome: 'Provastat Vuota', categoria: '' })
+    .select('id').single()
+  if (error) throw error
+
+  try {
+    await accedi(page, 'dirigente@virpol.test')
+    await page.goto('/2025-26/statistiche')
+    const mese = page.getByLabel('Mese')
+    await expect(mese).toBeVisible()
+    await expect(mese).toBeDisabled()
+    await expect(mese).toContainText('Nessuna seduta registrata')
+  } finally {
+    await db.from('squadre').delete().eq('id', squadra!.id)
+  }
+})

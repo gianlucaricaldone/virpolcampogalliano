@@ -76,22 +76,34 @@ export default async function PaginaStatistiche({
               ))}
             </select>
           </div>
-          {mesi.length > 0 && (
-            <div>
-              <label htmlFor="mese" className="block text-sm font-medium">Mese</label>
-              <select
-                id="mese"
-                name="mese"
-                defaultValue={mese ?? ''}
-                className="mt-1.5 rounded-md border px-3 text-sm"
-              >
-                <option value="">Tutta la stagione</option>
-                {mesi.map((m) => (
-                  <option key={m} value={m}>{etichettaMese(m)}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/*
+            Il menù c'è sempre, anche a stagione senza sedute: nasconderlo era
+            coerente — non c'è nulla da scegliere — ma indistinguibile da una
+            funzione che manca, ed è così che è stato letto. Disabilitato e con
+            il motivo scritto dentro, invece: la 2026/2027 ha undici squadre e
+            zero allenamenti registrati, e il posto dove dirlo è questo.
+          */}
+          <div>
+            <label htmlFor="mese" className="block text-sm font-medium">Mese</label>
+            <select
+              id="mese"
+              name="mese"
+              defaultValue={mese ?? ''}
+              disabled={mesi.length === 0}
+              className="mt-1.5 rounded-md border px-3 text-sm disabled:bg-neutral-100 disabled:text-neutral-500"
+            >
+              {mesi.length === 0 ? (
+                <option value="">Nessuna seduta registrata</option>
+              ) : (
+                <>
+                  <option value="">Tutta la stagione</option>
+                  {mesi.map((m) => (
+                    <option key={m} value={m}>{etichettaMese(m)}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          </div>
           <button type="submit" className="bottone-secondario">Filtra</button>
         </form>
       )}
